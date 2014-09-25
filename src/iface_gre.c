@@ -26,9 +26,9 @@ static int have_rtnl_newlink = -1;
 struct rtnl_handle rth = { .fd = -1 };
 
 int
-accept_msg(const struct sockaddr_nl *who,                                        
-           struct nlmsghdr *n,
-           void *arg)
+accept_msg(const struct sockaddr_nl* UNUSED(who),
+           struct nlmsghdr* n,
+           void* UNUSED(arg))
 {
     struct nlmsgerr *err = (struct nlmsgerr *)NLMSG_DATA(n);
 
@@ -151,7 +151,7 @@ iplink_modify(int cmd,
     linkinfo->rta_len = (void *)NLMSG_TAIL(&req.n) - (void *)linkinfo;
 
     // sending the packet to the kernel.
-    if (rtnl_talk(&rth, &req.n, 0, 0, NULL) < 0)
+    if ((ret = rtnl_talk(&rth, &req.n, 0, 0, NULL)) < 0)
     {
         D_DEBUG("rtnl_talk() ret=%d strerror='%s'\n", ret, strerror(errno));
     }

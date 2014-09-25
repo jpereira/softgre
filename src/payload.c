@@ -113,9 +113,8 @@ payload_got_packet (u_char* UNUSED(args),
 {
     struct softgred_config* cfg = softgred_config_get();
     const struct tunnel_config  *tun_cfg;
-
-	/* declare pointers to packet headers */
-	const struct payload_ip *ip = NULL;              /* The IP header */
+    struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
+	const struct payload_ip *ip = NULL; /* The IP header */
 	int size_ip;
 
 	/* define/compute ip header offset */
@@ -137,6 +136,10 @@ payload_got_packet (u_char* UNUSED(args),
 	/*
 	 *  OK, this packet is GRE
 	 */
+    if (ip->ip_src.s_addr == ip_local->s_addr)
+    {
+        return;
+    }
 
     if (provision_is_exist (&ip->ip_src))
     {

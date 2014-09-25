@@ -28,8 +28,6 @@ bool
 provision_is_exist(const struct in_addr *ip_remote)
 {
     struct provision_data *p = provision_data_get();
-    struct softgred_config *cfg = softgred_config_get();
-    struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
     int i = 0;
 
     assert (ip_remote != NULL);
@@ -37,7 +35,7 @@ provision_is_exist(const struct in_addr *ip_remote)
 
     for (i=0; i < PROVISION_MAX_SLOTS; i++)
     {
-        if (ip_remote->s_addr == p->tunnel[i].ip_remote.s_addr && ip_remote->s_addr != ip_local->s_addr)
+        if (ip_remote->s_addr == p->tunnel[i].ip_remote.s_addr)
             return true;
     }
 
