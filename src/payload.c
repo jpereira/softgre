@@ -112,6 +112,7 @@ payload_got_packet (u_char* UNUSED(args),
                     const u_char *packet)
 {
     struct softgred_config* cfg = softgred_config_get();
+    const struct tunnel_config  *tun_cfg;
 
 	/* declare pointers to packet headers */
 	const struct payload_ip *ip = NULL;              /* The IP header */
@@ -143,13 +144,14 @@ payload_got_packet (u_char* UNUSED(args),
         return;
     }
     
-    if (provision_add (&ip->ip_src) == false)
+    if (provision_add (&ip->ip_src, &tun_cfg) == false)
     {
         printf("Problems with provision_add()\n");
         return;
     }
 
-    D_DEBUG("The client %s was provisioned in %s with success!\n", inet_ntoa(ip->ip_src), cfg->ifname);
+    D_DEBUG("The client %s in %s was provisioned with %s with success!\n", 
+                inet_ntoa(tun_cfg->ip_remote), cfg->ifname, tun_cfg->ifgre);
 
     return;
 }

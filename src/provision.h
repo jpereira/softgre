@@ -44,7 +44,8 @@ struct provision_data {
 
 bool provision_is_exist(const struct in_addr *ip_remote);
 
-int provision_add(const struct in_addr *ip_remote);
+int provision_add(const struct in_addr *ip_remote,
+                  const struct tunnel_config **out);
 
 int provision_del();
 

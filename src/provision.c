@@ -45,7 +45,8 @@ provision_is_exist(const struct in_addr *ip_remote)
 }
 
 int
-provision_add(const struct in_addr *ip_remote)
+provision_add(const struct in_addr *ip_remote,
+              const struct tunnel_config **tun_cfg)
 {
     struct provision_data *p = provision_data_get();
     struct softgred_config *cfg = softgred_config_get();
@@ -84,12 +85,14 @@ provision_add(const struct in_addr *ip_remote)
         return -1;
     }
 
-    // increase configuration
+    // save the context
     p->tunnel[pos].ip_remote.s_addr = ip_remote->s_addr;
     p->tunnel[pos].id               = pos;
     p->last_slot                    = pos + 1;
-
     strncpy(p->tunnel[pos].ifgre, new_ifgre, size_new_ifgre);
+
+    // rise from your grave!!
+    *tun_cfg = (const struct tunnel_config *)&p->tunnel[pos];
 
     return true;
 }
@@ -119,7 +122,6 @@ int provision_delall()
         if (!iface_gre_del(ifname))
         {
             D_WARNING("Problems for del iface_gre_del('%s'), continue...\n", ifname);
-            return -1;
         }
     }
 
