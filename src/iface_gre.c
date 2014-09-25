@@ -114,6 +114,9 @@ iplink_modify(int cmd,
 
     if (cmd == RTM_NEWLINK)
     {
+        req.i.ifi_change |= IFF_UP;
+        req.i.ifi_flags |= IFF_UP;
+
         link = if_nametoindex(dev_to_link);
         if (link < 1)
         {
