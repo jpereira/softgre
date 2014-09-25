@@ -11,11 +11,14 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE
+
 #include "general.h"
 #include "log.h"
 #include "provision.h"
-#include "iface_gre.h"
 #include "softgred_config.h"
+
+#include "iface_bridge.h"
+#include "iface_gre.h"
 
 struct provision_data *
 provision_data_get()
@@ -54,6 +57,7 @@ provision_add(const struct in_addr *ip_remote,
     size_t size_new_ifgre;
     int ret;
     int pos = p->last_slot;
+    int i = 0;
 
     assert (ip_remote != NULL);
     assert (cfg != NULL);
@@ -79,6 +83,20 @@ provision_add(const struct in_addr *ip_remote,
     {
         D_WARNING("Problems with iface_gre_add()...\n");
         return -1;
+    }
+
+    // Attach the vlan in some bridge interface
+    for (i=0; i < cfg->bridge_slot; i++)
+    {
+        const char *br = cfg->bridge[i].ifname;
+        uint16_t vlan_id = cfg->bridge[i].vlan_id;
+
+        ret = iface_bridge_attach(new_ifgre, br, vlan_id);
+        if (ret == false)
+        {
+            D_WARNING("Problems with iface_gre_add()...\n");
+            return -1;
+        }
     }
 
     // save the context

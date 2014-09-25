@@ -25,6 +25,8 @@ softgred_SOURCES =            \
 	../src/log.h              \
 	../src/payload.c          \
 	../src/payload.h          \
+	../src/iface_bridge.c     \
+	../src/iface_bridge.h     \
 	../src/iface_gre.c        \
 	../src/iface_gre.h        \
 	../src/provision.c        \

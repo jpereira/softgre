@@ -114,39 +114,3 @@ helper_print_payload (const u_char *payload,
 return;
 }
 
-int
-helper_load_iface(const char *ifname,
-                  struct softgred_config *cfg)
-{
-    struct sockaddr_in *sin = &cfg->priv.ifname_saddr;
-    struct ifaddrs *ifap, *ifa;
-    size_t ifacen = strnlen(ifname, SOFTGRED_MAX_IFACE);
-
-    assert (ifname != NULL);
-    assert (cfg != NULL);
-    assert (sin != NULL);
-
-    getifaddrs (&ifap);
-
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next)
-    {
-        if (!strncmp(ifname, ifa->ifa_name, ifacen))
-        {
-            if (ifa->ifa_addr->sa_family == AF_INET)
-            {
-                struct sockaddr_in *sa = (struct sockaddr_in *) ifa->ifa_addr;
-                char *addr = inet_ntoa(sa->sin_addr);
-
-                strncpy(cfg->priv.ifname_ip, addr, SOFTGRED_MAX_IFACE);
-                memcpy(sin, sa, sizeof(struct sockaddr_in));
-
-                break;
-            }
-        }
-    }
-
-    freeifaddrs(ifap);
-
-    return 0;
-}
-

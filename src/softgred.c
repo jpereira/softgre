@@ -24,6 +24,7 @@ struct option long_opts[] = {
 	{ "foreground",       no_argument,       NULL, 'f'},
 	{ "iface",            required_argument, NULL, 'i'},
 	{ "tunnel-prefix",    optional_argument, NULL, 'p'},
+	{ "bridge-to-attach", optional_argument, NULL, 'b'},
 	{ "debug",            no_argument,       NULL, 'd'},
 	{ "help",             no_argument,       NULL, 'h'},
 	{ "version",          no_argument,       NULL, 'v'},
@@ -94,7 +95,7 @@ main (int argc,
     /* parsing arguments ... */
 	while (true)
     {
-		int c = getopt_long(argc, argv, "dfhvi:p:", long_opts, NULL);
+		int c = getopt_long(argc, argv, "dfhvi:p:b:", long_opts, NULL);
 		if (c == EOF)
 			break;
 		switch (c) {
@@ -106,7 +107,10 @@ main (int argc,
                 break;
 			case 'i': /* --iface */
 				cfg->ifname = optarg;
-                helper_load_iface(cfg->ifname, cfg);
+                softgred_config_load_iface(cfg->ifname, cfg);
+                break;
+			case 'b': /* --bridge-to-attach */
+				softgred_config_load_bridge_and_vlans(optarg, cfg);
                 break;
 			case 'h': /* --help */
 				softgred_print_usage(argv);
@@ -126,7 +130,7 @@ main (int argc,
 	}
 
     /* begin */
-	D_INFO("daemon started\n");
+	D_INFO("** Daemon Started **\n");
     D_INFO("Using arguments: foreground='%d' iface='%s/%s' [tunnel_prefix=%s]\n",
         cfg->is_foreground, cfg->ifname, cfg->priv.ifname_ip, cfg->tunnel_prefix
     );

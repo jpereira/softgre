@@ -11,23 +11,15 @@
  * GNU General Public License for more details.
  */
 
-#ifndef HELPER_H_
-#define HELPER_H_
+#ifndef IFACE_BRIDGE_H_
+#define IFACE_BRIDGE_H_
 
 #include "general.h"
-#include "softgred_config.h"
 
-void
-helper_print_payload (const u_char *payload,
-                      int len);
+int
+iface_bridge_attach(const char *gre_iface,
+                    const char *br_ifname,
+                    uint16_t vlan_id);
 
-void
-helper_print_hex2ascii (const u_char *payload,
-                        int len,
-                        int offset);
-
-void
-helper_save_pid();
-
-#endif /*HELPER_H_*/
+#endif /*IFACE_BRIDGE_H_*/
 

@@ -17,10 +17,21 @@
 #include "general.h"
 #include "config.h"
 
+#define SOFTGRED_MAX_ATTACH     10
 #define SOFTGRED_MAX_IFACE      IFNAMSIZ
 #define SOFTGRED_MAX_SLOTS      4096
 #define SOFTGRED_TUN_PREFIX     "if_sgre"
 #define SOFTGRED_TUN_MTU        1462
+
+struct tunnel_bridge {
+    const char *ifname;
+    uint16_t vlan_id;
+};
+
+struct tunnel_config_priv {
+    char ifname_ip[SOFTGRED_MAX_IFACE+1];
+    struct sockaddr_in ifname_saddr;
+};
 
 struct softgred_config {
     bool is_foreground;        /* --foreground */
@@ -28,10 +39,9 @@ struct softgred_config {
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint16_t maximum_slots;    /* --maximum-slots */
     bool debug_mode;           /* --debug */
-    struct {
-        char ifname_ip[SOFTGRED_MAX_IFACE+1];
-        struct sockaddr_in ifname_saddr;
-    } priv;
+    struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
+    uint8_t bridge_slot;
+    struct tunnel_config_priv priv;
 };
 
 void softgred_config_set (struct softgred_config *config);
@@ -41,6 +51,12 @@ struct softgred_config *softgred_config_get();
 void softgred_print_version();
 
 void softgred_print_usage(char *argv[]);
+
+int softgred_config_load_iface(const char *ifname,
+                               struct softgred_config *cfg);
+
+int softgred_config_load_bridge_and_vlans(const char *arg,
+                                          struct softgred_config *cfg);
 
 #endif /*SOFTGRED_CONFIG_H_*/
 
