@@ -1,0 +1,51 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# trash
+*~
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+bin/.deps/
+bin/Makefile
+bin/Makefile.in
+bin/softgred
+config.h
+config.h.in
+config.log
+config.status
+stamp-h1
+changes
+#compile
+#depcomp
+#install-sh
+#missing
+
