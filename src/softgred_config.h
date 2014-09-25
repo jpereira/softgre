@@ -17,7 +17,7 @@
 #include "general.h"
 #include "config.h"
 
-#define SOFTGRED_MAX_IFACE      32
+#define SOFTGRED_MAX_IFACE      IFNAMSIZ
 #define SOFTGRED_MAX_SLOTS      4096
 #define SOFTGRED_TUN_PREFIX     "if_sgre"
 #define SOFTGRED_TUN_MTU        1462

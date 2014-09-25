@@ -45,9 +45,14 @@
 // pthreads
 #include <pthread.h>
 
-// Network
+// Network && Interfaces
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <libnetlink.h>
+#include <linux/rtnetlink.h>
+#include <linux/ip.h>
+#include <linux/if.h>
+#include <linux/if_tunnel.h>
 
 // pcap
 #include <pcap.h>

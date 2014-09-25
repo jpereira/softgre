@@ -75,8 +75,6 @@ provision_add(const struct in_addr *ip_remote,
         return -1;        
     }
 
-    D_DEBUG("trying iface_gre_add('%s', 'gretap', ....)\n", new_ifgre);
-
     // Create GRE Interface
     ret = iface_gre_add(new_ifgre, "gretap", cfg->ifname, ip_local, ip_remote);
     if (ret == false)
@@ -106,7 +104,6 @@ provision_del()
 int provision_delall()
 {
     struct provision_data *p = provision_data_get();
-    struct softgred_config *cfg = softgred_config_get();
     int i = 0;
     char *ifname;
     assert (p != NULL);

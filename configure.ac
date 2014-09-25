@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 25 Set 2014 10:47:53 BRT
+# Last Change: Qui 25 Set 2014 13:28:19 BRT
 ####
 
 AC_INIT([SoftGRE],
@@ -90,12 +90,12 @@ AC_SUBST([LIBPCAP_LIBS])
 
 # check for libnl-1
 AC_CHECK_HEADERS([netlink/attr.h])
-LIBNL_LIBS='-lnl'
+LIBNL_LIBS='-lnl-3'
 AC_SUBST([LIBNL_LIBS])
 
 # check for libnfnetlink
 AC_CHECK_HEADERS([libnfnetlink/libnfnetlink.h])
-LIBNL_LIBS='-lnfnetlink -lnetlink'
+LIBNFNETLINK_LIBS='-lnfnetlink -lnetlink'
 AC_SUBST([LIBNFNETLINK_LIBS])
 
 # libpthread

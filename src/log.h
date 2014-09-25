@@ -27,15 +27,15 @@
 #   define DD(format, ...) fprintf(stderr, " ** DEBUG: %s:%d %s() - " format, __FILE__, __LINE__, __func__, ## __VA_ARGS__)
 #   define DDF(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
 #else
-#   define DD(format, ...) no_debug(0, format, ## __VA_ARGS__)
+#   define DD(format, ...) no_debug(0, format, )
 #   define DDF(format, ...) no_debug(0, format, ## __VA_ARGS__)
 #endif
 
-#define TRACE(MESSAGE, args...) { \
+#define TRACE(MESSAGE, ...) { \
   const char *A[] = { MESSAGE }; \
   printf("TRACE: %s %s %d\n",__FUNCTION__,__FILE__,__LINE__); fflush(stdout);\
   if(sizeof(A) > 0) \
-	printf(*A, ##args); \
+	printf(*A, ## __VA_ARGS__); \
 }
 
 enum {
@@ -50,7 +50,7 @@ enum {
 #define D_WARNING(fmt, ...) log_message(L_WARNING, fmt, ## __VA_ARGS__)
 #define D_NOTICE(fmt, ...)  log_message(L_NOTICE, fmt, ## __VA_ARGS__)
 #define D_INFO(fmt, ...)    log_message(L_INFO, fmt, ## __VA_ARGS__)
-#define D_DEBUG(fmt, ...)   log_message(L_DEBUG, "**debug: "fmt, ## __VA_ARGS__)
+#define D_DEBUG(fmt, ...)   log_message(L_DEBUG, "**debug: %s:%d %s() "fmt, basename(__FILE__), __LINE__, __func__, ## __VA_ARGS__)
 
 static inline void
 no_debug (int UNUSED(level),
