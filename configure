@@ -5432,7 +5432,7 @@ done
 LIBNL_LIBS='-lnl-3'
 
 
-# check for libnfnetlink
+# check for libnetlink
 for ac_header in libnfnetlink/libnfnetlink.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "libnfnetlink/libnfnetlink.h" "ac_cv_header_libnfnetlink_libnfnetlink_h" "$ac_includes_default"
@@ -5445,7 +5445,7 @@ fi
 
 done
 
-LIBNFNETLINK_LIBS='-lnfnetlink -lnetlink'
+LIBNFNETLINK_LIBS='-lnetlink'
 
 
 # libpthread
