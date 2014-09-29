@@ -42,7 +42,13 @@ softgred_sig_handler(int signo)
             
             softgred_end();
             exit(EXIT_FAILURE);
-        break;
+            break;
+
+        case SIGUSR1:
+            D_INFO("Received SIGUSR1, unprovision all!\n");
+            /* unprovisione all interfaces */
+            provision_delall();
+            break;
     }
 }
 
@@ -111,15 +117,15 @@ main (int argc,
                 softgred_config_load_iface(cfg->ifname, cfg);
                 break;
             case 'a': /* --attach */
-                softgred_config_load_attach(optarg, cfg);
+                if (softgred_config_load_attach(optarg, cfg) != EXIT_SUCCESS)
+                    exit(EXIT_FAILURE);
                 break;
             case 'h': /* --help */
                 softgred_print_usage(argv);
                 exit(EXIT_SUCCESS);
                 break;
             case 'd': /* --debug */
-                cfg->debug_mode = true;
-                fprintf(stderr, "*** Entering in debug mode! ***\n");
+                cfg->debug_mode += 1 ;
                 break;
             case 'v': /* --version */
                 softgred_print_version();
@@ -130,10 +136,22 @@ main (int argc,
         }
     }
 
+    // Check debug level
+    if (cfg->debug_mode > 0)
+    {
+        if (cfg->debug_mode > DEBUG_MAX_LEVEL)
+        {
+            fprintf(stderr, "*** Ops!! the maximum of debug level is %d (-ddd).\n", DEBUG_MAX_LEVEL);
+            exit(EXIT_FAILURE);
+        }
+
+        fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->debug_mode);
+    }
+
     /* begin */
     D_INFO("** Daemon Started **\n");
-    D_INFO("Using arguments: foreground='%d' iface='%s/%s' [tunnel_prefix=%s]\n",
-        cfg->is_foreground, cfg->ifname, cfg->priv.ifname_ip, cfg->tunnel_prefix
+    D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
+        cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
     );
 
     if (payload_loop_init () != EXIT_SUCCESS)
@@ -170,6 +188,7 @@ main (int argc,
     /* registering signals */
     signal(SIGINT, softgred_sig_handler);
     signal(SIGTERM, softgred_sig_handler);
+    signal(SIGUSR1, softgred_sig_handler);
 
     /* pre-run */
     softgred_init();
