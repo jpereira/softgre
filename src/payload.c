@@ -55,21 +55,21 @@ payload_loop_run()
     pl_cfg->handle = pcap_open_live (cfg->ifname, SNAP_LEN, 1, 1000, pl_cfg->errbuf);
     if (pl_cfg->handle == NULL)
     {
-        fprintf(stderr, "Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
+        D_CRIT("Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
         return EXIT_FAILURE;
     }
 
     /* make sure we're capturing on an Ethernet device [2] */
     if (pcap_datalink (pl_cfg->handle) != DLT_EN10MB)
     {
-        fprintf(stderr, "%s is not an Ethernet\n", cfg->ifname);
+        D_CRIT("%s is not an Ethernet\n", cfg->ifname);
         return EXIT_FAILURE;
     }
 
     /* compile the filter expression */
     if (pcap_compile (pl_cfg->handle, &pl_cfg->fp, filter_exp, 0, pl_cfg->net) == -1)
     {
-        fprintf(stderr, "Couldn't parse filter %s: %s\n",
+        D_CRIT("Couldn't parse filter %s: %s\n",
             filter_exp, pcap_geterr(pl_cfg->handle));
         return EXIT_FAILURE;
     }
@@ -77,7 +77,7 @@ payload_loop_run()
     /* apply the compiled filter */
     if (pcap_setfilter (pl_cfg->handle, &pl_cfg->fp) == -1)
     {
-        fprintf(stderr, "Couldn't install filter %s: %s\n",
+        D_CRIT("Couldn't install filter %s: %s\n",
             filter_exp, pcap_geterr(pl_cfg->handle));
         return EXIT_FAILURE;
     }
@@ -97,9 +97,10 @@ payload_loop_end ()
     struct payload_config *pl_cfg = payload_config_get();
 
     /* pcap */
-      pcap_freecode(&pl_cfg->fp);
+    pcap_freecode(&pl_cfg->fp);
     
-    if (pl_cfg->handle) {
+    if (pl_cfg->handle)
+    {
         pcap_breakloop(pl_cfg->handle);
         pcap_close(pl_cfg->handle);
     }

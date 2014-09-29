@@ -196,8 +196,8 @@ iface_gre_add(const char *gre_iface,
                             type,
                             in_local,
                             in_remote);
-        if (!ret)
-            D_DEBUG("iplink_modify ret=%d strerror='%s'\n", ret, strerror(errno));
+        if (ret != 0)
+            D_DEBUG2("iplink_modify(RTM_NEWLINK) ret=%d strerror='%s'\n", ret, strerror(errno));
     }
 
     rtnl_close(&cfg->rth);
@@ -225,9 +225,9 @@ iface_gre_del(const char *gre_iface)
     else
     {
         ret = iplink_modify(RTM_DELLINK, 0, gre_iface, NULL, NULL, NULL, NULL);
-        if (!ret)
+        if (ret != 0)
         {
-            D_DEBUG("iplink_modify ret=%d strerror='%s'\n", ret, strerror(errno));
+            D_DEBUG("iplink_modify(RTM_DELLINK) ret=%d strerror='%s'\n", ret, strerror(errno));
         }
     }
 

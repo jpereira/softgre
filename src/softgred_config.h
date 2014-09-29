@@ -17,11 +17,12 @@
 #include "general.h"
 #include "config.h"
 
-#define SOFTGRED_MAX_ATTACH     10
-#define SOFTGRED_MAX_IFACE      IFNAMSIZ
-#define SOFTGRED_MAX_SLOTS      4096
-#define SOFTGRED_TUN_PREFIX     "if_sgre"
-#define SOFTGRED_TUN_MTU        1462
+#define SOFTGRED_MAX_ATTACH         10
+#define SOFTGRED_MAX_IFACE          IFNAMSIZ
+#define SOFTGRED_MAX_SLOTS          4096
+#define SOFTGRED_TUN_PREFIX         "if_sgre" 
+#define SOFTGRED_TUN_PREFIX_MAX     10
+#define SOFTGRED_TUN_MTU            1462
 
 struct tunnel_bridge {
     const char *ifname;
@@ -38,7 +39,7 @@ struct softgred_config {
     const char *ifname;        /* --iface */
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint16_t maximum_slots;    /* --maximum-slots */
-    bool debug_mode;           /* --debug */
+    uint8_t debug_mode;        /* --debug */
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
     struct tunnel_config_priv priv;

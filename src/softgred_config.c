@@ -32,7 +32,7 @@ softgred_config_get()
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .maximum_slots = SOFTGRED_MAX_SLOTS,
-        .debug_mode    = false,
+        .debug_mode    = 0,
         .bridge = {
             { NULL, 0 },
         },
@@ -86,24 +86,49 @@ int
 softgred_config_load_attach(const char *arg,
                             struct softgred_config *cfg)
 {
-    char *tmp = strdupa(arg);
-    const char *vlan_id = strtok(tmp, "@");
-    const char *br = strtok(NULL, "@");
+    char *tmp = (char *)arg;
+    const char *arg1 = strtok((char *)arg, "@");
+    const char *arg2 = strtok(NULL, "@");
+    uint16_t vlan_id = strtol(arg1, NULL, 10);
+    const char *br = arg2;
     uint8_t pos = cfg->bridge_slot;
+    size_t br_len;
 
-    D_DEBUG("Loading the argument '%s' { .vlan_id='%s', .br_iface='%s'\n", tmp, vlan_id, br);
+    // have args?
+    if (!arg1 || !arg2)
+    {
+        fprintf(stderr, "wrong argument! expected is vlan_id@bridge-to-attach, eg.: 10@br-vlan123\n");
+        return EXIT_FAILURE;
+    }
+
+    // vlan validate
+    if (vlan_id < 1 || vlan_id > 4096)
+    {
+        fprintf(stderr, "The argument '%s' is a wrong vlan id, exiting...\n", arg1);
+        return EXIT_FAILURE;
+    }
+
+    // bridge validate, expected: "<name><number>" <= SOFTGRED_MAX_IFACE
+    br_len = strnlen(arg2, 64);
+    if (br_len < 3 || br_len > SOFTGRED_MAX_IFACE)
+    {
+        fprintf(stderr, "Wrong name '%s' (%ld) for bridge. (len >= 3 && len < %d)\n", 
+                                                        arg2, br_len,  SOFTGRED_TUN_PREFIX_MAX);
+        return EXIT_FAILURE;
+    }
 
     if (pos >= SOFTGRED_MAX_ATTACH)
     {
-        D_WARNING("The maximum number of slots was reached.\n");
-        return 0;
+        fprintf(stderr, "The maximum number of slots was reached.\n");
+        return EXIT_FAILURE;
     }
 
+    D_DEBUG("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br);
     cfg->bridge[pos].ifname = br;
-    cfg->bridge[pos].vlan_id = strtol(vlan_id, NULL, 10);
+    cfg->bridge[pos].vlan_id = vlan_id;
     cfg->bridge_slot += 1;
 
-    return 1;
+    return EXIT_SUCCESS;
 }
 
 void
@@ -129,7 +154,7 @@ softgred_print_usage(char *argv[])
            "   -p, --tunnel-prefix  Prefix name to be used in gre-network-interfaces, default e.g: %sN (N num. of instance)\n" \
            "   -f, --foreground     Run in the foreground\n"  \
            "   -h, --help           Display this help text\n" \
-           "   -d, --debug          Enable debug mode\n"      \
+           "   -d, --debug          Enable debug mode. e.g: -dd (more debug), -ddd (crazy debug level)\n"      \
            "   -v, --version        Display the %s version\n" \
            "\n" \
            " EXAMPLE\n" \
