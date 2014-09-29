@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 29 Set 2014 15:24:01 BRT
+# Last Change: Seg 29 Set 2014 20:49:41 BRT
 ####
 
 AC_INIT([SoftGRE],
