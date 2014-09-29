@@ -35,15 +35,15 @@
   const char *A[] = { MESSAGE }; \
   printf("TRACE: %s %s %d\n",__FUNCTION__,__FILE__,__LINE__); fflush(stdout);\
   if(sizeof(A) > 0) \
-	printf(*A, ## __VA_ARGS__); \
+    printf(*A, ## __VA_ARGS__); \
 }
 
 enum {
-	L_CRIT,
-	L_WARNING,
-	L_NOTICE,
-	L_INFO,
-	L_DEBUG
+    L_CRIT,
+    L_WARNING,
+    L_NOTICE,
+    L_INFO,
+    L_DEBUG
 };
 
 #define D_CRIT(fmt, ...)    log_message(L_CRIT, fmt, ## __VA_ARGS__)

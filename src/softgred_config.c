@@ -20,7 +20,6 @@ void
 softgred_config_set(struct softgred_config *cfg)
 {
     struct softgred_config *obj = softgred_config_get ();
-
     memcpy(obj, cfg, sizeof(struct softgred_config));
 }
 
@@ -84,15 +83,15 @@ softgred_config_load_iface(const char *ifname,
 }
 
 int
-softgred_config_load_bridge_and_vlans(const char *arg,
-                                      struct softgred_config *cfg)
+softgred_config_load_attach(const char *arg,
+                            struct softgred_config *cfg)
 {
     char *tmp = strdupa(arg);
-    const char *vlan_id = strtok(arg, "@");
+    const char *vlan_id = strtok(tmp, "@");
     const char *br = strtok(NULL, "@");
     uint8_t pos = cfg->bridge_slot;
 
-    //printf("Loading the argument '%s' { .vlan_id='%s', .br_iface='%s'\n", tmp, vlan_id, br);
+    D_DEBUG("Loading the argument '%s' { .vlan_id='%s', .br_iface='%s'\n", tmp, vlan_id, br);
 
     if (pos >= SOFTGRED_MAX_ATTACH)
     {
@@ -110,7 +109,7 @@ softgred_config_load_bridge_and_vlans(const char *arg,
 void
 softgred_print_version()
 {
-	printf("%s By Jorge Pereira <jpereiran@gmail.com>\n", PACKAGE_STRING);
+    printf("%s By Jorge Pereira <jpereiran@gmail.com>\n", PACKAGE_STRING);
     printf("Project Website: %s\n", PACKAGE_URL);
     printf("Bugreport:       %s\n", PACKAGE_BUGREPORT);
     printf("Latest Build:    %s - %s\n", __TIME__, __DATE__);
@@ -119,15 +118,17 @@ softgred_print_version()
 void
 softgred_print_usage(char *argv[])
 {
-	printf("Usage: %s -i <ethX> -b <br-gre> [-V 10,11,12] [-p tun_prefi] [-b vlan_id1@bridge0 -b vlan_id2@bridge1 ...] [OPTIONS]\n", argv[0]);
+    const char *arg0 = basename (argv[0]);
+
+    printf("Usage: %s -i <ethX> [-a vlan_id1@bridge0 -a vlan_id2@bridge1 ...] [-p tun_prefi] [-f] [-d] [OPTIONS]\n", arg0);
     printf("\n");
-	printf("   -f, --foreground        Run in the foreground\n");
-	printf("   -i, --iface             Network interface to listen\n");
-	printf("   -p, --tunnel-prefix     Prefix name to be used in gre-network-interfaces, default e.g: %sN (N num. of instance)\n", SOFTGRED_TUN_PREFIX);
-	printf("   -b, --bridge-to-attach  Name of bridge to be attached, e.g: 10@br-vlan2410\n");
-	printf("   -h, --help              Display this help text\n");
-	printf("   -d, --debug             Enable debug mode\n");
-	printf("   -v, --version           Display the %s version\n", argv[0]);
+    printf("   -i, --iface             Network interface to listen\n");
+    printf("   -a, --attach            Name of vlan/bridge to be attached, e.g: 10@br-vlan2410\n");
+    printf("   -p, --tunnel-prefix     Prefix name to be used in gre-network-interfaces, default e.g: %sN (N num. of instance)\n", SOFTGRED_TUN_PREFIX);
+    printf("   -f, --foreground        Run in the foreground\n");
+    printf("   -h, --help              Display this help text\n");
+    printf("   -d, --debug             Enable debug mode\n");
+    printf("   -v, --version           Display the %s version\n", arg0);
     printf("\n");
 }
 

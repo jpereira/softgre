@@ -23,8 +23,8 @@
 struct provision_data *
 provision_data_get()
 {
-    static struct provision_data pdata;
-    return &pdata;
+    static struct provision_data ref;
+    return &ref;
 }
 
 bool

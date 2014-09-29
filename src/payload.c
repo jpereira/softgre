@@ -32,15 +32,14 @@ payload_loop_init ()
     struct payload_config *pl_cfg = payload_config_get();
 
     assert (cfg->ifname != NULL);
-	
-	/* get network number and mask associated with capture device */
-	if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) == -1)
+    
+    /* get network number and mask associated with capture device */
+    if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) == -1)
     {
-		fprintf(stderr, "Couldn't get netmask for device %s: %s\n",
-                    cfg->ifname, pl_cfg->errbuf);
-		pl_cfg->net = 0;
-		pl_cfg->mask = 0;
-	}
+        D_WARNING("Couldn't get netmask for device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
+        pl_cfg->net = 0;
+        pl_cfg->mask = 0;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -52,38 +51,38 @@ payload_loop_run()
     struct payload_config *pl_cfg = payload_config_get();
     char filter_exp[] = "proto gre";
 
-	/* open capture device */
-	pl_cfg->handle = pcap_open_live (cfg->ifname, SNAP_LEN, 1, 1000, pl_cfg->errbuf);
-	if (pl_cfg->handle == NULL)
+    /* open capture device */
+    pl_cfg->handle = pcap_open_live (cfg->ifname, SNAP_LEN, 1, 1000, pl_cfg->errbuf);
+    if (pl_cfg->handle == NULL)
     {
-		fprintf(stderr, "Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
-		return EXIT_FAILURE;
-	}
+        fprintf(stderr, "Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
+        return EXIT_FAILURE;
+    }
 
-	/* make sure we're capturing on an Ethernet device [2] */
-	if (pcap_datalink (pl_cfg->handle) != DLT_EN10MB)
+    /* make sure we're capturing on an Ethernet device [2] */
+    if (pcap_datalink (pl_cfg->handle) != DLT_EN10MB)
     {
-		fprintf(stderr, "%s is not an Ethernet\n", cfg->ifname);
-		return EXIT_FAILURE;
-	}
+        fprintf(stderr, "%s is not an Ethernet\n", cfg->ifname);
+        return EXIT_FAILURE;
+    }
 
-	/* compile the filter expression */
-	if (pcap_compile (pl_cfg->handle, &pl_cfg->fp, filter_exp, 0, pl_cfg->net) == -1)
+    /* compile the filter expression */
+    if (pcap_compile (pl_cfg->handle, &pl_cfg->fp, filter_exp, 0, pl_cfg->net) == -1)
     {
-		fprintf(stderr, "Couldn't parse filter %s: %s\n",
-		    filter_exp, pcap_geterr(pl_cfg->handle));
-		return EXIT_FAILURE;
-	}
+        fprintf(stderr, "Couldn't parse filter %s: %s\n",
+            filter_exp, pcap_geterr(pl_cfg->handle));
+        return EXIT_FAILURE;
+    }
 
-	/* apply the compiled filter */
-	if (pcap_setfilter (pl_cfg->handle, &pl_cfg->fp) == -1)
+    /* apply the compiled filter */
+    if (pcap_setfilter (pl_cfg->handle, &pl_cfg->fp) == -1)
     {
-		fprintf(stderr, "Couldn't install filter %s: %s\n",
-		    filter_exp, pcap_geterr(pl_cfg->handle));
-		return EXIT_FAILURE;
-	}
+        fprintf(stderr, "Couldn't install filter %s: %s\n",
+            filter_exp, pcap_geterr(pl_cfg->handle));
+        return EXIT_FAILURE;
+    }
 
-	/* now we can set our callback function */
+    /* now we can set our callback function */
     if (pcap_loop(pl_cfg->handle, -1 /* infinity */, payload_got_packet, NULL) != 0)
     {
        D_WARNING("Something happens with pcap_loop(), err='%s'\n", pcap_geterr(pl_cfg->handle));
@@ -98,11 +97,11 @@ payload_loop_end ()
     struct payload_config *pl_cfg = payload_config_get();
 
     /* pcap */
-  	pcap_freecode(&pl_cfg->fp);
+      pcap_freecode(&pl_cfg->fp);
     
     if (pl_cfg->handle) {
         pcap_breakloop(pl_cfg->handle);
-    	pcap_close(pl_cfg->handle);
+        pcap_close(pl_cfg->handle);
     }
 }
 
@@ -114,28 +113,28 @@ payload_got_packet (u_char* UNUSED(args),
     struct softgred_config* cfg = softgred_config_get();
     const struct tunnel_config  *tun_cfg;
     struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
-	const struct payload_ip *ip = NULL; /* The IP header */
-	int size_ip;
+    const struct payload_ip *ip = NULL; /* The IP header */
+    int size_ip;
 
-	/* define/compute ip header offset */
-	ip = (struct payload_ip*)(packet + SIZE_ETHERNET);
-	size_ip = (IP_HL(ip) * 4);
-	if (size_ip < 20)
+    /* define/compute ip header offset */
+    ip = (struct payload_ip*)(packet + SIZE_ETHERNET);
+    size_ip = (IP_HL(ip) * 4);
+    if (size_ip < 20)
     {
-		printf("payload_got_packet(): Invalid IP header length: %u bytes\n", size_ip);
-		return;
-	}
-	
-	/* payload is 'gre'? */
-	if (ip->ip_p != IPPROTO_GRE)
+        printf("payload_got_packet(): Invalid IP header length: %u bytes\n", size_ip);
+        return;
+    }
+    
+    /* payload is 'gre'? */
+    if (ip->ip_p != IPPROTO_GRE)
     {
         printf("payload_got_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
-		return;
-	}
+        return;
+    }
 
-	/*
-	 *  OK, this packet is GRE
-	 */
+    /*
+     *  OK, this packet is GRE
+     */
     if (ip->ip_src.s_addr == ip_local->s_addr)
     {
         return;
@@ -143,7 +142,7 @@ payload_got_packet (u_char* UNUSED(args),
 
     if (provision_is_exist (&ip->ip_src))
     {
-        //D_DEBUG("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
+        //D_DEBUG2("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
         return;
     }
     

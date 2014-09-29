@@ -23,9 +23,8 @@ struct iplink_req {
 };
 
 static int have_rtnl_newlink = -1;
-struct rtnl_handle rth = { .fd = -1 };
 
-int
+static int
 accept_msg(const struct sockaddr_nl* UNUSED(who),
            struct nlmsghdr* n,
            void* UNUSED(arg))
@@ -44,6 +43,7 @@ static int
 iplink_have_newlink(void)                                                        
 {
     struct iplink_req req;
+    struct softgred_config *cfg = softgred_config_get();
 
     if (have_rtnl_newlink < 0)
     {
@@ -54,12 +54,13 @@ iplink_have_newlink(void)
         req.n.nlmsg_type = RTM_NEWLINK;
         req.i.ifi_family = AF_UNSPEC;
 
-        if (rtnl_send(&rth, &req.n, req.n.nlmsg_len) < 0)
+        if (rtnl_send(&cfg->rth, &req.n, req.n.nlmsg_len) < 0)
         {
             perror("request send failed");
             exit(1);
         }
-        rtnl_listen(&rth, accept_msg, NULL);
+
+        rtnl_listen(&cfg->rth, accept_msg, NULL);
     }
     return have_rtnl_newlink;
 }
@@ -84,6 +85,7 @@ iplink_modify(int cmd,
     uint8_t ttl = 0; // 255?
     uint8_t tos = 0;
     int preferred_family = AF_PACKET;
+    struct softgred_config *cfg = softgred_config_get();
 
     memset(&req, 0, sizeof(req));
 
@@ -132,8 +134,8 @@ iplink_modify(int cmd,
         addattr_l(&req.n, 1024, IFLA_GRE_REMOTE, &in_remote->s_addr, 4);
         addattr_l(&req.n, 1024, IFLA_GRE_PMTUDISC, &pmtudisc, 1);
 
-	    addattr_l(&req.n, 1024, IFLA_GRE_TTL, &ttl, 1);
-	    addattr_l(&req.n, 1024, IFLA_GRE_TOS, &tos, 1);
+        addattr_l(&req.n, 1024, IFLA_GRE_TTL, &ttl, 1);
+        addattr_l(&req.n, 1024, IFLA_GRE_TOS, &tos, 1);
 
         if (link)
             addattr32(&req.n, 1024, IFLA_GRE_LINK, link);
@@ -151,7 +153,7 @@ iplink_modify(int cmd,
     linkinfo->rta_len = (void *)NLMSG_TAIL(&req.n) - (void *)linkinfo;
 
     // sending the packet to the kernel.
-    if ((ret = rtnl_talk(&rth, &req.n, 0, 0, NULL)) < 0)
+    if ((ret = rtnl_talk(&cfg->rth, &req.n, 0, 0, NULL)) < 0)
     {
         D_DEBUG("rtnl_talk() ret=%d strerror='%s'\n", ret, strerror(errno));
     }
@@ -166,6 +168,7 @@ iface_gre_add(const char *gre_iface,
               const struct in_addr *in_local,
               const struct in_addr *in_remote)
 {
+    struct softgred_config *cfg = softgred_config_get();
     int ret = true;
     char *ip_local = strdupa(inet_ntoa(*in_local));
     char *ip_remote = strdupa(inet_ntoa(*in_remote));
@@ -174,7 +177,7 @@ iface_gre_add(const char *gre_iface,
             gre_iface, ip_local, ip_remote
     );
 
-    if ((ret=rtnl_open(&rth, 0)) < 0)
+    if ((ret=rtnl_open(&cfg->rth, 0)) < 0)
     {
         D_DEBUG("rtnl_open ret=%d strerror='%s'\n", ret, strerror(errno));
         return EXIT_FAILURE;
@@ -197,7 +200,7 @@ iface_gre_add(const char *gre_iface,
             D_DEBUG("iplink_modify ret=%d strerror='%s'\n", ret, strerror(errno));
     }
 
-    rtnl_close(&rth);
+    rtnl_close(&cfg->rth);
 
     return 1;
 }
@@ -205,10 +208,11 @@ iface_gre_add(const char *gre_iface,
 int
 iface_gre_del(const char *gre_iface)
 {
+    struct softgred_config *cfg = softgred_config_get();
     int ret;
     errno = 0;
 
-    if ((ret=rtnl_open(&rth, 0)) < 0)
+    if ((ret=rtnl_open(&cfg->rth, 0)) < 0)
     {
         D_DEBUG("Cannot open rtnetlink\n");
         return EXIT_FAILURE;
@@ -227,7 +231,7 @@ iface_gre_del(const char *gre_iface)
         }
     }
 
-    rtnl_close(&rth);
+    rtnl_close(&cfg->rth);
 
     return 1;
 }

@@ -18,6 +18,9 @@
 #   define _GNU_SOURCE
 #endif
 
+// Project config
+#include "config.h"
+
 // standards
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +58,9 @@
 #include <linux/if_tunnel.h>
 
 // pcap
+#ifndef HAVE_PCAP_PCAP_H
+    #error "Oops! Impossible to continue without pcap.h, exiting..."
+#endif
 #include <pcap.h>
 
 // syslog
@@ -62,9 +68,6 @@
 
 // get/setifaddrs
 #include <ifaddrs.h>
-
-// Project config
-#include "config.h"
 
 #ifndef ARRAY_SIZE
 #   define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))

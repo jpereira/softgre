@@ -23,7 +23,7 @@
 #define SIZE_ETHERNET 14
 
 /* Ethernet addresses are 6 bytes */
-#define ETHER_ADDR_LEN	6
+#define ETHER_ADDR_LEN    6
 
 /* Ethernet header */
 struct payload_ethernet {
@@ -100,11 +100,11 @@ struct payload_gre {
 };
 
 struct payload_config {
-    struct bpf_program fp;	        /* compiled filter program (expression) */
-    pcap_t *handle;			        /* packet capture handle */
-    char errbuf[PCAP_ERRBUF_SIZE];	/* error buffer */
-	bpf_u_int32 mask;			    /* subnet mask */
-	bpf_u_int32 net;			    /* ip */
+    struct bpf_program fp;         /* compiled filter program (expression) */
+    pcap_t *handle;                /* packet capture handle */
+    char errbuf[PCAP_ERRBUF_SIZE]; /* error buffer */
+    bpf_u_int32 mask;              /* subnet mask */
+    bpf_u_int32 net;               /* ip */
 };
 
 struct payload_config *payload_config_get();

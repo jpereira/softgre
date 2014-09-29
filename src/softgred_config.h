@@ -42,6 +42,8 @@ struct softgred_config {
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
     struct tunnel_config_priv priv;
+
+    struct rtnl_handle rth;
 };
 
 void softgred_config_set (struct softgred_config *config);
@@ -55,8 +57,8 @@ void softgred_print_usage(char *argv[]);
 int softgred_config_load_iface(const char *ifname,
                                struct softgred_config *cfg);
 
-int softgred_config_load_bridge_and_vlans(const char *arg,
-                                          struct softgred_config *cfg);
+int softgred_config_load_attach(const char *arg,
+                                struct softgred_config *cfg);
 
 #endif /*SOFTGRED_CONFIG_H_*/
 
