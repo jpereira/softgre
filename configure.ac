@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 25 Set 2014 21:00:41 BRT
+# Last Change: Seg 29 Set 2014 15:24:01 BRT
 ####
 
 AC_INIT([SoftGRE],
@@ -88,11 +88,6 @@ AC_CHECK_HEADERS([pcap/pcap.h])
 LIBPCAP_LIBS='-lpcap'
 AC_SUBST([LIBPCAP_LIBS])
 
-# check for libnl-1
-AC_CHECK_HEADERS([netlink/attr.h])
-LIBNL_LIBS='-lnl-3'
-AC_SUBST([LIBNL_LIBS])
-
 # check for libnetlink
 AC_CHECK_HEADERS([libnfnetlink/libnfnetlink.h])
 LIBNFNETLINK_LIBS='-lnetlink'
@@ -102,8 +97,7 @@ AC_SUBST([LIBNFNETLINK_LIBS])
 LIBPTHREAD_LIBS='-lpthread'
 AC_SUBST([LIBPTHREAD_LIBS])
 
-# resolv
-AC_CHECK_LIB([resolv], [herror])
+AC_CHECK_LIB([pthread], [herror])
 AC_SEARCH_LIBS([strerror],[cposix])
 AC_CHECK_FUNCS([gettimeofday])
 
