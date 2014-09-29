@@ -17,18 +17,20 @@
 #include <stdio.h>
 #include "helper.h"
 
+#define DEBUG_MAX_LEVEL     3
+
 #ifdef DEBUG
 #   define D(format, ...) fprintf(stderr, "%s:%d %s() - " format, __FILE__, __LINE__, __func__, ## __VA_ARGS__)
 #else
-#   define D(format, ...) no_debug(0, format, ## __VA_ARGS__)
+#   define D(format, ...) no_debug(0, 0, format, ## __VA_ARGS__)
 #endif
 
 #ifdef DEVEL
 #   define DD(format, ...) fprintf(stderr, " ** DEBUG: %s:%d %s() - " format, __FILE__, __LINE__, __func__, ## __VA_ARGS__)
 #   define DDF(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
 #else
-#   define DD(format, ...) no_debug(0, format, )
-#   define DDF(format, ...) no_debug(0, format, ## __VA_ARGS__)
+#   define DD(format, ...) no_debug(0, 0, format, )
+#   define DDF(format, ...) no_debug(0, 0, format, ## __VA_ARGS__)
 #endif
 
 #define TRACE(MESSAGE, ...) { \
@@ -43,14 +45,16 @@ enum {
     L_WARNING,
     L_NOTICE,
     L_INFO,
-    L_DEBUG
+    L_DEBUG,
+    L_DEBUG2
 };
 
-#define D_CRIT(fmt, ...)    log_message(L_CRIT, fmt, ## __VA_ARGS__)
-#define D_WARNING(fmt, ...) log_message(L_WARNING, fmt, ## __VA_ARGS__)
-#define D_NOTICE(fmt, ...)  log_message(L_NOTICE, fmt, ## __VA_ARGS__)
-#define D_INFO(fmt, ...)    log_message(L_INFO, fmt, ## __VA_ARGS__)
-#define D_DEBUG(fmt, ...)   log_message(L_DEBUG, "**debug: %s:%d %s() "fmt, basename(__FILE__), __LINE__, __func__, ## __VA_ARGS__)
+#define D_CRIT(fmt, ...)    log_message(L_CRIT, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_WARNING(fmt, ...) log_message(L_WARNING, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_NOTICE(fmt, ...)  log_message(L_NOTICE, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_INFO(fmt, ...)    log_message(L_INFO, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG(fmt, ...)   log_message(L_DEBUG, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG2(fmt, ...)  log_message(L_DEBUG2, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
 static inline void
 no_debug (int UNUSED(level),
@@ -69,6 +73,9 @@ log_end();
 
 void
 log_message (int priority,
+             const char *funcname,
+             const char *filename,
+             int lineno,
              const char *format,
              ...);
 

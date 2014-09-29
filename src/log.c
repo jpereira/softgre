@@ -16,14 +16,21 @@
 #include "softgred_config.h"
 #include "log.h"
 
-static pthread_mutex_t lock;
+//static pthread_mutex_t log_lock;
 
-static const int log_class[] = {
-    [L_CRIT]    = LOG_CRIT,
-    [L_WARNING] = LOG_WARNING,
-    [L_NOTICE]  = LOG_NOTICE,
-    [L_INFO]    = LOG_INFO,
-    [L_DEBUG]   = LOG_DEBUG
+struct log_sets {
+    const char *label;
+    int level;
+};
+
+static struct log_sets
+log_class[] = {
+    [L_CRIT]    = { "critical", LOG_CRIT },
+    [L_WARNING] = { "warning",  LOG_WARNING },
+    [L_NOTICE]  = { "notice",   LOG_NOTICE },
+    [L_INFO]    = { "info",     LOG_INFO },
+    [L_DEBUG]   = { "debug",    LOG_DEBUG },
+    [L_DEBUG2]  = { "debug-crazy",    LOG_DEBUG }
 };
 
 void
@@ -40,14 +47,19 @@ log_end()
 
 void
 log_message(int priority,
+            const char *funcname,
+            const char *filename,
+            int lineno,
             const char *format, 
             ...)
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg;
     va_list vl;
 
-    pthread_mutex_lock(&lock);
-    if (priority == L_DEBUG && !cfg->debug_mode)
+//    pthread_mutex_lock(&log_lock);
+    cfg = softgred_config_get();
+
+    if (priority == L_DEBUG && cfg->debug_mode == 0)
     {
         return;
     }
@@ -57,15 +69,30 @@ log_message(int priority,
 //    vsyslog(log_class[priority], format, vl);
 
     /* send to output */
-    if (cfg->debug_mode)
+    if (cfg->debug_mode > 0)
     {
+        const char *label = &log_class[priority].label[0];
+        const char *file = basename(filename);
         char *buf = NULL;
+
         vasprintf(&buf, format, vl);
-        fprintf(stderr, "%s", buf);
+
+        switch(cfg->debug_mode)
+        {
+            case 1:
+                fprintf(stderr, "%s", buf);
+                break;
+            case 2:
+                fprintf(stderr, "** %s: %s", label, buf);
+                break;
+            default:
+                fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
+        }
+
         free(buf);
     }
 
     va_end(vl);
-    pthread_mutex_unlock(&lock);
+    //pthread_mutex_unlock(&log_lock);
 }
 
