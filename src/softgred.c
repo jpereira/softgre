@@ -25,7 +25,7 @@ struct option long_opts[] = {
     { "iface",         required_argument, NULL, 'i'},
     { "tunnel-prefix", optional_argument, NULL, 'p'},
     { "attach",        optional_argument, NULL, 'a'},
-    { "debug",         no_argument,       NULL, 'd'},
+    { "debug",         optional_argument, NULL, 'd'},
     { "help",          no_argument,       NULL, 'h'},
     { "version",       no_argument,       NULL, 'v'},
     { NULL,            0,                 NULL,  0 }
@@ -81,8 +81,9 @@ main (int argc,
 {
     struct softgred_config *cfg = softgred_config_get();
     pid_t pid, sid;
+    int opt;
 
-    if (argc < 3)
+    if (argc < 2)
     {
         softgred_print_usage(argv);
         exit(EXIT_SUCCESS);
@@ -93,19 +94,17 @@ main (int argc,
     umask(0037);
 
     /* sorry, only root is welcome ... */
-    if (getuid() != 0) {
+    if (getuid() != 0)
+    {
         fprintf(stderr, "%s: Sorry, Can't run with different user of root!\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     /* parsing arguments ... */
-    while (true)
+    while ((opt = getopt_long(argc, argv, "fhvi:p:a:d", long_opts, NULL)) != EOF)
     {
-        int c = getopt_long(argc, argv, "dfhvi:p:a:", long_opts, NULL);
-        if (c == EOF)
-            break;
-
-        switch (c) {
+        switch (opt)
+        {
             case 'f': /* --foreground */
                 cfg->is_foreground = true;
                 break;
@@ -139,6 +138,9 @@ main (int argc,
     // Check debug level
     if (cfg->debug_mode > 0)
     {
+        D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n",
+                                            PACKAGE_VERSION, __TIME__, __DATE__);
+
         if (cfg->debug_mode > DEBUG_MAX_LEVEL)
         {
             fprintf(stderr, "*** Ops!! the maximum of debug level is %d (-ddd).\n", DEBUG_MAX_LEVEL);
@@ -148,8 +150,6 @@ main (int argc,
         fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->debug_mode);
     }
 
-    /* begin */
-    D_INFO("** Daemon Started **\n");
     D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
         cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
     );
