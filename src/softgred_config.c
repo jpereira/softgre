@@ -95,7 +95,7 @@ softgred_config_load_attach(const char *arg,
     // have args?
     if (!str_vlan_id || !br_name)
     {
-        fprintf(stderr, "wrong argument! expected is vlan_id@bridge-to-attach, eg.: -a 10@br-vlan123\n");
+        fprintf(stderr, "** error! wrong argument! expected is vlan_id@bridge-to-attach, eg.: -a 10@br-vlan123\n");
         return EXIT_FAILURE;
     }
 
@@ -103,27 +103,28 @@ softgred_config_load_attach(const char *arg,
     vlan_id = strtol(str_vlan_id, NULL, 10);
     if (vlan_id < 1 || vlan_id > 4096)
     {
-        fprintf(stderr, "The argument '%s' is a wrong vlan id, exiting...\n", str_vlan_id);
+        fprintf(stderr, "** error! The argument '%s' is a wrong vlan id, exiting...\n", str_vlan_id);
         return EXIT_FAILURE;
     }
 
     // bridge validate, expected: "<name><number>" <= SOFTGRED_MAX_IFACE
     if (br_len < 3)
     {
-        fprintf(stderr, "Oops! The argument '%s' (%ld) is a wrong bridge name. (len >= 3 && len <= %d)\n", 
+        fprintf(stderr, "** error! The argument '%s' (%ld) is a wrong bridge name. (len >= 3 && len <= %d)\n", 
                                                         br_name, br_len,  SOFTGRED_TUN_PREFIX_MAX);
         return EXIT_FAILURE;
     }
 
-    if (if_nametoindex(br_name) < 1)
+    if (if_nametoindex(br_name) < 1) // TODO: Change for validate if is a real bridge-interface.
     {
-        fprintf(stderr, "Oops! The bridge needs to exist in your system! try to create, eg.: brctl addbr %s\n", br_name);
+        fprintf(stderr, "** error! The bridge '%s' don't exist in your system! try to create, eg.: brctl addbr %s\n",
+                            br_name, br_name);
         return EXIT_FAILURE;
     }
 
     if (pos >= SOFTGRED_MAX_ATTACH)
     {
-        fprintf(stderr, "The maximum number of slots was reached.\n");
+        fprintf(stderr, "** error! The maximum number of slots was reached.\n");
         return EXIT_FAILURE;
     }
 
@@ -150,7 +151,7 @@ softgred_print_usage(char *argv[])
 {
     const char *arg0 = basename (argv[0]);
 
-    printf("Usage: %s [-fdvh] [ -dd ] [ -ddd ] [ -i interface ] [ -p tun_prefix ] \n" \
+    printf("Usage: %s [-fdvh] [ -i interface ] [ -p tun_prefix ] \n" \
            "                [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
            " OPTIONS\n" \
            "\n" \
