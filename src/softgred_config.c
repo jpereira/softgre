@@ -31,7 +31,6 @@ softgred_config_get()
         .is_foreground = false,
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
-        .maximum_slots = SOFTGRED_MAX_SLOTS,
         .debug_mode    = 0,
         .bridge = {
             { NULL, 0 },
@@ -87,33 +86,38 @@ softgred_config_load_attach(const char *arg,
                             struct softgred_config *cfg)
 {
     char *tmp = (char *)arg;
-    const char *arg1 = strtok((char *)arg, "@");
-    const char *arg2 = strtok(NULL, "@");
-    uint16_t vlan_id = strtol(arg1, NULL, 10);
-    const char *br = arg2;
+    const char *str_vlan_id = strtok((char *)arg, "@");
+    const char *br_name = strtok(NULL, "@");
+    size_t br_len = (br_name != NULL) ? strnlen(br_name, 64) : 0;
+    uint16_t vlan_id;
     uint8_t pos = cfg->bridge_slot;
-    size_t br_len;
 
     // have args?
-    if (!arg1 || !arg2)
+    if (!str_vlan_id || !br_name)
     {
-        fprintf(stderr, "wrong argument! expected is vlan_id@bridge-to-attach, eg.: 10@br-vlan123\n");
+        fprintf(stderr, "wrong argument! expected is vlan_id@bridge-to-attach, eg.: -a 10@br-vlan123\n");
         return EXIT_FAILURE;
     }
 
     // vlan validate
+    vlan_id = strtol(str_vlan_id, NULL, 10);
     if (vlan_id < 1 || vlan_id > 4096)
     {
-        fprintf(stderr, "The argument '%s' is a wrong vlan id, exiting...\n", arg1);
+        fprintf(stderr, "The argument '%s' is a wrong vlan id, exiting...\n", str_vlan_id);
         return EXIT_FAILURE;
     }
 
     // bridge validate, expected: "<name><number>" <= SOFTGRED_MAX_IFACE
-    br_len = strnlen(arg2, 64);
-    if (br_len < 3 || br_len > SOFTGRED_MAX_IFACE)
+    if (br_len < 3)
     {
-        fprintf(stderr, "Wrong name '%s' (%ld) for bridge. (len >= 3 && len < %d)\n", 
-                                                        arg2, br_len,  SOFTGRED_TUN_PREFIX_MAX);
+        fprintf(stderr, "Oops! The argument '%s' (%ld) is a wrong bridge name. (len >= 3 && len <= %d)\n", 
+                                                        br_name, br_len,  SOFTGRED_TUN_PREFIX_MAX);
+        return EXIT_FAILURE;
+    }
+
+    if (if_nametoindex(br_name) < 1)
+    {
+        fprintf(stderr, "Oops! The bridge needs to exist in your system! try to create, eg.: brctl addbr %s\n", br_name);
         return EXIT_FAILURE;
     }
 
@@ -123,8 +127,9 @@ softgred_config_load_attach(const char *arg,
         return EXIT_FAILURE;
     }
 
-    D_DEBUG("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br);
-    cfg->bridge[pos].ifname = br;
+    // adding arguments
+    D_DEBUG("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br_name);
+    cfg->bridge[pos].ifname = br_name;
     cfg->bridge[pos].vlan_id = vlan_id;
     cfg->bridge_slot += 1;
 
@@ -145,8 +150,8 @@ softgred_print_usage(char *argv[])
 {
     const char *arg0 = basename (argv[0]);
 
-    printf("Usage: %s -i <ethX> [-a vlan_id1@bridge0 -a vlan_id2@bridge1 ...] [-p tun_prefi] [-f] [-d] [OPTIONS]\n" \
-           "\n" \
+    printf("Usage: %s [-fdvh] [ -dd ] [ -ddd ] [ -i interface ] [ -p tun_prefix ] \n" \
+           "                [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
            " OPTIONS\n" \
            "\n" \
            "   -i, --iface          Network interface to listen GRE packets, e.g: -i eth0\n" \

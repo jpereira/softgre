@@ -114,39 +114,45 @@ iplink_modify(int cmd,
     struct rtattr * data = NLMSG_TAIL(&req.n);
     addattr_l(&req.n, sizeof(req), IFLA_INFO_DATA, NULL, 0);
 
-    if (cmd == RTM_NEWLINK)
+    switch (cmd)
     {
-        req.i.ifi_change |= IFF_UP;
-        req.i.ifi_flags |= IFF_UP;
+        case RTM_NEWLINK:
+            req.i.ifi_change |= IFF_UP;
+            req.i.ifi_flags |= IFF_UP;
 
-        link = if_nametoindex(dev_to_link);
-        if (link < 1)
-        {
-            D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
-            return -1;
-        }
+            link = if_nametoindex(dev_to_link);
+            if (link < 1)
+            {
+                D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
+                return -1;
+            }
 
-        addattr32(&req.n, 1024, IFLA_GRE_IKEY, ikey);
-        addattr32(&req.n, 1024, IFLA_GRE_OKEY, okey);
-        addattr_l(&req.n, 1024, IFLA_GRE_IFLAGS, &iflags, 2);
-        addattr_l(&req.n, 1024, IFLA_GRE_OFLAGS, &oflags, 2);
-        addattr_l(&req.n, 1024, IFLA_GRE_LOCAL, &in_local->s_addr, 4);
-        addattr_l(&req.n, 1024, IFLA_GRE_REMOTE, &in_remote->s_addr, 4);
-        addattr_l(&req.n, 1024, IFLA_GRE_PMTUDISC, &pmtudisc, 1);
+            addattr32(&req.n, 1024, IFLA_GRE_IKEY, ikey);
+            addattr32(&req.n, 1024, IFLA_GRE_OKEY, okey);
+            addattr_l(&req.n, 1024, IFLA_GRE_IFLAGS, &iflags, 2);
+            addattr_l(&req.n, 1024, IFLA_GRE_OFLAGS, &oflags, 2);
+            addattr_l(&req.n, 1024, IFLA_GRE_LOCAL, &in_local->s_addr, 4);
+            addattr_l(&req.n, 1024, IFLA_GRE_REMOTE, &in_remote->s_addr, 4);
+            addattr_l(&req.n, 1024, IFLA_GRE_PMTUDISC, &pmtudisc, 1);
 
-        addattr_l(&req.n, 1024, IFLA_GRE_TTL, &ttl, 1);
-        addattr_l(&req.n, 1024, IFLA_GRE_TOS, &tos, 1);
+            addattr_l(&req.n, 1024, IFLA_GRE_TTL, &ttl, 1);
+            addattr_l(&req.n, 1024, IFLA_GRE_TOS, &tos, 1);
 
-        if (link)
-            addattr32(&req.n, 1024, IFLA_GRE_LINK, link);
+            if (link)
+                addattr32(&req.n, 1024, IFLA_GRE_LINK, link);
+            break;
 
-    } else {
-        link = if_nametoindex(gre_iface);
-        if (link < 1)
-        {
-            D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
-            return -1;
-        }
+        case RTM_DELLINK:
+            link = if_nametoindex(gre_iface);
+            if (link < 1)
+            {
+                D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
+                return -1;
+            }
+            break;
+        
+        default:
+            assert(1);
     }
 
     data->rta_len = (void *)NLMSG_TAIL(&req.n) - (void *)data;

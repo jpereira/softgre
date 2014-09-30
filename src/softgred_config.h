@@ -38,7 +38,6 @@ struct softgred_config {
     bool is_foreground;        /* --foreground */
     const char *ifname;        /* --iface */
     const char *tunnel_prefix; /* --tunnel-prefix */
-    uint16_t maximum_slots;    /* --maximum-slots */
     uint8_t debug_mode;        /* --debug */
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
@@ -60,6 +59,8 @@ int softgred_config_load_iface(const char *ifname,
 
 int softgred_config_load_attach(const char *arg,
                                 struct softgred_config *cfg);
+
+void softgred_savepidfile();
 
 #endif /*SOFTGRED_CONFIG_H_*/
 
