@@ -29,14 +29,15 @@
 *.hex
 
 # trash
+build.sh
 *~
 Makefile
-Makefile.in
+#Makefile.in
 aclocal.m4
 autom4te.cache/
 bin/.deps/
 bin/Makefile
-bin/Makefile.in
+#bin/Makefile.in
 bin/softgred
 config.h
 config.h.in
@@ -44,6 +45,11 @@ config.log
 config.status
 stamp-h1
 changes
+
+debian/softgred/*
+debian/softgred*.debhelper
+debian/changelog
+debian/*.log
 #compile
 #depcomp
 #install-sh
