@@ -83,7 +83,7 @@ payload_loop_run()
     }
 
     /* now we can set our callback function */
-    if (pcap_loop(pl_cfg->handle, -1 /* infinity */, payload_got_packet, NULL) != 0)
+    if (pcap_loop(pl_cfg->handle, -1 /* infinity */, payload_handler_packet, NULL) != 0)
     {
        D_WARNING("Something happens with pcap_loop(), err='%s'\n", pcap_geterr(pl_cfg->handle));
     }
@@ -107,9 +107,9 @@ payload_loop_end ()
 }
 
 void
-payload_got_packet (u_char* UNUSED(args),
-                    const struct pcap_pkthdr* UNUSED(header),
-                    const u_char *packet)
+payload_handler_packet (u_char* UNUSED(args),
+                        const struct pcap_pkthdr* UNUSED(header),
+                        const u_char *packet)
 {
     struct softgred_config* cfg = softgred_config_get();
     const struct tunnel_config  *tun_cfg;
@@ -122,14 +122,14 @@ payload_got_packet (u_char* UNUSED(args),
     size_ip = (IP_HL(ip) * 4);
     if (size_ip < 20)
     {
-        printf("payload_got_packet(): Invalid IP header length: %u bytes\n", size_ip);
+        printf("payload_handler_packet(): Invalid IP header length: %u bytes\n", size_ip);
         return;
     }
     
     /* payload is 'gre'? */
     if (ip->ip_p != IPPROTO_GRE)
     {
-        printf("payload_got_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
+        printf("payload_handler_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
         return;
     }
 
