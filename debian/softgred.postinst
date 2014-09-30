@@ -1,0 +1,5 @@
+if [ -x "/etc/init.d/softgred" ]; then
+	update-rc.d softgred defaults >/dev/null
+	invoke-rc.d softgred start || exit $?
+fi
+

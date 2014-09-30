@@ -1,0 +1,4 @@
+if [ "$1" = "purge" ] ; then
+	update-rc.d softgred remove >/dev/null
+fi
+

@@ -1,0 +1,16 @@
+# Defaults for softgred initscript
+
+# Master system-wide proftpd switch. The initscript
+# will not run if it is not set to yes.
+RUN="no"
+
+# Default options.
+# Network interface to listen GRE packets
+INTERFACE="eth0"
+
+# attach vlan to bridge scheme
+ATTACH="-a 10@br-vlan2410 -a 11@br-vlan2411 -a 12@br-vlan2412"
+
+# For more exhaustive logging, try "-ddd".
+#OPTIONS="-p if_sgre -ddd"
+
