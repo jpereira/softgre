@@ -117,16 +117,17 @@ provision_del()
     return 0;
 }
 
-int provision_delall()
+int
+provision_delall()
 {
     struct provision_data *p = provision_data_get();
     int i = 0;
-    char *ifname;
+
     assert (p != NULL);
 
     for (i=0; i < PROVISION_MAX_SLOTS; i++)
     {
-        ifname = &p->tunnel[i].ifgre[0];
+        const char *ifname = (char *)&p->tunnel[i].ifgre[0];
 
         if (!*ifname)
             continue;
@@ -137,6 +138,9 @@ int provision_delall()
             D_WARNING("Problems for del iface_gre_del('%s'), continue...\n", ifname);
         }
     }
+
+    memset(&p->tunnel, 0, sizeof(p->tunnel));
+    p->last_slot = 0;
 
     return true;
 }
