@@ -20,7 +20,7 @@
 #define SOFTGRED_MAX_ATTACH         10
 #define SOFTGRED_MAX_IFACE          IFNAMSIZ
 #define SOFTGRED_MAX_SLOTS          4096
-#define SOFTGRED_TUN_PREFIX         "if_sgre" 
+#define SOFTGRED_TUN_PREFIX         "sgre" 
 #define SOFTGRED_TUN_PREFIX_MAX     10
 #define SOFTGRED_TUN_MTU            1462
 
