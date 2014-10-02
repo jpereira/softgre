@@ -2,11 +2,11 @@ softgre
 =======
 Auto Provisioning for Tunnel GRE (Generic Routing Encapsulation) 
 
--- Under development, (unstable)
+-- Under development, (almost... stable)
 
 description
 =======
--- The idea is copied from Alcatel 7750 
+-- idea was copied from "Alcatel 7750"
 
 Layer 2 over Soft-GRE Tunnels
 
@@ -27,3 +27,4 @@ Build
 ./configure
 make
 make install
+
