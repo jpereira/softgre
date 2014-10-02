@@ -41,20 +41,22 @@
 }
 
 enum {
+    L_DEBUG1,
+    L_DEBUG2,
+    L_DEBUG3,
     L_CRIT,
     L_WARNING,
     L_NOTICE,
-    L_INFO,
-    L_DEBUG,
-    L_DEBUG2
+    L_INFO
 };
 
-#define D_CRIT(fmt, ...)    log_message(L_CRIT, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG1(fmt, ...)  log_message(L_DEBUG1,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG2(fmt, ...)  log_message(L_DEBUG1,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG3(fmt, ...)  log_message(L_DEBUG2,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_CRIT(fmt, ...)    log_message(L_CRIT,    __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_WARNING(fmt, ...) log_message(L_WARNING, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_NOTICE(fmt, ...)  log_message(L_NOTICE, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_INFO(fmt, ...)    log_message(L_INFO, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_DEBUG(fmt, ...)   log_message(L_DEBUG, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_DEBUG2(fmt, ...)  log_message(L_DEBUG2, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_NOTICE(fmt, ...)  log_message(L_NOTICE,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_INFO(fmt, ...)    log_message(L_INFO,    __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 
 static inline void
 no_debug (int UNUSED(level),

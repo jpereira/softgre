@@ -24,7 +24,7 @@ iface_bridge_attach(const char *gre_iface,
 {
     char cmd[256];
 
-    D_DEBUG("Add vlan '%d' in GRE '%s.%d' and attaching with bridge '%s'\n",
+    D_DEBUG1("Add vlan '%d' in GRE '%s.%d' and attaching with bridge '%s'\n",
                 vlan_id, gre_iface, vlan_id, br_ifname
     );
 

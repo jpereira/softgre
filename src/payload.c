@@ -122,14 +122,14 @@ payload_handler_packet (u_char* UNUSED(args),
     size_ip = (IP_HL(ip) * 4);
     if (size_ip < 20)
     {
-        printf("payload_handler_packet(): Invalid IP header length: %u bytes\n", size_ip);
+        D_CRIT("payload_handler_packet(): Invalid IP header length: %u bytes\n", size_ip);
         return;
     }
     
     /* payload is 'gre'? */
     if (ip->ip_p != IPPROTO_GRE)
     {
-        printf("payload_handler_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
+        D_CRIT("payload_handler_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
         return;
     }
 
@@ -143,17 +143,17 @@ payload_handler_packet (u_char* UNUSED(args),
 
     if (provision_is_exist (&ip->ip_src))
     {
-        //D_DEBUG2("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
+        D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
         return;
     }
     
     if (provision_add (&ip->ip_src, &tun_cfg) == false)
     {
-        printf("Problems with provision_add()\n");
+        D_CRIT("Problems with provision_add()\n");
         return;
     }
 
-    D_DEBUG("The client %s in %s was provisioned with %s with success!\n", 
+    D_DEBUG1("The client %s in %s was provisioned with %s with success!\n", 
                 inet_ntoa(tun_cfg->ip_remote), cfg->ifname, tun_cfg->ifgre);
 
     return;

@@ -97,11 +97,11 @@ iplink_modify(int cmd,
     size_t len = strlen(gre_iface) + 1;
     if (len == 1)
     {
-        D_DEBUG("%s is not a valid device identifier\n");
+        D_DEBUG1("%s is not a valid device identifier\n");
     }
     if (len > IFNAMSIZ)
     {
-        D_DEBUG("new gre iface '%s' is too long\n", gre_iface);
+        D_DEBUG1("new gre iface '%s' is too long\n", gre_iface);
     }
     addattr_l(&req.n, sizeof(req), IFLA_IFNAME, gre_iface, len+1);
 
@@ -123,7 +123,7 @@ iplink_modify(int cmd,
             link = if_nametoindex(dev_to_link);
             if (link < 1)
             {
-                D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
+                D_DEBUG1("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
                 return -1;
             }
 
@@ -146,7 +146,7 @@ iplink_modify(int cmd,
             link = if_nametoindex(gre_iface);
             if (link < 1)
             {
-                D_DEBUG("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
+                D_DEBUG1("Impossible to link a new gre-interface with %s interface!\n", dev_to_link);
                 return -1;
             }
             break;
@@ -161,7 +161,7 @@ iplink_modify(int cmd,
     // sending the packet to the kernel.
     if ((ret = rtnl_talk(&cfg->rth, &req.n, 0, 0, NULL)) < 0)
     {
-        D_DEBUG("rtnl_talk() ret=%d strerror='%s'\n", ret, strerror(errno));
+        D_DEBUG1("rtnl_talk() ret=%d strerror='%s'\n", ret, strerror(errno));
     }
 
     return ret;
@@ -179,19 +179,19 @@ iface_gre_add(const char *gre_iface,
     char *ip_local = strdupa(inet_ntoa(*in_local));
     char *ip_remote = strdupa(inet_ntoa(*in_remote));
 
-    D_DEBUG("Creating gre-interface '%s' { .local='%s', .remote='%s' }\n", 
+    D_DEBUG1("Creating gre-interface '%s' { .local='%s', .remote='%s' }\n", 
             gre_iface, ip_local, ip_remote
     );
 
     if ((ret=rtnl_open(&cfg->rth, 0)) < 0)
     {
-        D_DEBUG("rtnl_open ret=%d strerror='%s'\n", ret, strerror(errno));
+        D_DEBUG1("rtnl_open ret=%d strerror='%s'\n", ret, strerror(errno));
         return EXIT_FAILURE;
     }
 
     if (!iplink_have_newlink())
     {
-        D_DEBUG("iplink_have_newlink ret=%d strerror='%s'\n", ret, strerror(errno));
+        D_DEBUG1("iplink_have_newlink ret=%d strerror='%s'\n", ret, strerror(errno));
     }
     else
     {
@@ -220,20 +220,20 @@ iface_gre_del(const char *gre_iface)
 
     if ((ret=rtnl_open(&cfg->rth, 0)) < 0)
     {
-        D_DEBUG("Cannot open rtnetlink\n");
+        D_DEBUG1("Cannot open rtnetlink\n");
         return EXIT_FAILURE;
     }
 
     if(!iplink_have_newlink())
     {
-        D_DEBUG("iplink_have_newlink ret=%d strerror='%s'\n", ret, strerror(errno));
+        D_DEBUG1("iplink_have_newlink ret=%d strerror='%s'\n", ret, strerror(errno));
     }
     else
     {
         ret = iplink_modify(RTM_DELLINK, 0, gre_iface, NULL, NULL, NULL, NULL);
         if (ret != 0)
         {
-            D_DEBUG("iplink_modify(RTM_DELLINK) ret=%d strerror='%s'\n", ret, strerror(errno));
+            D_DEBUG1("iplink_modify(RTM_DELLINK) ret=%d strerror='%s'\n", ret, strerror(errno));
         }
     }
 

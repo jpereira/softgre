@@ -194,14 +194,14 @@ main (int argc,
     softgred_init();
 
     /* busyloop */
-    D_DEBUG("Entering main loop\n");
+    D_DEBUG1("Entering main loop\n");
     payload_loop_run ();
 
     /* cleanup */
     softgred_end ();
 
-    D_DEBUG("Capture complete.\n");
-    D_DEBUG("exiting\n");
+    D_DEBUG1("Capture complete.\n");
+    D_DEBUG1("exiting\n");
 
     return 0;
 }

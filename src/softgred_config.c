@@ -129,7 +129,7 @@ softgred_config_load_attach(const char *arg,
     }
 
     // adding arguments
-    D_DEBUG("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br_name);
+    D_DEBUG1("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br_name);
     cfg->bridge[pos].ifname = br_name;
     cfg->bridge[pos].vlan_id = vlan_id;
     cfg->bridge_slot += 1;

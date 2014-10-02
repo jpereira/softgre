@@ -55,3 +55,5 @@ debian/*.log
 #install-sh
 #missing
 
+
+tmp/

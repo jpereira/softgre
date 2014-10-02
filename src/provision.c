@@ -132,7 +132,7 @@ provision_delall()
         if (!*ifname)
             continue;
 
-        D_DEBUG("Unprovisioning gre-interface %s\n", ifname);
+        D_DEBUG1("Unprovisioning gre-interface %s\n", ifname);
         if (!iface_gre_del(ifname))
         {
             D_WARNING("Problems for del iface_gre_del('%s'), continue...\n", ifname);

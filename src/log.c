@@ -16,8 +16,6 @@
 #include "softgred_config.h"
 #include "log.h"
 
-//static pthread_mutex_t log_lock;
-
 struct log_sets {
     const char *label;
     int level;
@@ -25,24 +23,25 @@ struct log_sets {
 
 static struct log_sets
 log_class[] = {
-    [L_CRIT]    = { "critical", LOG_CRIT },
-    [L_WARNING] = { "warning",  LOG_WARNING },
-    [L_NOTICE]  = { "notice",   LOG_NOTICE },
-    [L_INFO]    = { "info",     LOG_INFO },
-    [L_DEBUG]   = { "debug",    LOG_DEBUG },
-    [L_DEBUG2]  = { "debug-crazy",    LOG_DEBUG }
+    [L_DEBUG1]  = { "dbg",        LOG_DEBUG   },
+    [L_DEBUG2]  = { "dbg-devel",  LOG_DEBUG   },
+    [L_DEBUG3]  = { "dbg-crazy",  LOG_DEBUG   },
+    [L_CRIT]    = { "critical",   LOG_CRIT    },
+    [L_WARNING] = { "warning",    LOG_WARNING },
+    [L_NOTICE]  = { "notice",     LOG_NOTICE  },
+    [L_INFO]    = { "info",       LOG_INFO    }
 };
 
 void
 log_init()
 {
-    openlog(PACKAGE, 0, LOG_DAEMON);
+
 }
 
 void
 log_end()
 {
-    closelog();
+
 }
 
 void
@@ -53,20 +52,16 @@ log_message(int priority,
             const char *format, 
             ...)
 {
-    struct softgred_config *cfg;
     va_list vl;
+    int flag = (priority == L_DEBUG1 || priority == L_DEBUG2 || priority == L_DEBUG3);
+    struct softgred_config *cfg = softgred_config_get();
 
-//    pthread_mutex_lock(&log_lock);
-    cfg = softgred_config_get();
-
-    if (priority == L_DEBUG && cfg->debug_mode == 0)
+    if (flag && cfg->debug_mode == 0)
     {
         return;
     }
 
     va_start(vl, format);
-    /* send to syslog */
-//    vsyslog(log_class[priority], format, vl);
 
     /* send to output */
     if (cfg->debug_mode > 0)
@@ -79,20 +74,22 @@ log_message(int priority,
 
         switch(cfg->debug_mode)
         {
-            case 1:
+            case L_DEBUG1:
                 fprintf(stderr, "%s", buf);
                 break;
-            case 2:
+            case L_DEBUG2:
                 fprintf(stderr, "** %s: %s", label, buf);
                 break;
-            default:
+            case L_DEBUG3:
                 fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
+                break;
+            default:
+                assert(cfg->debug_mode > L_DEBUG3);
         }
 
         free(buf);
     }
 
     va_end(vl);
-    //pthread_mutex_unlock(&log_lock);
 }
 
