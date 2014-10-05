@@ -23,6 +23,7 @@ struct log_sets {
 
 static struct log_sets
 log_class[] = {
+    [L_DEBUG0]  = { "msg",        LOG_DEBUG   },    
     [L_DEBUG1]  = { "dbg",        LOG_DEBUG   },
     [L_DEBUG2]  = { "dbg-devel",  LOG_DEBUG   },
     [L_DEBUG3]  = { "dbg-crazy",  LOG_DEBUG   },
@@ -53,42 +54,27 @@ log_message(int priority,
             ...)
 {
     va_list vl;
-    int flag = (priority == L_DEBUG1 || priority == L_DEBUG2 || priority == L_DEBUG3);
     struct softgred_config *cfg = softgred_config_get();
-
-    if (flag && cfg->debug_mode == 0)
-    {
-        return;
-    }
+    const char *label = &log_class[priority].label[0];
+    const char *file = basename(filename);
+    char *buf = NULL;
 
     va_start(vl, format);
+    vasprintf(&buf, format, vl);
 
-    /* send to output */
-    if (cfg->debug_mode > 0)
+    switch(cfg->debug_mode)
     {
-        const char *label = &log_class[priority].label[0];
-        const char *file = basename(filename);
-        char *buf = NULL;
-
-        vasprintf(&buf, format, vl);
-
-        switch(cfg->debug_mode)
-        {
-            case L_DEBUG1:
-                fprintf(stderr, "%s", buf);
-                break;
-            case L_DEBUG2:
-                fprintf(stderr, "** %s: %s", label, buf);
-                break;
-            case L_DEBUG3:
-                fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
-                break;
-            default:
-                assert(cfg->debug_mode > L_DEBUG3);
-        }
-
-        free(buf);
+        case L_DEBUG2:
+            fprintf(stderr, "** %s: %s", label, buf);
+            break;
+        case L_DEBUG3:
+            fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
+            break;
+        default:
+            fprintf(stderr, "%s", buf);
     }
+
+    free(buf);
 
     va_end(vl);
 }

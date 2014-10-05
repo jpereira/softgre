@@ -41,6 +41,7 @@
 }
 
 enum {
+    L_DEBUG0,
     L_DEBUG1,
     L_DEBUG2,
     L_DEBUG3,
@@ -50,9 +51,10 @@ enum {
     L_INFO
 };
 
+#define D_DEBUG0(fmt, ...)  log_message(L_DEBUG0,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_DEBUG1(fmt, ...)  log_message(L_DEBUG1,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_DEBUG2(fmt, ...)  log_message(L_DEBUG1,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-#define D_DEBUG3(fmt, ...)  log_message(L_DEBUG2,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG2(fmt, ...)  log_message(L_DEBUG2,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG3(fmt, ...)  log_message(L_DEBUG3,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_CRIT(fmt, ...)    log_message(L_CRIT,    __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_WARNING(fmt, ...) log_message(L_WARNING, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_NOTICE(fmt, ...)  log_message(L_NOTICE,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)

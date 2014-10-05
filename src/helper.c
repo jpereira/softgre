@@ -14,6 +14,8 @@
 #define _GNU_SOURCE
 
 #include "helper.h"
+#include "log.h"
+#include "general.h"
 
 /*
  * print data in rows of 16 bytes: offset   hex   ascii
@@ -84,10 +86,13 @@ helper_print_payload (const u_char *payload,
     if (len <= 0)
         return;
 
+    D_DEBUG3("<print log payload=%#08x (%d)>\n", payload, len);
+
     /* data fits on one line */
     if (len <= line_width)
 	{
         helper_print_hex2ascii(ch, len, offset);
+        D_DEBUG3("</payload log>\n");
         return;
     }
 
@@ -112,5 +117,15 @@ helper_print_payload (const u_char *payload,
             break;
         }
     }
+
+    D_DEBUG3("</payload log>\n");
+}
+
+void
+helper_macether2tostr(char *buf, u_int8_t **ether)
+{
+    u_int8_t *ptr = ether;
+    sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
+
 }
 

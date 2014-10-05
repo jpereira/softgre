@@ -50,11 +50,12 @@
 
 // Network && Interfaces
 #include <net/if.h>
-#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/if_ether.h>
 #include <arpa/inet.h>
 #include <libnetlink.h>
+
 #include <linux/rtnetlink.h>
-#include <linux/ip.h>
 #include <linux/if_tunnel.h>
 
 // pcap

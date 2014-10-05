@@ -32,7 +32,7 @@ payload_loop_init ()
     struct payload_config *pl_cfg = payload_config_get();
 
     assert (cfg->ifname != NULL);
-    
+
     /* get network number and mask associated with capture device */
     if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) == -1)
     {
@@ -108,14 +108,129 @@ payload_loop_end ()
 
 void
 payload_handler_packet (u_char* UNUSED(args),
-                        const struct pcap_pkthdr* UNUSED(header),
-                        const u_char *packet)
+                        const struct pcap_pkthdr* pkthdr,
+                        const u_char* packet)
 {
+    const struct tunnel_config* tun_cfg;
     struct softgred_config* cfg = softgred_config_get();
-    const struct tunnel_config  *tun_cfg;
     struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
-    const struct payload_ip *ip = NULL; /* The IP header */
-    int size_ip;
+    char ether_dhost[20];
+    char ether_shost[20];
+
+    struct ether_header *ether = (struct ether_header *)packet;
+
+    // only IPv4!
+    uint16_t ether_type = ntohs (ether->ether_type); 
+    if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_VLAN)
+    {
+        D_WARNING("The packet (%04x) is unsupported!\n", ether_type);
+        return;
+    }
+
+    if (ether_type == ETHERTYPE_VLAN)
+    {
+        D_WARNING("arrive VLAN packet in main iface? we don't have idea what need to do!\n");
+        return;
+    }
+    
+    // packet tcp full
+    const u_char* pkt = (packet + sizeof(struct ether_header));
+    struct ip* ip = (struct ip *)pkt;
+    size_t pkt_len = ntohs(ip->ip_len);
+    if (pkt_len < sizeof(struct ip))     /* check to see we have a packet of valid length */
+    {
+        printf("truncated ip %d\n", pkt_len);
+        return NULL;
+    }
+
+    /* payload is 'gre'? */
+    if (ip->ip_p != IPPROTO_GRE)
+    {
+        D_CRIT("payload_handler_packet(): arrives non-gre packet '%#x', leaving...", ip->ip_p);
+        return;
+    }
+
+    // can't self provision!
+    if (ip->ip_src.s_addr == ip_local->s_addr)
+    {
+        return;
+    }
+
+    printf("\n");
+    printf("####################################################\n");
+    printf("## Packets FULL.\n");
+    helper_macether2tostr(ether_shost, &ether->ether_shost);
+    helper_macether2tostr(ether_dhost, &ether->ether_dhost);
+	printf("       From: %s (%#08x) mac='%s'\n", inet_ntoa(ip->ip_src), ip->ip_src, ether_shost);
+	printf("         To: %s (%#08x) mac='%s'\n", inet_ntoa(ip->ip_dst), ip->ip_dst, ether_dhost);
+    printf("helper_print_payload(pkt=%#08x pkt_len=%ld)\n", pkt, pkt_len);
+    helper_print_payload(pkt, pkt_len);
+
+    // gre packet
+    const u_char* pktgre = (pkt + GRE_LENGHT + sizeof (struct ip));
+    struct ether_header *ether_gre = (struct ether_header *)(pkt + GRE_LENGHT + sizeof (struct ip));
+    struct vlan_tag *vlan;
+    size_t pad = 0;
+    
+    ether_type = ntohs (ether_gre->ether_type); 
+    if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_VLAN)
+    {
+        D_WARNING("The packet (%04x) is unsupported!\n", ether_type);
+        return;
+    }
+
+    if (ether_type == ETHERTYPE_VLAN)
+    {
+        vlan = (pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
+        pad = 4;
+
+        if (vlan->vlan_tpid != ETHERTYPE_VLAN)
+        {
+            D_WARNING("The packet vlan->vlan_tpid (%04x) is unsupported!\n", vlan->vlan_tpid);
+//            return;
+        }
+    }
+
+    printf("## Packets GRE. (%#04x) pad=%d\n", ether_gre->ether_type, pad);
+
+    struct ip* ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
+    size_t pktgre_len = ntohs(ip_gre->ip_len);
+
+    uint16_t vlan_id = 0;
+
+    if (ether_type == ETHERTYPE_VLAN)
+    {
+        vlan_id = ntohs(vlan->vlan_tpid);
+        printf("    ETHERTYPE: VLAN (%d) [tpid=%#04x tci=%#04x]\n", vlan_id, vlan->vlan_tci, vlan->vlan_tpid);
+    }
+    else
+        printf("    EHTERTYPE: IP\n");
+
+    helper_macether2tostr(ether_shost, &ether_gre->ether_shost);
+    helper_macether2tostr(ether_dhost, &ether_gre->ether_dhost);
+	printf("       From: %s (%#08x) mac='%s'\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, ether_shost);
+	printf("         To: %s (%#08x) mac='%s'\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, ether_dhost);
+    printf("helper_print_payload(pktgre=%#08x pktgre_len=%ld)\n", pktgre, pktgre_len);
+    //helper_print_payload(pktgre, pktgre_len);
+
+    // if exist, get out!
+    if (provision_is_exist (&ip->ip_src))
+    {
+        //D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
+        return;
+    }
+    
+    // ok! just do it!
+    if (provision_add (&ip->ip_src, &tun_cfg) == false)
+    {
+        D_CRIT("Problems with provision_add()\n");
+        return;
+    }
+
+    D_DEBUG1("The client %s in %s was provisioned with %s with success!\n", 
+                inet_ntoa(tun_cfg->ip_remote), cfg->ifname, tun_cfg->ifgre);
+
+#if 0
 
     /* define/compute ip header offset */
     ip = (struct payload_ip*)(packet + SIZE_ETHERNET);
@@ -125,7 +240,8 @@ payload_handler_packet (u_char* UNUSED(args),
         D_CRIT("payload_handler_packet(): Invalid IP header length: %u bytes\n", size_ip);
         return;
     }
-    
+    printf("size_ip=%ld\n", size_ip);
+
     /* payload is 'gre'? */
     if (ip->ip_p != IPPROTO_GRE)
     {
@@ -136,26 +252,30 @@ payload_handler_packet (u_char* UNUSED(args),
     /*
      *  OK, this packet is GRE
      */
-    if (ip->ip_src.s_addr == ip_local->s_addr)
-    {
-        return;
-    }
 
-    if (provision_is_exist (&ip->ip_src))
-    {
-        D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
-        return;
-    }
-    
-    if (provision_add (&ip->ip_src, &tun_cfg) == false)
-    {
-        D_CRIT("Problems with provision_add()\n");
-        return;
-    }
 
-    D_DEBUG1("The client %s in %s was provisioned with %s with success!\n", 
-                inet_ntoa(tun_cfg->ip_remote), cfg->ifname, tun_cfg->ifgre);
+	/* define ethernet header */
+	ethernet = (struct payload_ethernet*)(packet);
+	
+	/* print source and destination IP addresses */
+    D_DEBUG1("MAC Adress ether_dhost='%#08x' ether_shost='%#08x'\n", ethernet->ether_dhost, ethernet->ether_shost);
+	D_DEBUG1("       From: %s\n", inet_ntoa(ip->ip_src));
+	D_DEBUG1("         To: %s\n", inet_ntoa(ip->ip_dst));
+	
+	/* define/compute tcp payload (segment) offset */
+	payload = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
+	
+	/* compute tcp payload (segment) size */
+	size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
 
+	if (size_payload > 0)
+    {
+		D_DEBUG1("   Payload (%d bytes):\n", size_payload);
+		//helper_print_payload(payload, size_payload);
+	}
+
+
+#endif
     return;
 }
 

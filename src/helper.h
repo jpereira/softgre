@@ -27,7 +27,7 @@ helper_print_hex2ascii (const u_char *payload,
                         int offset);
 
 void
-helper_save_pid();
+helper_macether2tostr(char *buf, u_int8_t **ether);
 
 #endif /*HELPER_H_*/
 
