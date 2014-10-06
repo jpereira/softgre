@@ -24,7 +24,7 @@ struct option long_opts[] = {
     { "foreground",    no_argument,       NULL, 'f'},
     { "iface",         required_argument, NULL, 'i'},
     { "tunnel-prefix", optional_argument, NULL, 'p'},
-    { "attach",        optional_argument, NULL, 'a'},
+    { "attach",        required_argument, NULL, 'a'},
     { "debug",         optional_argument, NULL, 'd'},
     { "help",          no_argument,       NULL, 'h'},
     { "version",       no_argument,       NULL, 'v'},
@@ -83,7 +83,7 @@ main (int argc,
     pid_t pid, sid;
     int opt;
 
-    if (argc < 2)
+    if (argc < 4)
     {
         softgred_print_usage(argv);
         exit(EXIT_SUCCESS);
@@ -101,7 +101,7 @@ main (int argc,
     }
 
     /* parsing arguments ... */
-    while ((opt = getopt_long(argc, argv, "fhvi:p:a:d", long_opts, NULL)) != EOF)
+    while ((opt = getopt_long(argc, argv, "fhvi:a:p:d", long_opts, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -112,8 +112,8 @@ main (int argc,
                 cfg->tunnel_prefix = optarg;
                 break;
             case 'i': /* --iface */
-                cfg->ifname = optarg;
-                softgred_config_load_iface(cfg->ifname, cfg);
+                if (softgred_config_load_iface(optarg, cfg) != EXIT_SUCCESS)
+                    exit(EXIT_FAILURE);
                 break;
             case 'a': /* --attach */
                 if (softgred_config_load_attach(optarg, cfg) != EXIT_SUCCESS)
@@ -124,7 +124,7 @@ main (int argc,
                 exit(EXIT_SUCCESS);
                 break;
             case 'd': /* --debug */
-                cfg->debug_mode += 1 ;
+                cfg->debug_mode += 1;
                 break;
             case 'v': /* --version */
                 softgred_print_version();

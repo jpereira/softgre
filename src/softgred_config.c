@@ -65,8 +65,9 @@ softgred_config_load_iface(const char *ifname,
         {
             if (ifa->ifa_addr->sa_family == AF_INET)
             {
-                struct sockaddr_in *sa = (struct sockaddr_in *) ifa->ifa_addr;
+                struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
                 char *addr = inet_ntoa(sa->sin_addr);
+                cfg->ifname = ifname;
 
                 strncpy(cfg->priv.ifname_ip, addr, SOFTGRED_MAX_IFACE);
                 memcpy(sin, sa, sizeof(struct sockaddr_in));
@@ -78,7 +79,13 @@ softgred_config_load_iface(const char *ifname,
 
     freeifaddrs(ifap);
 
-    return 0;
+    if (!cfg->ifname)
+    {
+        fprintf(stderr, "** impossible to listening in '%s' network interface, exiting...\n", ifname);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 int

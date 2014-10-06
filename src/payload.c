@@ -37,8 +37,7 @@ payload_loop_init ()
     if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) == -1)
     {
         D_WARNING("Couldn't get netmask for device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
-        pl_cfg->net = 0;
-        pl_cfg->mask = 0;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
