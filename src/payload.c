@@ -105,6 +105,7 @@ payload_loop_end ()
     }
 }
 
+// TODO: please, refactor this as soon as possible!
 void
 payload_handler_packet_cb (u_char *UNUSED(args),
                            const struct pcap_pkthdr *UNUSED(pkthdr),
@@ -156,7 +157,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     }
 
     // gre packet
-    const u_char* pktgre = (pkt + GRE_LENGHT + sizeof (struct ip));
+    //const u_char* pktgre = (pkt + GRE_LENGHT + sizeof (struct ip));
     struct ether_header *ether_gre = (struct ether_header *)(pkt + GRE_LENGHT + sizeof (struct ip));
     size_t pad = 0;
     uint16_t vlan_id = 0;
@@ -189,7 +190,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     }
 
     struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
-    size_t pktgre_len = ntohs(ip_gre->ip_len);
+    //size_t pktgre_len = ntohs(ip_gre->ip_len);
 
     if (cfg->debug_mode == L_DEBUG3)
     {
@@ -207,7 +208,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     }
     
     // ok! just do it!
-    if (provision_add (&ip->ip_src, &tun_cfg) == false)
+    if ((tun_cfg = provision_add (&ip->ip_src)) != NULL)
     {
         D_CRIT("Problems with provision_add()\n");
         return;

@@ -27,7 +27,7 @@ provision_data_get()
     return &ref;
 }
 
-bool
+struct tunnel_config *
 provision_is_exist(const struct in_addr *ip_remote)
 {
     struct provision_data *p = provision_data_get();
@@ -39,15 +39,14 @@ provision_is_exist(const struct in_addr *ip_remote)
     for (i=0; i < PROVISION_MAX_SLOTS; i++)
     {
         if (ip_remote->s_addr == p->tunnel[i].ip_remote.s_addr)
-            return true;
+            return &p->tunnel[i];
     }
 
-    return false;
+    return NULL;
 }
 
-int
-provision_add(const struct in_addr *ip_remote,
-              const struct tunnel_config **tun_cfg)
+struct tunnel_config *
+provision_add(const struct in_addr *ip_remote)
 {
     struct provision_data *p = provision_data_get();
     struct softgred_config *cfg = softgred_config_get();
@@ -67,14 +66,14 @@ provision_add(const struct in_addr *ip_remote,
     if (pos >= PROVISION_MAX_SLOTS || !tunnel)
     {
         D_WARNING("No more slots availables, leaving...\n");
-        return -1;
+        return NULL;
     }
 
     size_new_ifgre = snprintf(new_ifgre, SOFTGRED_MAX_IFACE, "%s%d", cfg->tunnel_prefix, pos);
     if (size_new_ifgre < 1)
     {
         D_WARNING("Problems with name of slot[%d], leaving...\n", pos);
-        return -1;        
+        return NULL;
     }
 
     // Create GRE Interface
@@ -82,7 +81,7 @@ provision_add(const struct in_addr *ip_remote,
     if (ret == false)
     {
         D_WARNING("Problems with iface_gre_add()...\n");
-        return -1;
+        return NULL;
     }
 
     // Attach the vlan in some bridge interface
@@ -95,7 +94,7 @@ provision_add(const struct in_addr *ip_remote,
         if (ret == false)
         {
             D_WARNING("Problems with iface_gre_add()...\n");
-            return -1;
+            return NULL;
         }
     }
 
@@ -106,9 +105,7 @@ provision_add(const struct in_addr *ip_remote,
     strncpy(p->tunnel[pos].ifgre, new_ifgre, size_new_ifgre);
 
     // rise from your grave!!
-    *tun_cfg = (const struct tunnel_config *)&p->tunnel[pos];
-
-    return true;
+    return &p->tunnel[pos];
 }
 
 int

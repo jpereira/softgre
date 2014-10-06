@@ -42,10 +42,9 @@ struct provision_data {
     int last_slot;
 };
 
-bool provision_is_exist(const struct in_addr *ip_remote);
+struct tunnel_config *provision_is_exist(const struct in_addr *ip_remote);
 
-int provision_add(const struct in_addr *ip_remote,
-                  const struct tunnel_config **out);
+struct tunnel_config *provision_add(const struct in_addr *ip_remote);
 
 int provision_del();
 
