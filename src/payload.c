@@ -152,19 +152,19 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         printf("## Packet TCP (complete)\n");
 	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip->ip_src), ip->ip_src, helper_macether2tostr(ether->ether_shost));
     	printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip->ip_dst), ip->ip_dst, helper_macether2tostr(ether->ether_dhost));
-        helper_print_payload(pkt, pkt_len);
+        //helper_print_payload(pkt, pkt_len);
     }
 
     // gre packet
     const u_char* pktgre = (pkt + GRE_LENGHT + sizeof (struct ip));
     struct ether_header *ether_gre = (struct ether_header *)(pkt + GRE_LENGHT + sizeof (struct ip));
     size_t pad = 0;
-    uint16_t vlan_id;
+    uint16_t vlan_id = 0;
 
     ether_type = ntohs (ether_gre->ether_type); 
     if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_VLAN)
     {
-        D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
+        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
         return;
     }
 
@@ -179,12 +179,12 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (cfg->debug_mode == L_DEBUG3)
     {
-        printf("## Packet TCP::GRE (%#04x) pad=%d\n", ether_type, pad);
+        printf(" @GRE (%#04x) pad=%d vlan_id=%d\n", ether_type, pad, vlan_id);
     }
 
     if (ether_type != ETHERTYPE_VLAN && ether_type != ETHERTYPE_IP)
     {
-        D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
+        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
         return;
     }
 
@@ -193,18 +193,10 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (cfg->debug_mode == L_DEBUG3)
     {
-        if (ether_type == ETHERTYPE_VLAN)
-        {
-            printf("    ETHERTYPE: VLAN (%d)\n", vlan_id);
-        }
-        else
-        {
-            printf("    EHTERTYPE: IP\n");
-        }
 	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, helper_macether2tostr(ether_gre->ether_shost));
 	    printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, helper_macether2tostr(ether_gre->ether_dhost));
-        printf(" @helper_print_payload(pktgre=%#08x, pktgre_len=%ld)\n", pktgre, pktgre_len);
-        helper_print_payload(pktgre, pktgre_len);
+        //printf(" @helper_print_payload(pktgre=%#08x, pktgre_len=%ld)\n", pktgre, pktgre_len);
+        //helper_print_payload(pktgre, pktgre_len);
     }
 
     // if exist, get out!
