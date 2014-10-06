@@ -174,7 +174,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         uint16_t *pkt_vlan = (struct vlan_tag *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
         pad = 4;
 
-        vlan_id = htons(pkt_vlan[0] & 0x0fff);
+        vlan_id = htons(pkt_vlan[0] & 0xfff0);
         ether_type = htons(pkt_vlan[1]); // update ether type
     }
 
