@@ -50,28 +50,17 @@ struct payload_config {
     bpf_u_int32 net;               /* ip */
 };
 
-/**
-*/
-struct vlan_tag {
-    uint16_t vlan_tpid;      /* ETH_P_8021Q */
-    uint16_t vlan_tci;       /* VLAN TCI */
-};
-
 struct payload_config *payload_config_get();
 
-int
-payload_loop_init();
+int payload_loop_init();
 
-int
-payload_loop_run();
+int payload_loop_run();
 
-void
-payload_loop_end();
+void payload_loop_end();
 
-void
-payload_handler_packet(u_char *args,
-                       const struct pcap_pkthdr *header,
-                       const u_char *packet);
+void payload_handler_packet_cb(u_char *args,
+                               const struct pcap_pkthdr *header,
+                               const u_char *packet);
 
 #endif /*PAYLOAD_H_*/
 

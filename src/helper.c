@@ -22,11 +22,11 @@
  */
 void
 helper_print_hex2ascii(const u_char *payload,
-					   int len,
+					   size_t len,
 					   int offset)
 {
-    int i;
-    int gap;
+    size_t i;
+    size_t gap;
     const u_char *ch;
 
     /* offset */
@@ -75,18 +75,18 @@ helper_print_hex2ascii(const u_char *payload,
  */
 void
 helper_print_payload (const u_char *payload,
-                      int len)
+                      size_t len)
 {
-    int len_rem = len;
-    int line_width = 16;            /* number of bytes per line */
-    int line_len;
-    int offset = 0;                 /* zero-based offset counter */
+    size_t len_rem = len;
+    size_t line_width = 16;            /* number of bytes per line */
+    size_t line_len;
+    size_t offset = 0;                 /* zero-based offset counter */
     const u_char *ch = payload;
 
     if (len <= 0)
         return;
 
-    D_DEBUG3("<print log payload=%#08x (%d)>\n", payload, len);
+    D_DEBUG3("<print log payload=%#08x len(%ld)>\n", payload, len);
 
     /* data fits on one line */
     if (len <= line_width)
@@ -121,11 +121,16 @@ helper_print_payload (const u_char *payload,
     D_DEBUG3("</payload log>\n");
 }
 
-void
-helper_macether2tostr(char *buf, u_int8_t **ether)
+const char *
+helper_macether2tostr(u_int8_t *ether)
 {
+    static char buf[18+1];
     u_int8_t *ptr = ether;
-    sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
 
+    memset(buf, 0, sizeof(buf));
+    snprintf(buf, sizeof(buf)-1, "%02x:%02x:%02x:%02x:%02x:%02x", 
+                    ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
+
+    return (const char *)buf;
 }
 

@@ -19,15 +19,15 @@
 
 void
 helper_print_payload (const u_char *payload,
-                      int len);
+                      size_t len);
 
 void
 helper_print_hex2ascii (const u_char *payload,
-                        int len,
+                        size_t len,
                         int offset);
 
-void
-helper_macether2tostr(char *buf, u_int8_t **ether);
+const char *
+helper_macether2tostr(u_int8_t *ether);
 
 #endif /*HELPER_H_*/
 
