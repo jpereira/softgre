@@ -20,17 +20,6 @@
 #include "helper.h"
 #include "provision.h"
 
-struct option long_opts[] = {
-    { "foreground",    no_argument,       NULL, 'f'},
-    { "iface",         required_argument, NULL, 'i'},
-    { "tunnel-prefix", optional_argument, NULL, 'p'},
-    { "attach",        required_argument, NULL, 'a'},
-    { "debug",         optional_argument, NULL, 'd'},
-    { "help",          no_argument,       NULL, 'h'},
-    { "version",       no_argument,       NULL, 'v'},
-    { NULL,            0,                 NULL,  0 }
-};
-
 void
 softgred_sig_handler(int signo)
 {
@@ -81,12 +70,17 @@ main (int argc,
 {
     struct softgred_config *cfg = softgred_config_get();
     pid_t pid, sid;
-    int opt;
 
     if (argc < 4)
     {
         softgred_print_usage(argv);
         exit(EXIT_SUCCESS);
+    }
+
+    if (!softgred_config_load_cli(argc, argv))
+    {
+        fprintf(stderr, "%s: Invalid options!\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
 
     /* prepare.. */
@@ -98,41 +92,6 @@ main (int argc,
     {
         fprintf(stderr, "%s: Sorry, Can't run with different user of root!\n", argv[0]);
         exit(EXIT_FAILURE);
-    }
-
-    /* parsing arguments ... */
-    while ((opt = getopt_long(argc, argv, "fhvi:a:p:d", long_opts, NULL)) != EOF)
-    {
-        switch (opt)
-        {
-            case 'f': /* --foreground */
-                cfg->is_foreground = true;
-                break;
-            case 'p': /* --tunnel-prefix */
-                cfg->tunnel_prefix = optarg;
-                break;
-            case 'i': /* --iface */
-                if (softgred_config_load_iface(optarg, cfg) != EXIT_SUCCESS)
-                    exit(EXIT_FAILURE);
-                break;
-            case 'a': /* --attach */
-                if (softgred_config_load_attach(optarg, cfg) != EXIT_SUCCESS)
-                    exit(EXIT_FAILURE);
-                break;
-            case 'h': /* --help */
-                softgred_print_usage(argv);
-                exit(EXIT_SUCCESS);
-                break;
-            case 'd': /* --debug */
-                cfg->debug_mode += 1;
-                break;
-            case 'v': /* --version */
-                softgred_print_version();
-                exit(EXIT_SUCCESS);
-            default:
-                softgred_print_usage(argv);
-                exit(EXIT_FAILURE);
-        }
     }
 
     // Check debug level

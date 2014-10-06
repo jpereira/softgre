@@ -46,6 +46,62 @@ softgred_config_get()
 }
 
 int
+softgred_config_load_cli(int argc, 
+                         char *argv[])
+{
+    struct option long_opts[] = {
+        { "foreground",    no_argument,       NULL, 'f'},
+        { "iface",         required_argument, NULL, 'i'},
+        { "tunnel-prefix", optional_argument, NULL, 'p'},
+        { "attach",        required_argument, NULL, 'a'},
+        { "debug",         optional_argument, NULL, 'd'},
+        { "help",          no_argument,       NULL, 'h'},
+        { "version",       no_argument,       NULL, 'v'},
+        { NULL,            0,                 NULL,  0 }
+    };
+    struct softgred_config *cfg = softgred_config_get();
+    int opt;
+
+    /* parsing arguments ... */
+    while ((opt = getopt_long(argc, argv, "fhvi:a:p:d", long_opts, NULL)) != EOF)
+    {
+        switch (opt)
+        {
+            case 'f': /* --foreground */
+                cfg->is_foreground = true;
+                break;
+            case 'p': /* --tunnel-prefix */
+                cfg->tunnel_prefix = optarg;
+                break;
+            case 'i': /* --iface */
+                if (softgred_config_load_iface(optarg, cfg) != EXIT_SUCCESS)
+                    return 1;
+                break;
+            case 'a': /* --attach */
+                if (softgred_config_load_attach(optarg, cfg) != EXIT_SUCCESS)
+                    return 1;
+                break;
+            case 'h': /* --help */
+                softgred_print_usage(argv);
+                goto left;
+            case 'd': /* --debug */
+                cfg->debug_mode += 1;
+                break;
+            case 'v': /* --version */
+                softgred_print_version();
+                goto left;
+            default:
+                softgred_print_usage(argv);
+                goto left;
+        }
+    }
+
+left:
+
+    return 0;
+}
+
+int
 softgred_config_load_iface(const char *ifname,
                            struct softgred_config *cfg)
 {
@@ -82,7 +138,7 @@ softgred_config_load_iface(const char *ifname,
     if (!cfg->ifname)
     {
         fprintf(stderr, "** impossible to listening in '%s' network interface, exiting...\n", ifname);
-        return EXIT_FAILURE;
+        return 0;
     }
 
     return EXIT_SUCCESS;
@@ -103,7 +159,7 @@ softgred_config_load_attach(const char *arg,
     if (!str_vlan_id || !br_name)
     {
         fprintf(stderr, "** error! wrong argument! expected is vlan_id@bridge-to-attach, eg.: -a 10@br-vlan123\n");
-        return EXIT_FAILURE;
+        return 0;
     }
 
     // vlan validate
@@ -111,7 +167,7 @@ softgred_config_load_attach(const char *arg,
     if (vlan_id < 1 || vlan_id > 4096)
     {
         fprintf(stderr, "** error! The argument '%s' is a wrong vlan id, exiting...\n", str_vlan_id);
-        return EXIT_FAILURE;
+        return 0;
     }
 
     // bridge validate, expected: "<name><number>" <= SOFTGRED_MAX_IFACE
@@ -119,20 +175,20 @@ softgred_config_load_attach(const char *arg,
     {
         fprintf(stderr, "** error! The argument '%s' (%ld) is a wrong bridge name. (len >= 3 && len <= %d)\n", 
                                                         br_name, br_len,  SOFTGRED_TUN_PREFIX_MAX);
-        return EXIT_FAILURE;
+        return 0;
     }
 
     if (if_nametoindex(br_name) < 1) // TODO: Change for validate if is a real bridge-interface.
     {
         fprintf(stderr, "** error! The bridge '%s' don't exist in your system! try to create, eg.: brctl addbr %s\n",
                             br_name, br_name);
-        return EXIT_FAILURE;
+        return 0;
     }
 
     if (pos >= SOFTGRED_MAX_ATTACH)
     {
         fprintf(stderr, "** error! The maximum number of slots was reached.\n");
-        return EXIT_FAILURE;
+        return 0;
     }
 
     // adding arguments
@@ -141,7 +197,7 @@ softgred_config_load_attach(const char *arg,
     cfg->bridge[pos].vlan_id = vlan_id;
     cfg->bridge_slot += 1;
 
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 void

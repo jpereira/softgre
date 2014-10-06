@@ -50,6 +50,9 @@ void softgred_config_set (struct softgred_config *config);
 
 struct softgred_config *softgred_config_get();
 
+int softgred_config_load_cli(int argc, 
+                             char *argv[]);
+
 void softgred_print_version();
 
 void softgred_print_usage(char *argv[]);
