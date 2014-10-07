@@ -17,7 +17,7 @@
 
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 06 Out 2014 20:24:57 BRT
+# Last Change: Tue 07 Oct 2014 02:15:34 AM EDT
 ####
 
 VPATH = @srcdir@
@@ -70,12 +70,12 @@ PROGRAMS = $(bin_PROGRAMS)
 am_softgred_OBJECTS = softgred-softgred.$(OBJEXT) \
 	softgred-softgred_config.$(OBJEXT) softgred-helper.$(OBJEXT) \
 	softgred-log.$(OBJEXT) softgred-payload.$(OBJEXT) \
-	softgred-iface_bridge.$(OBJEXT) softgred-iface_gre.$(OBJEXT) \
+	softgred-iface_bridge.$(OBJEXT) \
+	softgred-iface_ebtables.$(OBJEXT) softgred-iface_gre.$(OBJEXT) \
 	softgred-provision.$(OBJEXT)
 softgred_OBJECTS = $(am_softgred_OBJECTS)
 am__DEPENDENCIES_1 =
-softgred_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+softgred_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 softgred_LINK = $(CCLD) $(softgred_CFLAGS) $(CFLAGS) \
 	$(softgred_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
@@ -125,8 +125,6 @@ LDFLAGS = @LDFLAGS@
 LIBDHASH_LIBS = @LIBDHASH_LIBS@
 LIBNFNETLINK_LIBS = @LIBNFNETLINK_LIBS@
 LIBOBJS = @LIBOBJS@
-LIBPCAP_LIBS = @LIBPCAP_LIBS@
-LIBPTHREAD_LIBS = @LIBPTHREAD_LIBS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
@@ -210,6 +208,8 @@ softgred_SOURCES = \
 	../src/payload.h          \
 	../src/iface_bridge.c     \
 	../src/iface_bridge.h     \
+	../src/iface_ebtables.h   \
+	../src/iface_ebtables.c   \
 	../src/iface_gre.c        \
 	../src/iface_gre.h        \
 	../src/provision.c        \
@@ -327,6 +327,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-iface_bridge.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-iface_ebtables.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-iface_gre.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-log.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/softgred-payload.Po@am__quote@
@@ -431,6 +432,20 @@ softgred-iface_bridge.obj: ../src/iface_bridge.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../src/iface_bridge.c' object='softgred-iface_bridge.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -c -o softgred-iface_bridge.obj `if test -f '../src/iface_bridge.c'; then $(CYGPATH_W) '../src/iface_bridge.c'; else $(CYGPATH_W) '$(srcdir)/../src/iface_bridge.c'; fi`
+
+softgred-iface_ebtables.o: ../src/iface_ebtables.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -MT softgred-iface_ebtables.o -MD -MP -MF $(DEPDIR)/softgred-iface_ebtables.Tpo -c -o softgred-iface_ebtables.o `test -f '../src/iface_ebtables.c' || echo '$(srcdir)/'`../src/iface_ebtables.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/softgred-iface_ebtables.Tpo $(DEPDIR)/softgred-iface_ebtables.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../src/iface_ebtables.c' object='softgred-iface_ebtables.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -c -o softgred-iface_ebtables.o `test -f '../src/iface_ebtables.c' || echo '$(srcdir)/'`../src/iface_ebtables.c
+
+softgred-iface_ebtables.obj: ../src/iface_ebtables.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -MT softgred-iface_ebtables.obj -MD -MP -MF $(DEPDIR)/softgred-iface_ebtables.Tpo -c -o softgred-iface_ebtables.obj `if test -f '../src/iface_ebtables.c'; then $(CYGPATH_W) '../src/iface_ebtables.c'; else $(CYGPATH_W) '$(srcdir)/../src/iface_ebtables.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/softgred-iface_ebtables.Tpo $(DEPDIR)/softgred-iface_ebtables.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='../src/iface_ebtables.c' object='softgred-iface_ebtables.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -c -o softgred-iface_ebtables.obj `if test -f '../src/iface_ebtables.c'; then $(CYGPATH_W) '../src/iface_ebtables.c'; else $(CYGPATH_W) '$(srcdir)/../src/iface_ebtables.c'; fi`
 
 softgred-iface_gre.o: ../src/iface_gre.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(softgred_CFLAGS) $(CFLAGS) -MT softgred-iface_gre.o -MD -MP -MF $(DEPDIR)/softgred-iface_gre.Tpo -c -o softgred-iface_gre.o `test -f '../src/iface_gre.c' || echo '$(srcdir)/'`../src/iface_gre.c

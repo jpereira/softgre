@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 06 Out 2014 20:24:34 BRT
+# Last Change: Tue 07 Oct 2014 02:42:13 AM EDT
 ####
 
 AC_INIT([SoftGRE],
@@ -84,9 +84,6 @@ AS_IF([test "x$ac_cv_header_ifaddrs_h" = "xyes"],
 # check for libpcap 
 AC_CHECK_LIB([pcap],[pcap_create])
 AC_CHECK_HEADERS([pcap/pcap.h])
-#LIBPCAP_LIBS='$(pcap-config --libs)'
-LIBPCAP_LIBS='-lpcap'
-AC_SUBST([LIBPCAP_LIBS])
 
 # check for libnetlink
 AC_CHECK_HEADERS([libnfnetlink/libnfnetlink.h])
@@ -98,11 +95,6 @@ AC_CHECK_HEADERS([dhash.h])
 LIBDHASH_LIBS='-ldhash'
 AC_SUBST([LIBDHASH_LIBS])
 
-# libpthread
-LIBPTHREAD_LIBS='-lpthread'
-AC_SUBST([LIBPTHREAD_LIBS])
-
-AC_CHECK_LIB([pthread], [herror])
 AC_SEARCH_LIBS([strerror],[cposix])
 AC_CHECK_FUNCS([gettimeofday])
 
