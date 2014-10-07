@@ -27,30 +27,59 @@ provision_data_get()
     return &ref;
 }
 
-struct tunnel_config *
-provision_is_exist(const struct in_addr *ip_remote)
+hash_entry_t *
+tunnel_context_new (const struct in_addr *ip_remote,
+                   uint16_t id,
+                   const char *new_ifgre)
 {
-    struct provision_data *p = provision_data_get();
-    int i = 0;
+    struct tunnel_context *ref;
+    static hash_entry_t entry;
 
+    assert (new_ifgre != NULL);
     assert (ip_remote != NULL);
-    assert (p != NULL);
 
-    for (i=0; i < PROVISION_MAX_SLOTS; i++)
-    {
-        if (ip_remote->s_addr == p->tunnel[i].ip_remote.s_addr)
-            return &p->tunnel[i];
-    }
+    ref = calloc(1, sizeof(struct tunnel_context));
+    if (!ref)
+        return NULL;
 
-    return NULL;
+    entry.key.type = HASH_KEY_ULONG;
+    entry.key.ul = ip_remote->s_addr;
+    entry.value.type = HASH_VALUE_PTR;
+    entry.value.ptr = ref;
+
+    ref->id = id;
+    memcpy(&ref->ip_remote, ip_remote, sizeof(struct in_addr));
+    strncpy(ref->ifgre, new_ifgre, strlen(new_ifgre));
+
+    return &entry;
+
 }
 
-struct tunnel_config *
+struct tunnel_context *
+provision_has_tunnel(const struct in_addr *ip_remote)
+{
+    struct softgred_config *cfg = softgred_config_get();
+    int error = 0;
+    hash_key_t key = { .type = HASH_KEY_ULONG, .ul = ip_remote->s_addr };
+    hash_value_t value;
+
+    assert (cfg->table != NULL);
+    assert (ip_remote != NULL);
+
+    if ((error = hash_lookup(cfg->table, &key, &value)) != HASH_SUCCESS)
+    {
+        fprintf(stderr, "cannot get key list (%s)\n", hash_error_string(error));
+        return NULL;
+    }
+
+    return (struct tunnel_context *)value.ptr;
+}
+
+struct tunnel_context *
 provision_add(const struct in_addr *ip_remote)
 {
     struct provision_data *p = provision_data_get();
     struct softgred_config *cfg = softgred_config_get();
-    struct tunnel_config *tunnel;
     struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
     char new_ifgre[SOFTGRED_MAX_IFACE+1];
     size_t size_new_ifgre;
@@ -60,10 +89,8 @@ provision_add(const struct in_addr *ip_remote)
 
     assert (ip_remote != NULL);
     assert (cfg != NULL);
-    assert (p != NULL);
 
-    tunnel = &p->tunnel[pos];
-    if (pos >= PROVISION_MAX_SLOTS || !tunnel)
+    if (pos >= PROVISION_MAX_SLOTS)
     {
         D_WARNING("No more slots availables, leaving...\n");
         return NULL;
@@ -90,22 +117,23 @@ provision_add(const struct in_addr *ip_remote)
         const char *br = cfg->bridge[i].ifname;
         uint16_t vlan_id = cfg->bridge[i].vlan_id;
 
-        ret = iface_bridge_attach(new_ifgre, br, vlan_id);
-        if (ret == false)
+        if (iface_bridge_attach(new_ifgre, br, vlan_id) == false)
         {
             D_WARNING("Problems with iface_gre_add()...\n");
             return NULL;
         }
     }
 
-    // save the context
-    p->tunnel[pos].ip_remote.s_addr = ip_remote->s_addr;
-    p->tunnel[pos].id               = pos;
-    p->last_slot                    = pos + 1;
-    strncpy(p->tunnel[pos].ifgre, new_ifgre, size_new_ifgre);
+    // save the entry
+    int error;
+    hash_entry_t *entry = tunnel_context_new(ip_remote, pos, new_ifgre);
+    if ((error = hash_enter(cfg->table, &entry->key, &entry->value)) != HASH_SUCCESS)
+    {
+        fprintf(stderr, "cannot add to table \"%#08x\" (%s)\n", entry->key.ul, hash_error_string(error));
+        return NULL;
+    }
 
-    // rise from your grave!!
-    return &p->tunnel[pos];
+    return entry->value.ptr;
 }
 
 int
@@ -117,27 +145,24 @@ provision_del()
 int
 provision_delall()
 {
-    struct provision_data *p = provision_data_get();
-    int i = 0;
+    struct softgred_config *cfg = softgred_config_get();
+    struct hash_iter_context_t *iter;
+    hash_entry_t *entry;
 
-    assert (p != NULL);
-
-    for (i=0; i < PROVISION_MAX_SLOTS; i++)
+    iter = new_hash_iter_context(cfg->table);
+    while ((entry = iter->next(iter)) != NULL)
     {
-        const char *ifname = (char *)&p->tunnel[i].ifgre[0];
+        struct tunnel_context *tun = entry->value.ptr;
 
-        if (!*ifname)
-            continue;
-
-        D_DEBUG1("Unprovisioning gre-interface %s\n", ifname);
-        if (!iface_gre_del(ifname))
+        D_DEBUG1("unattach client %s from %s\n", inet_ntoa(tun->ip_remote), tun->ifgre);
+        if (!iface_gre_del(tun->ifgre))
         {
-            D_WARNING("Problems for del iface_gre_del('%s'), continue...\n", ifname);
+            D_WARNING("Problems with iface_gre_del('%s'), continue...\n", tun->ifgre);
         }
-    }
 
-    memset(&p->tunnel, 0, sizeof(p->tunnel));
-    p->last_slot = 0;
+        free(tun);
+    }
+    free(iter);
 
     return true;
 }

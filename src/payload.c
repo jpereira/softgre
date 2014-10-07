@@ -111,7 +111,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
                            const struct pcap_pkthdr *UNUSED(pkthdr),
                            const u_char *packet)
 {
-    const struct tunnel_config *tun_cfg;
+    const struct tunnel_context *tun_cfg;
     register struct softgred_config *cfg = softgred_config_get();
     register struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
 
@@ -185,8 +185,8 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (ether_type != ETHERTYPE_VLAN && ether_type != ETHERTYPE_IP)
     {
-        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
-        return;
+        D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
+        //return;
     }
 
     struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
@@ -201,21 +201,23 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     }
 
     // if exist, get out!
-    if (provision_is_exist (&ip->ip_src))
+    tun_cfg = provision_has_tunnel(&ip->ip_src);
+    if (tun_cfg)
     {
-        //D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(ip->ip_src));
+        //D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(tun_cfg->ip_remote));
         return;
     }
     
     // ok! just do it!
-    if ((tun_cfg = provision_add (&ip->ip_src)) != NULL)
+    tun_cfg = provision_add (&ip->ip_src);
+    if (!tun_cfg)
     {
         D_CRIT("Problems with provision_add()\n");
         return;
     }
 
-    D_DEBUG1("The client %s in %s was provisioned with %s with success!\n", 
-                inet_ntoa(tun_cfg->ip_remote), cfg->ifname, tun_cfg->ifgre);
+    D_DEBUG1("[GRE:%s] the client %s was attached in %s\n", 
+                cfg->ifname, inet_ntoa(tun_cfg->ip_remote), tun_cfg->ifgre);
 
     return;
 }

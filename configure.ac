@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 29 Set 2014 20:49:41 BRT
+# Last Change: Seg 06 Out 2014 20:24:34 BRT
 ####
 
 AC_INIT([SoftGRE],
@@ -92,6 +92,11 @@ AC_SUBST([LIBPCAP_LIBS])
 AC_CHECK_HEADERS([libnfnetlink/libnfnetlink.h])
 LIBNFNETLINK_LIBS='-lnetlink'
 AC_SUBST([LIBNFNETLINK_LIBS])
+
+# check for libdhash
+AC_CHECK_HEADERS([dhash.h])
+LIBDHASH_LIBS='-ldhash'
+AC_SUBST([LIBDHASH_LIBS])
 
 # libpthread
 LIBPTHREAD_LIBS='-lpthread'

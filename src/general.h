@@ -58,6 +58,9 @@
 #include <linux/rtnetlink.h>
 #include <linux/if_tunnel.h>
 
+// libdhash
+#include <dhash.h>
+
 // pcap
 #ifndef HAVE_PCAP_PCAP_H
     #error "Oops! Impossible to continue without pcap.h, exiting..."

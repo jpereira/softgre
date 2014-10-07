@@ -29,7 +29,7 @@ struct tunnel_bridge {
     uint16_t vlan_id;
 };
 
-struct tunnel_config_priv {
+struct tunnel_context_priv {
     char ifname_ip[SOFTGRED_MAX_IFACE+1];
     struct sockaddr_in ifname_saddr;
 };
@@ -41,14 +41,20 @@ struct softgred_config {
     uint8_t debug_mode;        /* --debug */
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
-    struct tunnel_config_priv priv;
+    struct tunnel_context_priv priv;
 
     struct rtnl_handle rth;
+
+    hash_table_t *table;
 };
 
 void softgred_config_set (struct softgred_config *config);
 
 struct softgred_config *softgred_config_get();
+
+int softgred_config_init();
+
+int softgred_config_end();
 
 int softgred_config_load_cli(int argc, 
                              char *argv[]);

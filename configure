@@ -627,6 +627,7 @@ am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
 LIBPTHREAD_LIBS
+LIBDHASH_LIBS
 LIBNFNETLINK_LIBS
 LIBPCAP_LIBS
 SOFTGRE_HAVE_SELF_IFADDRS_FALSE
@@ -5429,6 +5430,22 @@ fi
 done
 
 LIBNFNETLINK_LIBS='-lnetlink'
+
+
+# check for libdhash
+for ac_header in dhash.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "dhash.h" "ac_cv_header_dhash_h" "$ac_includes_default"
+if test "x$ac_cv_header_dhash_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_DHASH_H 1
+_ACEOF
+
+fi
+
+done
+
+LIBDHASH_LIBS='-ldhash'
 
 
 # libpthread

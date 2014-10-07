@@ -46,6 +46,8 @@ softgred_init()
 {
     log_init();
 
+    softgred_config_init();
+
     if (!payload_loop_init())
         softgred_end ();
 
@@ -59,6 +61,8 @@ softgred_end()
 
     /* unprovisione all interfaces */
     provision_delall();
+
+    softgred_config_end();
 
     /* syslog */
     log_end();

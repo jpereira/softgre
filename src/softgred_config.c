@@ -45,6 +45,50 @@ softgred_config_get()
     return &singleton;
 }
 
+void
+delete_callback(hash_entry_t *entry,
+                hash_destroy_enum type,
+                void *pvt)
+{
+    fprintf(stderr, "Calling delete_callback()\n");
+
+    if (entry->value.type == HASH_VALUE_PTR)
+        free(entry->value.ptr);
+}
+
+int
+softgred_config_init()
+{
+    struct softgred_config *cfg = softgred_config_get();
+    int error;
+
+    if (!cfg->table)
+    {
+        printf("cfg->table=%#x\n", cfg->table);
+        error = hash_create(0, &cfg->table, delete_callback,  NULL);
+        if (error != HASH_SUCCESS) {
+            fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
+            return error;
+        }
+        printf("hash_create: cfg->table=%#x\n", cfg->table);
+    }
+
+    return 0;
+}
+
+int
+softgred_config_end()
+{
+#if 0
+    struct softgred_config *cfg = softgred_config_get();
+
+    /* Free the table */
+    printf("hash_destroy: cfg->table=%#x\n", cfg->table);
+    hash_destroy(cfg->table);
+#endif
+    return 0;
+}
+
 int
 softgred_config_load_cli(int argc, 
                          char *argv[])

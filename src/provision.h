@@ -29,22 +29,26 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PROVISION_MAX_SLOTS 32
+#define PROVISION_MAX_SLOTS 1024
 
-struct tunnel_config {
-    char ifgre[SOFTGRED_MAX_IFACE+1];
+struct tunnel_client {
+    uint16_t mac;
+    tunnel_client *next;
+};
+
+struct tunnel_context {
     struct in_addr ip_remote;
+    char ifgre[SOFTGRED_MAX_IFACE+1];
     uint16_t id;
 };
 
 struct provision_data {
-    struct tunnel_config tunnel[PROVISION_MAX_SLOTS];
     int last_slot;
 };
 
-struct tunnel_config *provision_is_exist(const struct in_addr *ip_remote);
+struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote);
 
-struct tunnel_config *provision_add(const struct in_addr *ip_remote);
+struct tunnel_context *provision_add(const struct in_addr *ip_remote);
 
 int provision_del();
 
