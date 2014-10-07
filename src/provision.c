@@ -19,6 +19,7 @@
 
 #include "iface_bridge.h"
 #include "iface_gre.h"
+#include "iface_ebtables.h"
 
 struct provision_data *
 provision_data_get()
@@ -68,7 +69,6 @@ provision_has_tunnel(const struct in_addr *ip_remote)
 
     if ((error = hash_lookup(cfg->table, &key, &value)) != HASH_SUCCESS)
     {
-        fprintf(stderr, "cannot get key list (%s)\n", hash_error_string(error));
         return NULL;
     }
 
@@ -133,18 +133,33 @@ provision_add(const struct in_addr *ip_remote)
         return NULL;
     }
 
+    p->last_slot += 1;
     return entry->value.ptr;
 }
 
 int
-provision_del()
+provision_del(const struct in_addr *ip_remote)
 {
-    return 0;
+    struct tunnel_context *tun = provision_has_tunnel(ip_remote);
+
+    if (!tun)
+        return 0;
+
+    D_DEBUG1("unattach client %s from %s\n", inet_ntoa(tun->ip_remote), tun->ifgre);
+
+    if (!iface_gre_del(tun->ifgre))
+    {
+        D_WARNING("Problems with iface_gre_del('%s'), continue...\n", tun->ifgre);
+        return 0;
+    }
+
+    return 1;
 }
 
-int
+void
 provision_delall()
 {
+    struct provision_data *p = provision_data_get();
     struct softgred_config *cfg = softgred_config_get();
     struct hash_iter_context_t *iter;
     hash_entry_t *entry;
@@ -160,9 +175,41 @@ provision_delall()
             D_WARNING("Problems with iface_gre_del('%s'), continue...\n", tun->ifgre);
         }
 
+        p->last_slot -= 1;
         free(tun);
     }
     free(iter);
+}
+
+bool
+provision_tunnel_has_mac(const struct tunnel_context *tun,
+                         const struct ether_addr *ether_shost)
+{
+    int i = 0;
+
+    assert (tun != NULL);
+    assert (ether_shost != NULL);
+
+    for (; i < PROVISION_MAX_SRC; i++)
+    {
+        //D_DEBUG3("Checking mac=%s == %s\n", ether_ntoa(&tun->ether[i].shost), ether_ntoa(ether_shost));
+        if (!memcmp(&tun->ether[i].shost, ether_shost, sizeof(struct ether_addr)))
+            return true;
+    }
+
+    return false;
+}
+
+bool
+provision_tunnel_allow_mac(struct tunnel_context *tun,
+                           const struct ether_addr *ether_shost)
+{
+    uint16_t pos = tun->ether_last;
+
+    memcpy(&tun->ether[pos].shost, ether_shost, sizeof(struct ether_addr));
+    tun->ether_last++;
+
+    iface_ebtables_allow(ether_shost);
 
     return true;
 }

@@ -30,29 +30,39 @@
 #include <arpa/inet.h>
 
 #define PROVISION_MAX_SLOTS 1024
+#define PROVISION_MAX_SRC   512
 
-struct tunnel_client {
-    uint16_t mac;
-    tunnel_client *next;
+struct provision_data {
+    int last_slot;
 };
+
+struct provision_data *provision_data_get();
 
 struct tunnel_context {
     struct in_addr ip_remote;
     char ifgre[SOFTGRED_MAX_IFACE+1];
     uint16_t id;
-};
 
-struct provision_data {
-    int last_slot;
+    struct {
+        struct ether_addr shost;
+    } ether[PROVISION_MAX_SRC];
+    uint16_t ether_last;
 };
 
 struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote);
 
 struct tunnel_context *provision_add(const struct in_addr *ip_remote);
 
-int provision_del();
+int provision_del(const struct in_addr *ip_remote);
 
-int provision_delall();
+void provision_delall();
+
+bool provision_tunnel_has_mac(const struct tunnel_context *tun,
+                              const struct ether_addr *ether_shost);
+
+bool provision_tunnel_allow_mac (struct tunnel_context *tun,
+                                 const struct ether_addr *ether_shost);
+
 
 #endif /*PROVISION_H_*/
 

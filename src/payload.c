@@ -111,7 +111,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
                            const struct pcap_pkthdr *UNUSED(pkthdr),
                            const u_char *packet)
 {
-    const struct tunnel_context *tun_cfg;
+    const struct tunnel_context *tun;
     register struct softgred_config *cfg = softgred_config_get();
     register struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
 
@@ -151,8 +151,8 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         printf("\n");
         printf("####################################################\n");
         printf("## Packet TCP (complete)\n");
-	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip->ip_src), ip->ip_src, helper_macether2tostr(ether->ether_shost));
-    	printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip->ip_dst), ip->ip_dst, helper_macether2tostr(ether->ether_dhost));
+	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip->ip_src), ip->ip_src, ether_ntoa(ether->ether_shost));
+    	printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip->ip_dst), ip->ip_dst, ether_ntoa(ether->ether_dhost));
         //helper_print_payload(pkt, pkt_len);
     }
 
@@ -194,30 +194,48 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (cfg->debug_mode == L_DEBUG3)
     {
-	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, helper_macether2tostr(ether_gre->ether_shost));
-	    printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, helper_macether2tostr(ether_gre->ether_dhost));
+	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, ether_ntoa(&ether_gre->ether_shost));
+	    printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, ether_ntoa(&ether_gre->ether_dhost));
         //printf(" @helper_print_payload(pktgre=%#08x, pktgre_len=%ld)\n", pktgre, pktgre_len);
         //helper_print_payload(pktgre, pktgre_len);
     }
 
     // if exist, get out!
-    tun_cfg = provision_has_tunnel(&ip->ip_src);
-    if (tun_cfg)
+    tun = provision_has_tunnel(&ip->ip_src);
+    if (tun)
     {
-        //D_DEBUG3("The client %s is already provisioned, leaving...\n", inet_ntoa(tun_cfg->ip_remote));
+        struct ether_addr *ether = (struct ether_addr *)ether_gre->ether_shost;
+        char *smac = ether_ntoa(ether);
+        
+        D_DEBUG3("The client %s is already attached in %s\n", inet_ntoa(tun->ip_remote), tun->ifgre);
+        
+        if (provision_tunnel_has_mac(tun, ether) == true)
+        {
+            D_DEBUG3("the mac %s is already allowed\n", smac);
+            return;
+        }
+
+        if (provision_tunnel_allow_mac(tun, ether) != true)
+        {
+            D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", smac);
+            return;
+        }
+
+        D_DEBUG3("the mac address '%s' was allowed\n", smac);
+
         return;
     }
     
     // ok! just do it!
-    tun_cfg = provision_add (&ip->ip_src);
-    if (!tun_cfg)
+    tun = provision_add (&ip->ip_src);
+    if (!tun)
     {
         D_CRIT("Problems with provision_add()\n");
         return;
     }
 
     D_DEBUG1("[GRE:%s] the client %s was attached in %s\n", 
-                cfg->ifname, inet_ntoa(tun_cfg->ip_remote), tun_cfg->ifgre);
+                cfg->ifname, inet_ntoa(tun->ip_remote), tun->ifgre);
 
     return;
 }

@@ -64,7 +64,6 @@ softgred_config_init()
 
     if (!cfg->table)
     {
-        printf("cfg->table=%#x\n", cfg->table);
         error = hash_create(0, &cfg->table, delete_callback,  NULL);
         if (error != HASH_SUCCESS) {
             fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
@@ -236,7 +235,7 @@ softgred_config_load_attach(const char *arg,
     }
 
     // adding arguments
-    D_DEBUG1("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s'\n", tmp, vlan_id, br_name);
+    D_DEBUG1("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s' }\n", tmp, vlan_id, br_name);
     cfg->bridge[pos].ifname = br_name;
     cfg->bridge[pos].vlan_id = vlan_id;
     cfg->bridge_slot += 1;

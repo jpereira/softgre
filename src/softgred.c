@@ -13,6 +13,7 @@
 #define _GNU_SOURCE
 #include "general.h"
 #include "softgred.h"
+#include "iface_ebtables.h"
 #include "softgred_config.h"
 
 #include "log.h"
@@ -48,6 +49,8 @@ softgred_init()
 
     softgred_config_init();
 
+    iface_ebtables_init();
+
     if (!payload_loop_init())
         softgred_end ();
 
@@ -61,6 +64,8 @@ softgred_end()
 
     /* unprovisione all interfaces */
     provision_delall();
+
+    //iface_ebtables_end();
 
     softgred_config_end();
 

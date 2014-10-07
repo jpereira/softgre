@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 06 Out 2014 20:24:57 BRT
+# Last Change: Tue 07 Oct 2014 02:15:34 AM EDT
 ####
 
 AM_CFLAGS = -W -Wall
@@ -27,6 +27,8 @@ softgred_SOURCES =            \
 	../src/payload.h          \
 	../src/iface_bridge.c     \
 	../src/iface_bridge.h     \
+	../src/iface_ebtables.h   \
+	../src/iface_ebtables.c   \
 	../src/iface_gre.c        \
 	../src/iface_gre.h        \
 	../src/provision.c        \
