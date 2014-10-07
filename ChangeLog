@@ -1,0 +1,160 @@
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	Adding support for create dynamic firewall L2 rules (ebtables)
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	fixing double entrance of some libraries.
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	Adjustments with debian package.
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Change the 'struct tunnel_context' to using hashtable
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fix bug with vlan_id in gre packet
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Change return of function provision_exist(), provision_add()
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Removing some unused debug informations
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	extract src/dst/vlan from client over gre packet.
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Moving getopt() to softgred_config.c
+
+2014-10-06  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fixing validation for option -a vlan@bridge
+
+2014-10-04  Jorge Pereira  <jpereiran@gmail.com>
+
+	developing parser
+
+2014-10-02  Jorge Pereira  <jpereiran@gmail.com>
+
+	update README.md
+
+2014-10-02  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve DEBUG options, for support levels of debugs. (e.g: -d (debug dummy), -dd (debug devel), -ddd (debug insane)
+
+2014-10-02  Jorge Pereira  <jpereiran@gmail.com>
+
+	Updating the TODO list in pt_BR (sorry)
+
+2014-10-02  Jorge Pereira  <jpereiran@gmail.com>
+
+	Changing default gre-interface name.
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Update README.md
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve the gitigore
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Added target debian-package, build-changelog
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fix missing parameter in formatstring.
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fix some problems with generation of debian package.
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve the validation of option -a (vlan@bridge)
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fixing detail with -d (debug) option.
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fixing the functino provision_delall()
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	Renaming the function payload_handler_packet()
+
+2014-09-30  Jorge Pereira  <jpereiran@gmail.com>
+
+	brief description
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Adding support for debian package.
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve the check of all parameters.
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Adding for catch SIGUSR1 for unprovision all interfaces.
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improving the log system
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve the help showed in -h/--help
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Removing tabspaces, just for organize.
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	Removing unused dependencies
+
+2014-09-29  Jorge Pereira  <jpereiran@gmail.com>
+
+	fixing warning message about missing header net/if.h (used by if_nametoindex())
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Removed unnecessary dependency
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Added support for attach new tunnels for vlan_id@bridgeN
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fixing the wrong verification by self network.
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fix - always that create, set interface to UP.
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Added automatic support for create gre-interfaces by demand.
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	Showing the name of gre-interface that was provisioned
+
+2014-09-25  Jorge Pereira  <jpereiran@gmail.com>
+
+	First Commit
+

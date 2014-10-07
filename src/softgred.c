@@ -80,21 +80,21 @@ main (int argc,
     struct softgred_config *cfg = softgred_config_get();
     pid_t pid, sid;
 
-    if (argc < 4)
+    if (argc < 2)
     {
         softgred_print_usage(argv);
         exit(EXIT_SUCCESS);
     }
+
+    /* prepare.. */
+    setlocale(LC_CTYPE, "");
+    umask(0037);
 
     if (!softgred_config_load_cli(argc, argv))
     {
         fprintf(stderr, "%s: Invalid options!\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-
-    /* prepare.. */
-    setlocale(LC_CTYPE, "");
-    umask(0037);
 
     /* sorry, only root is welcome ... */
     if (getuid() != 0)

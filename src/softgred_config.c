@@ -121,28 +121,26 @@ softgred_config_load_cli(int argc,
                 break;
             case 'i': /* --iface */
                 if (!softgred_config_load_iface(optarg, cfg))
-                    return 1;
+                    return 0;
                 break;
             case 'a': /* --attach */
                 if (!softgred_config_load_attach(optarg, cfg))
-                    return 1;
+                    return 0;
                 break;
             case 'h': /* --help */
                 softgred_print_usage(argv);
-                goto left;
+                exit(EXIT_SUCCESS);
             case 'd': /* --debug */
                 cfg->debug_mode += 1;
                 break;
             case 'v': /* --version */
                 softgred_print_version();
-                goto left;
+                exit(EXIT_SUCCESS);
             default:
                 softgred_print_usage(argv);
-                goto left;
+                exit(EXIT_SUCCESS);
         }
     }
-
-left:
 
     return 1;
 }

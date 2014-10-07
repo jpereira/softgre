@@ -130,7 +130,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     size_t pkt_len = ntohs(ip->ip_len);
     if (pkt_len < sizeof(struct ip)) // check to see we have a packet of valid length
     {
-        printf("wrong lenght, may truncated ip %ld?\n", pkt_len);
+        D_CRIT("wrong lenght, may truncated ip %ld?\n", pkt_len);
         return;
     }
 
@@ -146,7 +146,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         return;
 
     // dump/debug message
-    if (cfg->debug_mode == L_DEBUG3)
+    if (cfg->debug_packet)
     {
         printf("\n");
         printf("####################################################\n");
@@ -178,21 +178,21 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         ether_type = htons(pkt_vlan[1]); // update ether type
     }
 
-    if (cfg->debug_mode == L_DEBUG3)
+    if (cfg->debug_packet)
     {
-        printf(" @GRE (%#04x) pad=%d vlan_id=%d\n", ether_type, pad, vlan_id);
+        printf(" @GRE ether_type(%#04x) pad=%d vlan_id=%d\n", ether_type, pad, vlan_id);
     }
 
     if (ether_type != ETHERTYPE_VLAN && ether_type != ETHERTYPE_IP)
     {
-        D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
-        //return;
+        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
+        return;
     }
 
     struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
     //size_t pktgre_len = ntohs(ip_gre->ip_len);
 
-    if (cfg->debug_mode == L_DEBUG3)
+    if (cfg->debug_packet)
     {
 	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, ether_ntoa(&ether_gre->ether_shost));
 	    printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, ether_ntoa(&ether_gre->ether_dhost));
@@ -200,22 +200,20 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         //helper_print_payload(pktgre, pktgre_len);
     }
 
+    struct ether_addr *ether_src = (struct ether_addr *)ether_gre->ether_shost;
+    char *smac = ether_ntoa(ether_src);
+ 
     // if exist, get out!
     tun = provision_has_tunnel(&ip->ip_src);
     if (tun)
     {
-        struct ether_addr *ether = (struct ether_addr *)ether_gre->ether_shost;
-        char *smac = ether_ntoa(ether);
-        
-        D_DEBUG3("The client %s is already attached in %s\n", inet_ntoa(tun->ip_remote), tun->ifgre);
-        
-        if (provision_tunnel_has_mac(tun, ether) == true)
+        if (provision_tunnel_has_mac(tun, ether_src) == true)
         {
-            D_DEBUG3("the mac %s is already allowed\n", smac);
+            //D_DEBUG3("the mac %s is already allowed over %s@%s\n", smac, inet_ntoa(tun->ip_remote), tun->ifgre);
             return;
         }
 
-        if (provision_tunnel_allow_mac(tun, ether) != true)
+        if (provision_tunnel_allow_mac(tun, ether_src) != true)
         {
             D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", smac);
             return;
@@ -231,6 +229,12 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     if (!tun)
     {
         D_CRIT("Problems with provision_add()\n");
+        return;
+    }
+
+    if (provision_tunnel_allow_mac(tun, ether_src) != true)
+    {
+        D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", smac);
         return;
     }
 

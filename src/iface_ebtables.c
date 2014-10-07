@@ -44,10 +44,12 @@ iface_ebtables_allow (const struct ether_addr *addr)
 
     D_DEBUG3("allowing mac %s\n", mac);
 
-    sprintf(cmd, "ebtables -I FORWARD 1 -d %s -s Unicast -j ACCEPT\n", mac);
+    //sprintf(cmd, "ebtables -I FORWARD 1 -d %s -s Unicast -j ACCEPT\n", mac);
+    sprintf(cmd, "ebtables -I FORWARD 1 -d %s -j ACCEPT\n", mac);
     system(cmd);
 
-    sprintf(cmd, "ebtables -I FORWARD 1 -s %s -d Broadcast -j ACCEPT\n", mac);
+    //sprintf(cmd, "ebtables -I FORWARD 1 -s %s -d Broadcast -j ACCEPT\n", mac);
+    sprintf(cmd, "ebtables -I FORWARD 1 -s %s -j ACCEPT\n", mac);
     system(cmd);
 
     return 0;

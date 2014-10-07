@@ -6,6 +6,9 @@ GIT_REVISION := master
 
 build-package: build-changelog debian-package
 
+GIT_REVISION = "$(shell git log | head -1 | awk '{print $2}')"
+PACKAGE_VERSION = $(PACKAGE_VERSION)-$(GIT_REVISION)
+
 build-changelog:
 	if git --git-dir=$(top_srcdir)/.git --work-tree=$(top_srcdir) \
 	log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' $(GIT_REVISION) | \
