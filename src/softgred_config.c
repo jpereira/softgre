@@ -32,6 +32,7 @@ softgred_config_get()
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .debug_mode    = 0,
+        .debug_packet  = false,
         .bridge = {
             { NULL, 0 },
         },
@@ -69,8 +70,10 @@ softgred_config_init()
             fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
             return error;
         }
-        printf("hash_create: cfg->table=%#x\n", cfg->table);
     }
+
+    if (getenv("SOFTGRED_DEBUG_PACKET"))
+        cfg->debug_packet = true;
 
     return 0;
 }
@@ -117,11 +120,11 @@ softgred_config_load_cli(int argc,
                 cfg->tunnel_prefix = optarg;
                 break;
             case 'i': /* --iface */
-                if (softgred_config_load_iface(optarg, cfg) != EXIT_SUCCESS)
+                if (!softgred_config_load_iface(optarg, cfg))
                     return 1;
                 break;
             case 'a': /* --attach */
-                if (softgred_config_load_attach(optarg, cfg) != EXIT_SUCCESS)
+                if (!softgred_config_load_attach(optarg, cfg))
                     return 1;
                 break;
             case 'h': /* --help */
@@ -141,7 +144,7 @@ softgred_config_load_cli(int argc,
 
 left:
 
-    return 0;
+    return 1;
 }
 
 int
@@ -184,7 +187,7 @@ softgred_config_load_iface(const char *ifname,
         return 0;
     }
 
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 int

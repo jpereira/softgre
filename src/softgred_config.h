@@ -39,6 +39,7 @@ struct softgred_config {
     const char *ifname;        /* --iface */
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint8_t debug_mode;        /* --debug */
+    bool debug_packet;         /* getenv("SOFTGRED_DEBUG_PACKET") */
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
     struct tunnel_context_priv priv;
