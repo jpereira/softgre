@@ -7,8 +7,9 @@ Homepage: https://github.com/jpereira/softgre
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/pkg-softgre.git
 #Vcs-Git: git://git.debian.org/git/collab-maint/pkg-softgre.git
 Standards-Version: 0.0.1
-Build-Depends: libpcap-dev,
+Build-Depends: libpcap0.8-dev,
                iproute-dev,
+               libdhash-dev,
                linux-libc-dev,
                debhelper (>= 8)
 

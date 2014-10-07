@@ -1,2 +1,2 @@
-shlibs:Depends=libc6 (>= 2.3), libpcap0.8 (>= 0.9.8)
+shlibs:Depends=libc6 (>= 2.3), libdhash1, libpcap0.8 (>= 0.9.8)
 misc:Depends=
