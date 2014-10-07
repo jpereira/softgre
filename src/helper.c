@@ -121,16 +121,3 @@ helper_print_payload (const u_char *payload,
     D_DEBUG3("</payload log>\n");
 }
 
-const char *
-helper_macether2tostr(u_int8_t *ether)
-{
-    static char buf[18+1];
-    u_int8_t *ptr = ether;
-
-    memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf)-1, "%02x:%02x:%02x:%02x:%02x:%02x", 
-                    ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
-
-    return (const char *)buf;
-}
-

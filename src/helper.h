@@ -26,8 +26,5 @@ helper_print_hex2ascii (const u_char *payload,
                         size_t len,
                         int offset);
 
-const char *
-helper_macether2tostr(u_int8_t *ether);
-
 #endif /*HELPER_H_*/
 
