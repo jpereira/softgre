@@ -60,7 +60,7 @@ void provision_delall();
 bool provision_tunnel_has_mac(const struct tunnel_context *tun,
                               const struct ether_addr *ether_shost);
 
-bool provision_tunnel_allow_mac (struct tunnel_context *tun,
+bool provision_tunnel_allow_mac (const struct tunnel_context *tun,
                                  const struct ether_addr *ether_shost);
 
 

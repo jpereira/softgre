@@ -151,8 +151,8 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         printf("\n");
         printf("####################################################\n");
         printf("## Packet TCP (complete)\n");
-	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip->ip_src), ip->ip_src, ether_ntoa(ether->ether_shost));
-    	printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip->ip_dst), ip->ip_dst, ether_ntoa(ether->ether_dhost));
+	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip->ip_src), ether_ntoa((const struct ether_addr *)ether->ether_shost));
+    	printf("   ->    To: %s (%s)\n", inet_ntoa(ip->ip_dst), ether_ntoa((const struct ether_addr *)ether->ether_dhost));
         //helper_print_payload(pkt, pkt_len);
     }
 
@@ -171,7 +171,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (ether_type == ETHERTYPE_VLAN)
     {
-        uint16_t *pkt_vlan = (struct vlan_tag *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
+        uint16_t *pkt_vlan = (struct uint16_t *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
         pad = 4;
 
         vlan_id = htons(pkt_vlan[0] & 0xfff0);
@@ -180,7 +180,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (cfg->debug_packet)
     {
-        printf(" @GRE ether_type(%#04x) pad=%d vlan_id=%d\n", ether_type, pad, vlan_id);
+        printf(" @GRE ether_type(%#04x) pad=%ld vlan_id=%d\n", ether_type, pad, vlan_id);
     }
 
     if (ether_type != ETHERTYPE_VLAN && ether_type != ETHERTYPE_IP)
@@ -194,13 +194,13 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (cfg->debug_packet)
     {
-	    printf("   <-  From: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_src), ip_gre->ip_src, ether_ntoa(&ether_gre->ether_shost));
-	    printf("   ->    To: %s (%#08x)/%s\n", inet_ntoa(ip_gre->ip_dst), ip_gre->ip_dst, ether_ntoa(&ether_gre->ether_dhost));
+	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip_gre->ip_src), ether_ntoa((const struct ether_addr *)ether_gre->ether_shost));
+	    printf("   ->    To: %s (%s)\n", inet_ntoa(ip_gre->ip_dst), ether_ntoa((const struct ether_addr *)ether_gre->ether_dhost));
         //printf(" @helper_print_payload(pktgre=%#08x, pktgre_len=%ld)\n", pktgre, pktgre_len);
         //helper_print_payload(pktgre, pktgre_len);
     }
 
-    struct ether_addr *ether_src = (struct ether_addr *)ether_gre->ether_shost;
+    const struct ether_addr *ether_src = (const struct ether_addr *)ether_gre->ether_shost;
     char *smac = ether_ntoa(ether_src);
  
     // if exist, get out!

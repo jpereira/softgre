@@ -16,7 +16,6 @@
 
 #include "general.h"
 
-
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN            1518
 

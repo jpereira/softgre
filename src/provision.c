@@ -129,7 +129,7 @@ provision_add(const struct in_addr *ip_remote)
     hash_entry_t *entry = tunnel_context_new(ip_remote, pos, new_ifgre);
     if ((error = hash_enter(cfg->table, &entry->key, &entry->value)) != HASH_SUCCESS)
     {
-        fprintf(stderr, "cannot add to table \"%#08x\" (%s)\n", entry->key.ul, hash_error_string(error));
+        fprintf(stderr, "cannot add to table \"%lu\" (%s)\n", entry->key.ul, hash_error_string(error));
         return NULL;
     }
 
@@ -201,13 +201,12 @@ provision_tunnel_has_mac(const struct tunnel_context *tun,
 }
 
 bool
-provision_tunnel_allow_mac(struct tunnel_context *tun,
+provision_tunnel_allow_mac(const struct tunnel_context *tun,
                            const struct ether_addr *ether_shost)
 {
-    uint16_t pos = tun->ether_last;
+    uint16_t *pos = (uint16_t *)&tun->ether_last;
 
-    memcpy(&tun->ether[pos].shost, ether_shost, sizeof(struct ether_addr));
-    tun->ether_last++;
+    memcpy((void *)&tun->ether[*pos++].shost, ether_shost, sizeof(struct ether_addr));
 
     iface_ebtables_allow(ether_shost);
 
