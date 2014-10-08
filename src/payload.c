@@ -171,7 +171,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     if (ether_type == ETHERTYPE_VLAN)
     {
-        uint16_t *pkt_vlan = (struct uint16_t *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
+        uint16_t *pkt_vlan = (uint16_t *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
         pad = 4;
 
         vlan_id = htons(pkt_vlan[0] & 0xfff0);
@@ -201,25 +201,31 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     }
 
     const struct ether_addr *ether_src = (const struct ether_addr *)ether_gre->ether_shost;
-    char *smac = ether_ntoa(ether_src);
+    const char *src_mac = ether_ntoa(ether_src);
  
+    if (!src_mac)
+    {
+        D_DEBUG3("invalid mac!\n");
+        return;
+    }
+
     // if exist, get out!
     tun = provision_has_tunnel(&ip->ip_src);
     if (tun)
     {
-        if (provision_tunnel_has_mac(tun, ether_src) == true)
+        if (provision_tunnel_has_mac(tun, src_mac) == true)
         {
             //D_DEBUG3("the mac %s is already allowed over %s@%s\n", smac, inet_ntoa(tun->ip_remote), tun->ifgre);
             return;
         }
 
-        if (provision_tunnel_allow_mac(tun, ether_src) != true)
+        if (provision_tunnel_allow_mac(tun, src_mac) != true)
         {
-            D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", smac);
+            D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", src_mac);
             return;
         }
 
-        D_DEBUG3("the mac address '%s' was allowed\n", smac);
+        D_DEBUG3("the mac address '%s' was allowed\n", src_mac);
 
         return;
     }
@@ -232,9 +238,9 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         return;
     }
 
-    if (provision_tunnel_allow_mac(tun, ether_src) != true)
+    if (provision_tunnel_allow_mac(tun, src_mac) != true)
     {
-        D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", smac);
+        D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", src_mac);
         return;
     }
 
@@ -243,4 +249,3 @@ payload_handler_packet_cb (u_char *UNUSED(args),
 
     return;
 }
-

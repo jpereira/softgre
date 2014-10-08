@@ -84,7 +84,7 @@ provision_add(const struct in_addr *ip_remote)
     char new_ifgre[SOFTGRED_MAX_IFACE+1];
     size_t size_new_ifgre;
     int ret;
-    int pos = p->last_slot;
+    int pos = p->tunnel_pos;
     int i = 0;
 
     assert (ip_remote != NULL);
@@ -133,7 +133,7 @@ provision_add(const struct in_addr *ip_remote)
         return NULL;
     }
 
-    p->last_slot += 1;
+    p->tunnel_pos += 1;
     return entry->value.ptr;
 }
 
@@ -175,7 +175,7 @@ provision_delall()
             D_WARNING("Problems with iface_gre_del('%s'), continue...\n", tun->ifgre);
         }
 
-        p->last_slot -= 1;
+        p->tunnel_pos -= 1;
         free(tun);
     }
     free(iter);
@@ -183,17 +183,17 @@ provision_delall()
 
 bool
 provision_tunnel_has_mac(const struct tunnel_context *tun,
-                         const struct ether_addr *ether_shost)
+                         const char *src_mac)
 {
     int i = 0;
 
     assert (tun != NULL);
-    assert (ether_shost != NULL);
+    assert (src_mac != NULL);
 
-    for (; i < PROVISION_MAX_SRC; i++)
+    for (; i < PROVISION_MAX_CLIENTS; i++)
     {
         //D_DEBUG3("Checking mac=%s == %s\n", ether_ntoa(&tun->ether[i].shost), ether_ntoa(ether_shost));
-        if (!memcmp(&tun->ether[i].shost, ether_shost, sizeof(struct ether_addr)))
+        if (!strncmp(tun->filter[i].src_mac, src_mac, strnlen(src_mac, PROVISION_MAC_SIZE)))
             return true;
     }
 
@@ -202,13 +202,26 @@ provision_tunnel_has_mac(const struct tunnel_context *tun,
 
 bool
 provision_tunnel_allow_mac(const struct tunnel_context *tun,
-                           const struct ether_addr *ether_shost)
+                           const char *src_mac)
 {
-    uint16_t *pos = (uint16_t *)&tun->ether_last;
+    uint16_t *pos = (uint16_t *)&tun->filter_pos;
+    struct tunnel_filter *filter = (struct tunnel_filter *)&tun->filter[*pos];
 
-    memcpy((void *)&tun->ether[*pos++].shost, ether_shost, sizeof(struct ether_addr));
+    assert(tun != NULL);
+    assert(src_mac != NULL);
 
-    iface_ebtables_allow(ether_shost);
+    if ((tun->filter_pos + 1) > PROVISION_MAX_CLIENTS)
+    {
+        D_CRIT("The maximum (%ld) slots was reached\n", PROVISION_MAX_CLIENTS);
+        return false;
+    }
+
+    // saving rules
+    *pos += 1;
+    strncpy(filter->src_mac, src_mac, strnlen(src_mac, PROVISION_MAC_SIZE));
+
+    // apply
+    iface_ebtables_set ("ACCEPT", "FORWARD", tun->ifgre, src_mac);
 
     return true;
 }

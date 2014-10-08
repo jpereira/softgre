@@ -14,11 +14,24 @@
 #ifndef IFACE_EBTABLES_H_
 #define IFACE_EBTABLES_H_
 
+#ifndef EBTABLES_BIN
+#   define EBTABLES_BIN "/sbin/ebtables"
+#endif /*EBTABLES_BIN*/
+
 #include "general.h"
+
+/**
+ * ebtables  is an application program used to set up and maintain the tables of rules (inside the
+ * Linux kernel) that inspect Ethernet frames.  It is analogous to the iptables application, but less
+ * complicated, due to the fact that the Ethernet protocol is much simpler than the IP protocol.
+ */
 
 int iface_ebtables_init ();
 
-int iface_ebtables_allow (const struct ether_addr *addr);
+int iface_ebtables_set (const char *target,
+                        const char *chain,
+                        const char *in_face,
+                        const char *src_mac);
 
 int iface_ebtables_end ();
 

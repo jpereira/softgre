@@ -1,5 +1,21 @@
 2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
 
+	Removing warning messages
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	Replace function -helper_macether2tostr() by ether_ntoa()
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	Fixing ebtables rule.
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
+	Added option for debug tcp packet. e.g: export SOFTGRED_DEBUG_PACKET=y
+
+2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
+
 	Adding support for create dynamic firewall L2 rules (ebtables)
 
 2014-10-07  Jorge Pereira  <jpereiran@gmail.com>

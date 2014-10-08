@@ -29,25 +29,33 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PROVISION_MAX_SLOTS 1024
-#define PROVISION_MAX_SRC   512
+#define PROVISION_MAX_SLOTS     4096        // maximum gre interfaces
+#define PROVISION_MAX_CLIENTS   1024        // maximum clients conected
+#define PROVISION_MAC_SIZE      (17+1)      // e.g 78:2b:cb:bd:33:18\n
 
 struct provision_data {
-    int last_slot;
+    int tunnel_pos;
 };
 
 struct provision_data *provision_data_get();
+
+struct tunnel_filter {
+    const char *in_face;
+    const char *out_face;
+    char src_mac[PROVISION_MAC_SIZE];
+};
 
 struct tunnel_context {
     struct in_addr ip_remote;
     char ifgre[SOFTGRED_MAX_IFACE+1];
     uint16_t id;
-
-    struct {
-        struct ether_addr shost;
-    } ether[PROVISION_MAX_SRC];
-    uint16_t ether_last;
+    struct tunnel_filter filter[PROVISION_MAX_CLIENTS];
+    uint16_t filter_pos;
 };
+
+hash_entry_t *tunnel_context_new (const struct in_addr *ip_remote,
+                                  uint16_t id,
+                                  const char *new_ifgre);
 
 struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote);
 
@@ -58,11 +66,10 @@ int provision_del(const struct in_addr *ip_remote);
 void provision_delall();
 
 bool provision_tunnel_has_mac(const struct tunnel_context *tun,
-                              const struct ether_addr *ether_shost);
+                              const char *src_mac);
 
 bool provision_tunnel_allow_mac (const struct tunnel_context *tun,
-                                 const struct ether_addr *ether_shost);
-
+                                 const char *src_mac);
 
 #endif /*PROVISION_H_*/
 

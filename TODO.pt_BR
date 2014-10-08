@@ -1,47 +1,46 @@
-Futuro do SoftGREd
+                                Futuro do SoftGREd
 
-* Alterar o esquema de salvamento das interfaces para utilizar uma hashtable, assim teremos
+* (FEITO) Alterar o esquema de salvamento das interfaces para utilizar uma hashtable, assim teremos
   mais performance e flexibilidade durante acesso dos dados. (utilizar a libdhash)
-
-* thread responsavel por salvar o contexto das interfaces (RX/TX), e desativar todas as interfaces
-  que estiverem a X tempo sem uso.
-
-* Sistema de deteccao de problemas e depuracao utilizando backtrace()
-
-* Criar um socket file em /tmp/softgred.sock, como sendo interface para acessar todos os dados
-  das interfaces tanto via web quanto a um futuro utilitario cli. ex: softgrecli
-
-* Adicionar capacidade de salvar o pid em /var/run/softgred.pid, essencial para script de /etc/init.d
-
-* reescrever componente bridge removendo uso do system()
-
 * (FEITO) escrever pacote debian
 
 * (FEITO) criar script inicializacao
 
+* (FEITO) validar os parametros de bridge (tamanho do nome da interface) e vlan (apenas entre 1 e 4096)
+
+* (FEITO) Adicionar capacidade de bloquear todo trafego em L2, e liberando apenas atraves de regras no netfilter relacionando o cliente x broadcast. (utilizar a API do ebtables)
+
+* Adicionar parametro para limitar o numero de interfaces.
+
+* Adicionar capacidade de salvar o pid em /var/run/softgred.pid, essencial para script de /etc/init.d
+
+* Adicionar exibicao da hora nos prints de debug. corrigir os leveis de exibição dos logs (-d, -dd e -ddd)
+
+* Sistema de deteccao de problemas e depuracao utilizando backtrace()
+
+* Melhorar as mensagens de erro e utilizacoes da flag debug_mode
+
+* thread responsavel por salvar o contexto das interfaces (RX/TX), e desativar todas as interfaces
+  que estiverem a X tempo sem uso.
+
+* reescrever componente bridge removendo uso do system()
+
 * Adicionar suporte a configuracao via /etc/softgred.conf, utilizar a libconfig-dev
+
+* Ajustar o nome do processo, escrevendo em argv[0]
+
+* Ajustar o Makefile/configure.ac para uma melhor verificacao das dependencias.
+
+* Adicionar opcao --force, capaz de criar todas as bridges de "destino no attach" quando as mesmas nao existir.
+
+* Criar um socket file em /tmp/softgred.sock, como sendo interface para acessar todos os dados
+  das interfaces tanto via web quanto a um futuro utilitario cli. ex: softgrecli
+
+* Criar um utilitario via linha de comando, capaz de interagir com o softgred. (necessario /tmp/softgred.sock)
+
+* Criar um arquivo de man (man softgred)
 
 * Criar pagina na wiki do github, com explicacao dos cenarios de uso. documentar no geral.
 
 * Interface web escrita em PHP, capaz de listar/remover/exibir-status de todas as interfaces GRE.
-
-* (FEITO) validar os parametros de bridge (tamanho do nome da interface) e vlan (apenas entre 1 e 4096)
-
-* Ajustar o nome do processo, escrevendo em argv[0]
-
-* Criar um utilitario via linha de comando, capaz de interagir com o softgred. (necessario /tmp/softgred.sock)
-
-* Ajustar o Makefile/configure.ac para uma melhor verificacao das dependencias.
-
-* Adicionar parametro para limitar o numero de interfaces.
-
-* Melhorar as mensagens de erro e utilizacoes da flag debug_mode
-
-* Criar um arquivo de man (man softgred)
-
-* Adicionar exibicao da hora nos prints de debug.
-
-* Adicionar capacidade de bloquear todo trafego em L2, e liberando apenas atraves de regras no netfilter relacionando o cliente x broadcast. (utilizar a API do ebtables)
-
-* Adicionar opcao --force, capaz de criar todas as bridges de "destino no attach" quando as mesmas nao existir.
 

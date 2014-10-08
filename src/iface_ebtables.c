@@ -21,10 +21,10 @@ iface_ebtables_run (const char *chain)
 {
     char cmd[512];
 
-    sprintf(cmd, "ebtables -F\n");
+    sprintf(cmd, EBTABLES_BIN" -F\n");
     system(cmd);
 
-    sprintf(cmd, "ebtables -P FORWARD %s\n", chain);
+    sprintf(cmd, EBTABLES_BIN" -P FORWARD \"%s\"\n", chain);
     system(cmd);
 }
 
@@ -37,19 +37,20 @@ iface_ebtables_init()
 }
 
 int
-iface_ebtables_allow (const struct ether_addr *addr)
+iface_ebtables_set (const char *target,
+                    const char *chain,
+                    const char *in_face,
+                    const char *src_mac)
 {
-    char *mac = ether_ntoa(addr);
     char cmd[512];
 
-    D_DEBUG3("allowing mac %s\n", mac);
+    D_DEBUG3("talking to Kernel '%s' the '%s' over '%s' by src-mac://%s to anywhere\n", 
+                                                                    target, chain, in_face, src_mac);
 
-    //sprintf(cmd, "ebtables -I FORWARD 1 -d %s -s Unicast -j ACCEPT\n", mac);
-    sprintf(cmd, "ebtables -I FORWARD 1 -d %s -j ACCEPT\n", mac);
+    sprintf(cmd, EBTABLES_BIN" -I \"%s\" 1 -d \"%s\" -j \"%s\"\n", chain, src_mac, target);
     system(cmd);
 
-    //sprintf(cmd, "ebtables -I FORWARD 1 -s %s -d Broadcast -j ACCEPT\n", mac);
-    sprintf(cmd, "ebtables -I FORWARD 1 -s %s -j ACCEPT\n", mac);
+    sprintf(cmd, EBTABLES_BIN" -I \"%s\" 1 -s \"%s\" -j \"%s\"\n", chain, src_mac, target);
     system(cmd);
 
     return 0;
@@ -62,3 +63,4 @@ iface_ebtables_end ()
 
     return 0;
 }
+
