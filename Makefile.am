@@ -2,16 +2,15 @@ MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = bin
 
-GIT_REVISION := master
+GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
+GIT_COMMIT := $(shell git log --no-color | sed '1!d; s/.* //g')
+DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_COMMIT)
 
 build-package: build-changelog debian-package
 
-GIT_REVISION = "$(shell git log | head -1 | awk '{print $2}')"
-PACKAGE_VERSION = $(PACKAGE_VERSION)-$(GIT_REVISION)
-
 build-changelog:
 	if git --git-dir=$(top_srcdir)/.git --work-tree=$(top_srcdir) \
-	log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' $(GIT_REVISION) | \
+	log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' $(GIT_BRANCH) | \
 	$(SED)	-e '/^[12]...-[01].-[0123].  [^<>]*  <[^<>]*>$$/,/^$$/ b' \
 	  		-e '/[^	 ]/,/^[	 ]*$$/ !d' \
 		    -e 's/^[	 ]*/	/' \
@@ -21,7 +20,7 @@ build-changelog:
 
 debian-package:
 	rm -f debian/changelog
-	dch -v $(PACKAGE_VERSION) --package softgred --create
+	dch -v "$(DEBIAN_PKG_VERSION)" --package softgred --create
 	debuild -us -uc -B
 
 

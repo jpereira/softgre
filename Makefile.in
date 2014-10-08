@@ -51,8 +51,8 @@ POST_UNINSTALL = :
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
-	$(top_srcdir)/configure COPYING INSTALL compile depcomp \
-	install-sh missing
+	$(top_srcdir)/configure COPYING ChangeLog INSTALL compile \
+	depcomp install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -221,6 +221,8 @@ top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
 SUBDIRS = bin
 GIT_REVISION := master
+GIT_CURRENT_COMMIT = $(shell git log --no-color | sed '1!d; s/.* //g')
+DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_CURRENT_COMMIT)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -736,7 +738,7 @@ build-changelog:
 
 debian-package:
 	rm -f debian/changelog
-	dch -v $(PACKAGE_VERSION) --package softgred --create
+	dch -v $(DEBIAN_PKG_VERSION) --package softgred --create
 	debuild -us -uc -B
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
