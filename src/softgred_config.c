@@ -22,13 +22,6 @@
 #include "helper.h"
 #include "log.h"
 
-void
-softgred_config_set(struct softgred_config *cfg)
-{
-    struct softgred_config *obj = softgred_config_get ();
-    memcpy(obj, cfg, sizeof(struct softgred_config));
-}
-
 struct softgred_config *
 softgred_config_get()
 {
@@ -38,7 +31,10 @@ softgred_config_get()
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .debug_mode    = 0,
-        .debug_packet  = false,
+        .debug = {
+            .packet = false,
+            .cmd = false,
+        },
         .bridge = {
             { NULL, 0 },
         },
@@ -52,34 +48,20 @@ softgred_config_get()
     return &singleton;
 }
 
-void
-delete_callback(hash_entry_t *entry,
-                hash_destroy_enum type,
-                void *pvt)
-{
-    fprintf(stderr, "Calling delete_callback()\n");
-
-    if (entry->value.type == HASH_VALUE_PTR)
-        free(entry->value.ptr);
-}
-
 int
 softgred_config_init()
 {
     struct softgred_config *cfg = softgred_config_get();
     int error;
 
-    if (!cfg->table)
+    if ((error = hash_create(0, &cfg->table, NULL,  NULL)) != HASH_SUCCESS)
     {
-        error = hash_create(0, &cfg->table, delete_callback,  NULL);
-        if (error != HASH_SUCCESS) {
-            fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
-            return error;
-        }
+        fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
+        return error;
     }
 
-    if (getenv("SOFTGRED_DEBUG_PACKET"))
-        cfg->debug_packet = true;
+    /* check and enable options */
+    softgred_config_load_envs(false);
 
     return 0;
 }
@@ -87,14 +69,36 @@ softgred_config_init()
 int
 softgred_config_end()
 {
-#if 0
     struct softgred_config *cfg = softgred_config_get();
 
     /* Free the table */
-    printf("hash_destroy: cfg->table=%#x\n", cfg->table);
     hash_destroy(cfg->table);
-#endif
+
     return 0;
+}
+
+void
+softgred_config_load_envs(bool enable_all)
+{
+    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config_debug_env debug_envs[] = {
+        { "SOFTGRED_DEBUG_PACKET", &cfg->debug.packet },
+        { "SOFTGRED_DEBUG_CMD",    &cfg->debug.cmd    }
+    };
+    size_t i = 0;
+
+    /* check and enable options */
+    for (i=0; i < ARRAY_SIZE(debug_envs); i++)
+    {
+        struct softgred_config_debug_env *env = &debug_envs[i];
+
+        if (enable_all)
+            *env->flag = true;
+        else
+            *env->flag = getenv(env->var);
+
+        D_DEBUG3("Checking variable %s (%s)\n", env->var, print_bool(*env->flag));
+    }
 }
 
 int

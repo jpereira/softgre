@@ -39,22 +39,29 @@ struct tunnel_context_priv {
     struct sockaddr_in ifname_saddr;
 };
 
+struct softgred_config_debug_env {
+    const char *var;
+    bool *flag;
+};
+
 struct softgred_config {
     bool is_foreground;        /* --foreground */
     const char *ifname;        /* --iface */
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint8_t debug_mode;        /* --debug */
-    bool debug_packet;         /* getenv("SOFTGRED_DEBUG_PACKET") */
+
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
+
+    struct {
+        bool packet;         /* getenv("SOFTGRED_DEBUG_PACKET") */
+        bool cmd;            /* getenv("SOFTGRED_DEBUG_CMD") */
+    } debug;
+
     struct tunnel_context_priv priv;
-
     struct rtnl_handle rth;
-
     hash_table_t *table;
 };
-
-void softgred_config_set (struct softgred_config *config);
 
 struct softgred_config *softgred_config_get();
 
@@ -62,12 +69,10 @@ int softgred_config_init();
 
 int softgred_config_end();
 
+void softgred_config_load_envs(bool enable_all);
+
 int softgred_config_load_cli(int argc, 
                              char *argv[]);
-
-void softgred_print_version();
-
-void softgred_print_usage(char *argv[]);
 
 int softgred_config_load_iface(const char *ifname,
                                struct softgred_config *cfg);
@@ -75,7 +80,9 @@ int softgred_config_load_iface(const char *ifname,
 int softgred_config_load_attach(const char *arg,
                                 struct softgred_config *cfg);
 
-void softgred_savepidfile();
+void softgred_print_version();
+
+void softgred_print_usage(char *argv[]);
 
 #endif /*SOFTGRED_CONFIG_H_*/
 
