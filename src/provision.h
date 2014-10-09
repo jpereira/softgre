@@ -62,7 +62,8 @@ hash_entry_t *tunnel_context_new (const struct in_addr *ip_remote,
                                   uint16_t id,
                                   const char *new_ifgre);
 
-struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote);
+struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote,
+                                            hash_value_t *out_entry);
 
 struct tunnel_context *provision_add(const struct in_addr *ip_remote);
 

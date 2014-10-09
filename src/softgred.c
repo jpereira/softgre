@@ -33,47 +33,82 @@ softgred_sig_handler(int signo)
     switch(signo)
     {
         case SIGINT:
-        case SIGTERM:
-            fprintf(stderr, "Ooops! received %s, cleaning & leaving...\n", strsignal(signo));
-            
+        case SIGTERM: {
+            D_INFO("Ooops! received %s, cleaning & leaving...\n", strsignal(signo));
+
             softgred_end();
             exit(EXIT_FAILURE);
-            break;
+        }
+        break;
 
-        case SIGUSR1:
-        case SIGUSR2:
+        case SIGUSR1: {
             D_INFO("Received SIGUSR1, unprovision all!\n");
+
             /* unprovisione all interfaces */
             provision_delall();
-            break;
+        }
+        break;
+
+        case SIGUSR2: {
+            struct softgred_config *cfg = softgred_config_get();
+            hash_statistics_t st;
+
+            D_INFO("Received SIGUSR2, show statistics!\n");
+
+            if (hash_get_statistics(cfg->table, &st) < 0)
+            {
+                D_CRIT("Problems with hash_get_statistics()\n");
+                return;
+            }
+
+            D_INFO("Statistics for table (%p) hash:{ accesses=%ld, collisions=%ld }, table:{ expansions=%ld, contractions=%ld }\n",
+                        cfg->table, st.hash_accesses, st.hash_collisions, st.table_expansions, st.table_contractions);
+        }
+        break;
     }
 }
 
 int
 softgred_init()
 {
-    log_init();
+    D_DEBUG1("Initializing...\n");
 
-    softgred_config_init();
+    /* registering signals */
+    signal(SIGINT, softgred_sig_handler);
+    signal(SIGTERM, softgred_sig_handler);
+    signal(SIGUSR1, softgred_sig_handler);
+    signal(SIGUSR2, softgred_sig_handler);
 
-    iface_ebtables_init();
+    if (softgred_config_init() < 0)
+        return -1;
 
-    if (!payload_loop_init())
+    if (iface_ebtables_init() < 0)
+        return -1;
+
+    if (payload_loop_init() != 0)
+    {
+        D_CRIT("Problems with payload_loop_init()\n");
         softgred_end ();
+        return -1;
+    }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 void
 softgred_end()
 {
+    D_DEBUG1("Finalizing...\n");
+
     payload_loop_end ();
 
     /* unprovisione all interfaces */
     provision_delall();
 
-    //iface_ebtables_end();
+    /* reset firewall rules */
+    iface_ebtables_end();
 
+    /* release config */
     softgred_config_end();
 
     /* syslog */
@@ -85,17 +120,12 @@ main (int argc,
       char *argv[])
 {
     struct softgred_config *cfg = softgred_config_get();
-    pid_t pid, sid;
 
     if (argc < 2)
     {
         softgred_print_usage(argv);
         exit(EXIT_SUCCESS);
     }
-
-    /* prepare.. */
-    setlocale(LC_CTYPE, "");
-    umask(0122);
 
     if (!softgred_config_load_cli(argc, argv))
     {
@@ -110,11 +140,17 @@ main (int argc,
         exit(EXIT_FAILURE);
     }
 
+    /* prepare.. */
+    setlocale(LC_CTYPE, "");
+    umask(0122);
+
+    /* starting log */
+    log_init();
+
     /* Check debug level */
     if (cfg->debug_mode > 0)
     {
-        D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n",
-                                            PACKAGE_VERSION, __TIME__, __DATE__);
+        D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n", PACKAGE_VERSION, __TIME__, __DATE__);
 
         if (cfg->debug_mode > DEBUG_MAX_LEVEL)
         {
@@ -125,46 +161,42 @@ main (int argc,
         fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->debug_mode);
     }
 
-    /* registering signals */
-    signal(SIGINT, softgred_sig_handler);
-    signal(SIGTERM, softgred_sig_handler);
-    signal(SIGUSR1, softgred_sig_handler);
-    signal(SIGUSR2, softgred_sig_handler);
+    /* foreground || background */
+    if (!cfg->is_foreground)
+    {
+        pid_t child;
+
+        if ((child = fork()) < 0)
+        {
+            fprintf(stderr, "fork(): error, failed fork! [%s]\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
+        if (child > 0)
+        {
+            D_INFO("[pid=%d] Daemon SoftGREd was launched in background with success!\n", child);
+            exit(EXIT_SUCCESS);
+        }
+
+        if (setsid() < 0)
+        {
+            D_CRIT("setsid(): returned error [%s]\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
+        signal(SIGCHLD,SIG_IGN);
+        signal(SIGHUP, SIG_IGN);
+    }
+
+    if (chdir("/") < 0)
+    {
+        D_CRIT("chdir() returned error\n");
+        exit(EXIT_FAILURE);
+    }
 
     D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
         cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
     );
-
-    if (payload_loop_init () != EXIT_SUCCESS)
-    {
-        D_CRIT("Problems with payload_check(%s), exiting...\n", cfg->ifname);
-        exit(EXIT_FAILURE);
-    }
-
-    /* foreground || background */
-    if (!cfg->is_foreground)
-    {
-        pid = fork();
-        if (pid < 0)
-            exit(EXIT_FAILURE);
-        if (pid > 0)
-            exit(EXIT_SUCCESS);
-
-        sid = setsid();
-        if (sid < 0)
-        {
-            D_CRIT("setsid() returned error\n");
-            exit(EXIT_FAILURE);
-        }
-
-        char *directory = "/";
-
-        if ((chdir(directory)) < 0)
-        {
-            D_CRIT("chdir() returned error\n");
-            exit(EXIT_FAILURE);
-        }
-    }
 
     /* pre-run */
     softgred_init();
@@ -176,9 +208,8 @@ main (int argc,
     /* cleanup */
     softgred_end ();
 
-    D_DEBUG1("Capture complete.\n");
-    D_DEBUG1("exiting\n");
+    D_DEBUG1("Capture complete, exiting.\n");
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 

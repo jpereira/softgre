@@ -27,8 +27,8 @@
 inline struct payload_config *
 payload_config_get()
 {
-    static struct payload_config obj;
-    return &obj;
+    static struct payload_config ref;
+    return &ref;
 }
 
 int
@@ -40,13 +40,28 @@ payload_loop_init ()
     assert (cfg->ifname != NULL);
 
     /* get network number and mask associated with capture device */
-    if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) == -1)
+    if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) != 0)
     {
-        D_WARNING("Couldn't get netmask for device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
-        return EXIT_FAILURE;
+        D_WARNING("pcap_lookupnet(): Couldn't get netmask for device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
+        return -1;
     }
 
-    return EXIT_SUCCESS;
+    return 0;
+}
+
+void
+payload_loop_end ()
+{
+    struct payload_config *pl_cfg = payload_config_get();
+
+    /* pcap */  
+    if (pl_cfg->handle)
+    {
+        pcap_breakloop(pl_cfg->handle);
+        pcap_close(pl_cfg->handle);
+    }
+
+    pcap_freecode(&pl_cfg->fp);
 }
 
 int
@@ -61,28 +76,28 @@ payload_loop_run()
     if (pl_cfg->handle == NULL)
     {
         D_CRIT("Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* make sure we're capturing on an Ethernet device [2] */
     if (pcap_datalink (pl_cfg->handle) != DLT_EN10MB)
     {
         D_CRIT("%s is not an Ethernet\n", cfg->ifname);
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* compile the filter expression */
     if (pcap_compile (pl_cfg->handle, &pl_cfg->fp, filter_exp, 0, pl_cfg->net) == -1)
     {
         D_CRIT("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(pl_cfg->handle));
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* apply the compiled filter */
     if (pcap_setfilter (pl_cfg->handle, &pl_cfg->fp) == -1)
     {
         D_CRIT("Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(pl_cfg->handle));
-        return EXIT_FAILURE;
+        return -1;
     }
 
     /* now we can set our callback function */
@@ -91,22 +106,7 @@ payload_loop_run()
        D_WARNING("Something happens with pcap_loop(), err='%s'\n", pcap_geterr(pl_cfg->handle));
     }
 
-    return 1;
-}
-
-void
-payload_loop_end ()
-{
-    struct payload_config *pl_cfg = payload_config_get();
-
-    /* pcap */
-    pcap_freecode(&pl_cfg->fp);
-    
-    if (pl_cfg->handle)
-    {
-        pcap_breakloop(pl_cfg->handle);
-        pcap_close(pl_cfg->handle);
-    }
+    return 0;
 }
 
 // TODO: please, refactor this as soon as possible!
@@ -150,7 +150,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         return;
 
     // dump/debug message
-    if (cfg->debug_packet)
+    if (cfg->debug.packet)
     {
         printf("\n");
         printf("####################################################\n");
@@ -169,7 +169,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     ether_type = ntohs (ether_gre->ether_type); 
     if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_VLAN)
     {
-        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
+        //D_DEBUG4("The packet (%#04x) is unsupported!\n", ether_type);
         return;
     }
 
@@ -182,7 +182,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         ether_type = htons(pkt_vlan[1]); // update ether type
     }
 
-    if (cfg->debug_packet)
+    if (cfg->debug.packet)
     {
         printf(" @GRE ether_type(%#04x) pad=%ld vlan_id=%d\n", ether_type, pad, vlan_id);
     }
@@ -196,7 +196,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     register struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
     //size_t pktgre_len = ntohs(ip_gre->ip_len);
 
-    if (cfg->debug_packet)
+    if (cfg->debug.packet)
     {
 	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip_gre->ip_src), ether_ntoa((const struct ether_addr *)ether_gre->ether_shost));
 	    printf("   ->    To: %s (%s)\n", inet_ntoa(ip_gre->ip_dst), ether_ntoa((const struct ether_addr *)ether_gre->ether_dhost));
@@ -208,12 +208,11 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     register const char *src_mac = ether_ntoa(ether_src);
     if (!src_mac)
     {
-        D_DEBUG3("invalid mac!\n");
+        D_CRIT("invalid mac address!\n");
         return;
     }
 
-    // if exist, get out!
-    tun = provision_has_tunnel(&ip->ip_src);
+    tun = provision_has_tunnel(&ip->ip_src, NULL);
     if (tun)
     {
         if (provision_tunnel_has_mac(tun, src_mac) == true)
@@ -228,7 +227,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
             return;
         }
 
-        D_DEBUG3("the mac address '%s' was allowed\n", src_mac);
+        D_DEBUG3("the mac address '%s' was allowed over %s\n", src_mac, tun->ifgre);
 
         return;
     }

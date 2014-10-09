@@ -28,28 +28,20 @@ iface_bridge_attach(const char *gre_iface,
                     const char *br_ifname,
                     uint16_t vlan_id)
 {
-    char cmd[256];
-
     D_DEBUG1("Add vlan '%d' in GRE '%s.%d' and attaching with bridge '%s'\n",
                 vlan_id, gre_iface, vlan_id, br_ifname
     );
 
     // cria bridge
-    snprintf(cmd, sizeof(cmd), "/sbin/brctl addbr \"%s\" 1> /dev/null 2>&1\n", br_ifname);
-    //printf("cmd='%s'\n", cmd);    
-    system(cmd);
+    helper_system(false, "%s addbr \"%s\"", SOFTGRED_CMD_BRCTL, br_ifname);
 
     // cria vlan
-    snprintf(cmd, sizeof(cmd), "/bin/ip link add link \"%s\" name \"%s.%d\" up type vlan id \"%d\" 1> /dev/null 2>&1\n",
-            gre_iface, gre_iface, vlan_id, vlan_id);
-    //printf("cmd='%s'\n", cmd);
-    system(cmd);
+    helper_system(false, "%s link add link \"%s\" name \"%s.%d\" up type vlan id \"%d\"",
+            SOFTGRED_CMD_IP, gre_iface, gre_iface, vlan_id, vlan_id);
 
     // attacha bridge
-    snprintf(cmd, sizeof(cmd), "/bin/ip link set dev \"%s.%d\" up master \"%s\" 1> /dev/null 2>&1\n",
-            gre_iface, vlan_id, br_ifname);
-    //printf("cmd='%s'\n", cmd);
-    system(cmd);
+    helper_system(false, "%s link set dev \"%s.%d\" up master \"%s\"",
+            SOFTGRED_CMD_IP, gre_iface, vlan_id, br_ifname);
 
     return 1;
 }

@@ -25,20 +25,14 @@
 void
 iface_ebtables_run (const char *chain)
 {
-    char cmd[512];
-
-    sprintf(cmd, EBTABLES_BIN" -F\n");
-    system(cmd);
-
-    sprintf(cmd, EBTABLES_BIN" -P FORWARD \"%s\"\n", chain);
-    system(cmd);
+    helper_system(false, "%s -F", EBTABLES_BIN);
+    helper_system(false, "%s -P FORWARD \"%s\"", EBTABLES_BIN, chain);
 }
 
 int
 iface_ebtables_init()
 {
     iface_ebtables_run("DROP");
-
     return 0;
 }
 
@@ -48,16 +42,11 @@ iface_ebtables_set (const char *target,
                     const char *in_face,
                     const char *src_mac)
 {
-    char cmd[512];
-
     D_DEBUG3("talking to Kernel '%s' the '%s' over '%s' by src-mac://%s to anywhere\n", 
                                                                     target, chain, in_face, src_mac);
 
-    sprintf(cmd, EBTABLES_BIN" -I \"%s\" 1 -d \"%s\" -j \"%s\"\n", chain, src_mac, target);
-    system(cmd);
-
-    sprintf(cmd, EBTABLES_BIN" -I \"%s\" 1 -s \"%s\" -j \"%s\"\n", chain, src_mac, target);
-    system(cmd);
+    helper_system(false, "%s -I \"%s\" 1 -d \"%s\" -j \"%s\"", EBTABLES_BIN, chain, src_mac, target);
+    helper_system(false, "%s -I \"%s\" 1 -s \"%s\" -j \"%s\"", EBTABLES_BIN, chain, src_mac, target);
 
     return 0;
 }

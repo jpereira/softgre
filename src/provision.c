@@ -63,22 +63,29 @@ tunnel_context_new (const struct in_addr *ip_remote,
 }
 
 struct tunnel_context *
-provision_has_tunnel(const struct in_addr *ip_remote)
+provision_has_tunnel(const struct in_addr *ip_remote,
+                     hash_value_t *out_entry)
 {
-    struct softgred_config *cfg = softgred_config_get();
-    int error = 0;
-    hash_key_t key = { .type = HASH_KEY_ULONG, .ul = ip_remote->s_addr };
     hash_value_t value;
+    struct softgred_config *cfg = softgred_config_get();
+    hash_key_t key = { .type = HASH_KEY_ULONG, .ul = ip_remote->s_addr };
+    int error = 0;
 
     assert (cfg->table != NULL);
     assert (ip_remote != NULL);
 
     if ((error = hash_lookup(cfg->table, &key, &value)) != HASH_SUCCESS)
     {
+        D_CRIT("Problems with hash_lookup(), error=%d(%s)\n", error, hash_error_string(error));
         return NULL;
     }
 
-    return (struct tunnel_context *)value.ptr;
+    assert (value.type != HASH_VALUE_ULONG);
+
+    if (out_entry != NULL)
+        *out_entry = value;
+
+    return value.ptr;
 }
 
 struct tunnel_context *
@@ -146,20 +153,20 @@ provision_add(const struct in_addr *ip_remote)
 int
 provision_del(const struct in_addr *ip_remote)
 {
-    struct tunnel_context *tun = provision_has_tunnel(ip_remote);
+    struct tunnel_context *tun = provision_has_tunnel(ip_remote, NULL);
 
     if (!tun)
-        return 0;
+        return -1;
 
     D_DEBUG1("unattach client %s from %s\n", inet_ntoa(tun->ip_remote), tun->ifgre);
 
     if (!iface_gre_del(tun->ifgre))
     {
         D_WARNING("Problems with iface_gre_del('%s'), continue...\n", tun->ifgre);
-        return 0;
+        return -1;
     }
 
-    return 1;
+    return 0;
 }
 
 void
@@ -169,6 +176,14 @@ provision_delall()
     struct softgred_config *cfg = softgred_config_get();
     struct hash_iter_context_t *iter;
     hash_entry_t *entry;
+
+    assert(cfg->table != NULL);
+
+    if (hash_count(cfg->table) < 1)
+    {
+        D_WARNING("Don't have any tunnel to unattached!\n");
+        return;
+    }
 
     iter = new_hash_iter_context(cfg->table);
     while ((entry = iter->next(iter)) != NULL)
@@ -183,6 +198,9 @@ provision_delall()
 
         p->tunnel_pos -= 1;
         free(tun);
+
+        // removing key
+        hash_delete(cfg->table, &entry->key);
     }
     free(iter);
 }

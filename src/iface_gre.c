@@ -101,14 +101,18 @@ iplink_modify(int cmd,
     req.i.ifi_family = preferred_family;
 
     size_t len = strlen(gre_iface) + 1;
-    if (len == 1)
+    if (len < 2)
     {
         D_DEBUG1("%s is not a valid device identifier\n");
+        return -1;
     }
+
     if (len > IFNAMSIZ)
     {
         D_DEBUG1("new gre iface '%s' is too long\n", gre_iface);
+        return -1;
     }
+
     addattr_l(&req.n, sizeof(req), IFLA_IFNAME, gre_iface, len+1);
 
     struct rtattr *linkinfo = NLMSG_TAIL(&req.n);

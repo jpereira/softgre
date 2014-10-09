@@ -33,6 +33,7 @@ log_class[] = {
     [L_DEBUG1]  = { "dbg",        LOG_DEBUG   },
     [L_DEBUG2]  = { "dbg-devel",  LOG_DEBUG   },
     [L_DEBUG3]  = { "dbg-crazy",  LOG_DEBUG   },
+    [L_DEBUG4]  = { "dbg-insane", LOG_DEBUG   },
     [L_CRIT]    = { "critical",   LOG_CRIT    },
     [L_WARNING] = { "warning",    LOG_WARNING },
     [L_NOTICE]  = { "notice",     LOG_NOTICE  },
@@ -74,6 +75,7 @@ log_message(int priority,
             fprintf(stderr, "** %s: %s", label, buf);
             break;
         case L_DEBUG3:
+        case L_DEBUG4:
             fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
             break;
         default:
@@ -81,7 +83,6 @@ log_message(int priority,
     }
 
     free(buf);
-
     va_end(vl);
 }
 

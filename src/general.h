@@ -100,5 +100,11 @@
 #   define FREE(x) do { free(x); x = NULL; } while (0);
 #endif 
 
+#define print_bool(x)   ((x == true) ? "true" : "false")
+
+// commands
+#define SOFTGRED_CMD_BRCTL  "/sbin/brctl"
+#define SOFTGRED_CMD_IP     "/bin/ip"
+
 #endif /*GENERAL_H_*/
 

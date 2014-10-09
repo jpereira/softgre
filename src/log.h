@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include "helper.h"
 
-#define DEBUG_MAX_LEVEL     3
+#define DEBUG_MAX_LEVEL     4
 
 #ifdef DEBUG
 #   define D(format, ...) fprintf(stderr, "%s:%d %s() - " format, __FILE__, __LINE__, __func__, ## __VA_ARGS__)
@@ -50,6 +50,7 @@ enum {
     L_DEBUG1,
     L_DEBUG2,
     L_DEBUG3,
+    L_DEBUG4,
     L_CRIT,
     L_WARNING,
     L_NOTICE,
@@ -60,6 +61,7 @@ enum {
 #define D_DEBUG1(fmt, ...)  log_message(L_DEBUG1,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_DEBUG2(fmt, ...)  log_message(L_DEBUG2,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_DEBUG3(fmt, ...)  log_message(L_DEBUG3,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
+#define D_DEBUG4(fmt, ...)  log_message(L_DEBUG4,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_CRIT(fmt, ...)    log_message(L_CRIT,    __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_WARNING(fmt, ...) log_message(L_WARNING, __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 #define D_NOTICE(fmt, ...)  log_message(L_NOTICE,  __func__, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
