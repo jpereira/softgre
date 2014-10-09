@@ -1,5 +1,9 @@
 2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
 
+	Added information of latest commit in -v option.
+
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
 	Added -x options, used to extreme debug. (e.g: show payload packets)
 
 2014-10-09  Jorge Pereira  <jpereiran@gmail.com>

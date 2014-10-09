@@ -139,15 +139,13 @@ helper_system(bool verbose,
     va_start(vl, format);
     vasprintf(&buf, format, vl);
 
-    D_DEBUG3("call system() with '%s'\n", buf);
+    if_debug_cmd(D_DEBUG3("call system() with '%s'\n", buf));
 
     asprintf(&cmd, "%s %s", buf, !verbose ? "1> /dev/null 2>&1" : "");
 
-    ret = system(cmd);
-
-    if (ret != 0)
+    if ((ret = system(cmd)) != 0)
     {
-        D_CRIT("Problems with system() runs '%s'\n", buf);
+        if_debug_cmd(D_CRIT("Problems with system() runs '%s'\n", buf));
     }
 
     free(cmd);

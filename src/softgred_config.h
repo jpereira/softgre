@@ -44,11 +44,18 @@ struct softgred_config_debug_env {
     bool *flag;
 };
 
+#define is_debug_cmd()     (softgred_config_get()->debug.cmd == true)
+#define if_debug_cmd(x)    if(is_debug_cmd()) { x; }
+
+#define is_debug_packet()  (softgred_config_get()->debug.packet == true)
+#define if_debug_packet(x) if(is_debug_packet()) { x; }
+
 struct softgred_config {
     bool is_foreground;        /* --foreground */
     const char *ifname;        /* --iface */
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint8_t debug_mode;        /* --debug */
+    bool debug_xmode;          /* --xdebug */
 
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
@@ -69,7 +76,7 @@ int softgred_config_init();
 
 int softgred_config_end();
 
-void softgred_config_load_envs(bool enable_all);
+void softgred_config_load_envs();
 
 int softgred_config_load_cli(int argc, 
                              char *argv[]);

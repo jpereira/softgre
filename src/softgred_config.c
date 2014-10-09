@@ -31,6 +31,7 @@ softgred_config_get()
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .debug_mode    = 0,
+        .debug_xmode   = false,
         .debug = {
             .packet = false,
             .cmd = false,
@@ -61,7 +62,7 @@ softgred_config_init()
     }
 
     /* check and enable options */
-    softgred_config_load_envs(false);
+    softgred_config_load_envs();
 
     return 0;
 }
@@ -78,7 +79,7 @@ softgred_config_end()
 }
 
 void
-softgred_config_load_envs(bool enable_all)
+softgred_config_load_envs()
 {
     struct softgred_config *cfg = softgred_config_get();
     struct softgred_config_debug_env debug_envs[] = {
@@ -92,7 +93,7 @@ softgred_config_load_envs(bool enable_all)
     {
         struct softgred_config_debug_env *env = &debug_envs[i];
 
-        if (enable_all)
+        if (cfg->debug_xmode)
             *env->flag = true;
         else
             *env->flag = getenv(env->var);
@@ -146,7 +147,7 @@ softgred_config_load_cli(int argc,
                 break;
             case 'x': /* --xdebug */
                 D_DEBUG0("Enabling all debug options, extreme mode!\n");
-                softgred_config_load_envs(true);
+                cfg->debug_xmode = true;
                 break;
             case 'v': /* --version */
                 softgred_print_version();
