@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 09 Out 2014 15:22:38 BRT
+# Last Change: Qui 09 Out 2014 19:12:51 BRT
 ####
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -23,8 +23,14 @@ dist-hook:
 endif
 
 # always update the ChangeLog
-all: dist-changelog
+all: version_header dist-changelog
 	
+version_header:
+	echo "/*Generated automatic ($(shell date))*/" > version.h
+	echo "#define CURRENT_COMMIT \"$(GIT_COMMIT)\"" >> version.h
+	echo "#define CURRENT_BRANCH \"$(GIT_BRANCH)\"" >> version.h
+	echo "#define CURRENT_TAG    \"$(GIT_TAG)\"" >> version.h
+
 build-package: dist-changelog debian-package
 
 dist-changelog:

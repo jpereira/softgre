@@ -29,6 +29,8 @@
 *.hex
 
 # trash
+ChangeLog
+version.h
 *~
 Makefile
 Makefile.in

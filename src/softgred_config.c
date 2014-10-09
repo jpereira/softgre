@@ -263,9 +263,14 @@ void
 softgred_print_version()
 {
     printf("%s By Jorge Pereira <jpereiran@gmail.com>\n", PACKAGE_STRING);
-    printf("Project Website: %s\n", PACKAGE_URL);
-    printf("Bugreport:       %s\n", PACKAGE_BUGREPORT);
     printf("Latest Build:    %s - %s\n", __TIME__, __DATE__);
+    printf("Project Website: %s\n", PACKAGE_URL);
+    printf("Bug Report:      %s\n", PACKAGE_BUGREPORT);
+#ifndef CURRENT_COMMIT
+#   warning "oops! the file 'version.h' wasn't created!"
+#else
+    printf("GIT Commit:      %s\n", CURRENT_COMMIT);
+#endif
 }
 
 void
