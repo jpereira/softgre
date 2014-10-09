@@ -92,6 +92,8 @@ softgred_init()
         return -1;
     }
 
+    helper_enable_highpriority();
+
     return 0;
 }
 

@@ -155,3 +155,20 @@ helper_system(bool verbose,
     return ret;
 }
 
+void
+helper_enable_highpriority()
+{
+    int which = PRIO_PROCESS;
+    id_t pid = getpid();
+    int ret = getpriority(which, pid);
+    int priority = -20;
+
+    D_DEBUG0("Current pid %d with priority is %d, change to %d\n", pid, ret, priority);
+
+    if (setpriority(which, pid, priority) < 0)
+    {
+        D_CRIT("Problems with setpriority(), errno=%d (%s)\n", errno, strerror(errno));
+    }
+
+}
+
