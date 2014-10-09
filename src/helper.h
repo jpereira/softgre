@@ -31,5 +31,9 @@ helper_print_hex2ascii (const u_char *payload,
                         size_t len,
                         int offset);
 
+int helper_system(bool verbose,
+                  const char *format, 
+                  ...);
+
 #endif /*HELPER_H_*/
 

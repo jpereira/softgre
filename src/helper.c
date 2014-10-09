@@ -126,3 +126,34 @@ helper_print_payload (const u_char *payload,
     D_DEBUG3("</payload log>\n");
 }
 
+int
+helper_system(bool verbose,
+              const char *format, 
+              ...)
+{
+    va_list vl;
+    char *buf = NULL;
+    char *cmd = NULL;
+    int ret;
+
+    va_start(vl, format);
+    vasprintf(&buf, format, vl);
+
+    D_DEBUG3("call system() with '%s'\n", buf);
+
+    asprintf(&cmd, "%s %s", buf, !verbose ? "1> /dev/null 2>&1" : "");
+
+    ret = system(cmd);
+
+    if (ret != 0)
+    {
+        D_CRIT("Problems with system() runs '%s'\n", buf);
+    }
+
+    free(cmd);
+    free(buf);
+    va_end(vl);
+
+    return ret;
+}
+
