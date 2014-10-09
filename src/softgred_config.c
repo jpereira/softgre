@@ -111,6 +111,7 @@ softgred_config_load_cli(int argc,
         { "tunnel-prefix", optional_argument, NULL, 'p'},
         { "attach",        required_argument, NULL, 'a'},
         { "debug",         optional_argument, NULL, 'd'},
+        { "xdebug",        optional_argument, NULL, 'x'},
         { "help",          no_argument,       NULL, 'h'},
         { "version",       no_argument,       NULL, 'v'},
         { NULL,            0,                 NULL,  0 }
@@ -119,7 +120,7 @@ softgred_config_load_cli(int argc,
     int opt;
 
     /* parsing arguments ... */
-    while ((opt = getopt_long(argc, argv, "fhvi:a:p:d", long_opts, NULL)) != EOF)
+    while ((opt = getopt_long(argc, argv, "fhvi:a:p:dx", long_opts, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -142,6 +143,10 @@ softgred_config_load_cli(int argc,
                 exit(EXIT_SUCCESS);
             case 'd': /* --debug */
                 cfg->debug_mode += 1;
+                break;
+            case 'x': /* --xdebug */
+                D_DEBUG0("Enabling all debug options, extreme mode!\n");
+                softgred_config_load_envs(true);
                 break;
             case 'v': /* --version */
                 softgred_print_version();
@@ -268,8 +273,8 @@ softgred_print_usage(char *argv[])
 {
     const char *arg0 = basename (argv[0]);
 
-    printf("Usage: %s [-fdvh] [ -i interface ] [ -p tun_prefix ] \n" \
-           "                [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
+    printf("Usage: %s [-fxdvh] [ -i interface ] [ -p tun_prefix ] \n" \
+           "                 [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
            " OPTIONS\n" \
            "\n" \
            "   -i, --iface          Network interface to listen GRE packets, e.g: -i eth0\n" \
@@ -278,6 +283,7 @@ softgred_print_usage(char *argv[])
            "   -f, --foreground     Run in the foreground\n"  \
            "   -h, --help           Display this help text\n" \
            "   -d, --debug          Enable debug mode. e.g: -dd (more debug), -ddd (crazy debug level)\n"      \
+           "   -x, --xdebug         Enable debug in 'extreme mode'. (enable all environments variables)\n"      \
            "   -v, --version        Display the %s version\n" \
            "\n" \
            " EXAMPLE\n" \

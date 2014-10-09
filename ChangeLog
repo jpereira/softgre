@@ -1,5 +1,21 @@
 2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
 
+	minor issues
+
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
+	Created debug settings by environment variable
+
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve and fixed some issues with build system and dependencies check
+
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
+	Changes system() by helper_system()
+
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
 	Removed unused file.
 
 2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
