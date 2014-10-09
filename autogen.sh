@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -e
 # Run this to generate all the initial makefiles, etc.
 
 srcdir=`dirname $0`
@@ -16,9 +16,10 @@ rm -rf autom4te.cache
 rm -f autoscan.log config.log config.status configure
 
 set -fx
-aclocal
 autoheader
+aclocal
 autoconf
+autoreconf -fvi
 automake --add-missing
 ./configure
 set +fx

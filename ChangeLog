@@ -1,3 +1,15 @@
+2014-10-09  Jorge Pereira  <jpereiran@gmail.com>
+
+	Adding -fstack-protector
+
+2014-10-08  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve the 'struct tunnel_filter'
+
+2014-10-08  Jorge Pereira  <jpereiran@gmail.com>
+
+	Improve debian package
+
 2014-10-07  Jorge Pereira  <jpereiran@gmail.com>
 
 	Removing warning messages

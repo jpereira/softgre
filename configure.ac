@@ -1,7 +1,9 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Tue 07 Oct 2014 02:42:13 AM EDT
+# Last Change: Qui 09 Out 2014 15:22:31 BRT
 ####
+
+AC_PREREQ([2.50])
 
 AC_INIT([SoftGRE],
         [0.1],
@@ -9,10 +11,17 @@ AC_INIT([SoftGRE],
         [softgre],
         [https://github.com/jpereira/softgre/])
 
+AC_CONFIG_SRCDIR([src])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE 
-AC_CONFIG_SRCDIR([src/softgred.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign])
+
+# check for programs
+AC_PROG_CC
+AM_PROG_CC_C_O
+AC_LANG(C)
+GCC_STACK_PROTECTOR
 
 # enable debug/devel mode
 AC_ARG_ENABLE(debug,
@@ -25,20 +34,24 @@ AC_ARG_ENABLE(devel,
               AC_DEFINE([DEVEL], [0], [devel mode off]),
               AC_DEFINE([DEVEL], [1], [devel mode on]))
 
-# check for programs
-AC_PROG_CC
-AM_PROG_CC_C_O
-
 # Checks for typedefs, structures, and compiler characteristics.
-AC_HEADER_STDBOOL
 AC_C_INLINE
 AC_C_BIGENDIAN
+AC_HEADER_STDBOOL
+AC_HEADER_STDC
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
 
 # checks for header files
 AC_CHECK_HEADERS([stdio.h stddef.h stdbool.h stdlib.h string.h ctype.h stdarg.h pthread.h])
 
 # network headers
 AC_CHECK_HEADERS([netinet/in.h sys/time.h fcntl.h unistd.h sys/socket.h ifaddrs.h])
+
+AC_SEARCH_LIBS([strerror],[cposix])
+AC_CHECK_FUNCS([gettimeofday])
 
 # checks for typedefs, structures, and compiler characteristics
 AC_TYPE_UINT8_T
@@ -60,43 +73,20 @@ PKG_PROG_PKG_CONFIG([0.16])
 AC_CHECK_LIB([pthread], [pthread_mutex_init], [], [
             echo "pthread library is missing. pthread is required for this program"
                         exit -1])
-# Check for getifaddrs
-AM_CONDITIONAL([SOFTGRE_HAVE_SELF_IFADDRS], [test "x$ac_cv_header_ifaddrs_h" != "xyes"])
 
-# RFC2553 introduce sockaddr_storage as ifa_addr member in ifaddrs structure
-# Not all distros follow this.
-AS_IF([test "x$ac_cv_header_ifaddrs_h" = "xyes"],
-  [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-    #include <net/if.h>
-    #include <ifaddrs.h>
-    ]], [[
-    struct ifaddrs *myaddrs;
-    getifaddrs (&myaddrs);
-    if (myaddrs->ifa_addr->ss_family == AF_INET) {
-    }
-    ]])],
-    [have_sockaddr_storage=yes],
-    [have_sockaddr_storage=no])],
-  [AS_IF([test "x$have_sockaddr_storage" = "xyes"],
-    [AC_DEFINE([RFC2553], [], [Define if RFC2553 is followed])])])
+# checking by dhash
+PKG_CHECK_MODULES(LIBDHASH, dhash)
+AC_SUBST(LIBDHASH_CFLAGS)
+AC_SUBST(LIBDHASH_LIBS)
 
-# TODO: Alterar para verificar com pkg-config
 # check for libpcap 
 AC_CHECK_LIB([pcap],[pcap_create])
 AC_CHECK_HEADERS([pcap/pcap.h])
 
-# check for libnetlink
-AC_CHECK_HEADERS([libnfnetlink/libnfnetlink.h])
-LIBNFNETLINK_LIBS='-lnetlink'
-AC_SUBST([LIBNFNETLINK_LIBS])
-
-# check for libdhash
-AC_CHECK_HEADERS([dhash.h])
-LIBDHASH_LIBS='-ldhash'
-AC_SUBST([LIBDHASH_LIBS])
-
-AC_SEARCH_LIBS([strerror],[cposix])
-AC_CHECK_FUNCS([gettimeofday])
+# check for libnetlink (iproute-dev)
+AC_CHECK_HEADERS([libnetlink.h])
+LIBNETLINK_LIBS='-lnetlink'
+AC_SUBST([LIBNETLINK_LIBS])
 
 # Makefiles
 AC_CONFIG_FILES([

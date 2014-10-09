@@ -14,6 +14,11 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
+# Author: Jorge Pereira <jpereiran@gmail.com>
+# Created: Mon Sep 22 23:14:38 EDT 2014
+# Last Change: Qui 09 Out 2014 15:22:38 BRT
+####
 VPATH = @srcdir@
 am__make_dryrun = \
   { \
@@ -51,10 +56,11 @@ POST_UNINSTALL = :
 subdir = .
 DIST_COMMON = $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
-	$(top_srcdir)/configure COPYING ChangeLog INSTALL compile \
-	depcomp install-sh missing
+	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL \
+	compile depcomp install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/gcc_stack_protect.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -136,6 +142,9 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
+CXX = @CXX@
+CXXDEPMODE = @CXXDEPMODE@
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -151,8 +160,9 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
+LIBDHASH_CFLAGS = @LIBDHASH_CFLAGS@
 LIBDHASH_LIBS = @LIBDHASH_LIBS@
-LIBNFNETLINK_LIBS = @LIBNFNETLINK_LIBS@
+LIBNETLINK_LIBS = @LIBNETLINK_LIBS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
@@ -181,6 +191,7 @@ abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
+ac_ct_CXX = @ac_ct_CXX@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -219,10 +230,20 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MAINTAINERCLEANFILES = Makefile.in
+AUTOMAKE_OPTIONS = subdir-objects
+ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
 SUBDIRS = bin
-GIT_REVISION := master
-GIT_CURRENT_COMMIT = $(shell git log --no-color | sed '1!d; s/.* //g')
-DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_CURRENT_COMMIT)
+GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
+GIT_COMMIT := $(shell git log --no-color | sed '1!d; s/.* //g')
+GIT_TAG := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)
+
+#DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_COMMIT)
+DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_TAG)
+DISTCLEANFILES = \
+	intltool-extract \
+	intltool-merge \
+	intltool-update 
+
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -469,6 +490,9 @@ distdir: $(DISTFILES)
 	      || exit 1; \
 	  fi; \
 	done
+	$(MAKE) $(AM_MAKEFLAGS) \
+	  top_distdir="$(top_distdir)" distdir="$(distdir)" \
+	  dist-hook
 	-test -n "$(am__skip_mode_fix)" \
 	|| find "$(distdir)" -type d ! -perm -755 \
 		-exec chmod u+rwx,go+rx {} \; -o \
@@ -630,6 +654,7 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -710,8 +735,8 @@ uninstall-am:
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am am--refresh check check-am clean clean-generic \
 	ctags ctags-recursive dist dist-all dist-bzip2 dist-gzip \
-	dist-lzip dist-lzma dist-shar dist-tarZ dist-xz dist-zip \
-	distcheck distclean distclean-generic distclean-hdr \
+	dist-hook dist-lzip dist-lzma dist-shar dist-tarZ dist-xz \
+	dist-zip distcheck distclean distclean-generic distclean-hdr \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
 	dvi-am html html-am info info-am install install-am \
 	install-data install-data-am install-dvi install-dvi-am \
@@ -724,11 +749,17 @@ uninstall-am:
 	uninstall uninstall-am
 
 
-build-package: build-changelog debian-package
+@MAINTAINER_MODE_TRUE@dist-hook: dist-changelog
+@MAINTAINER_MODE_FALSE@dist-hook:
 
-build-changelog:
+# always update the ChangeLog
+all: dist-changelog
+
+build-package: dist-changelog debian-package
+
+dist-changelog:
 	if git --git-dir=$(top_srcdir)/.git --work-tree=$(top_srcdir) \
-	log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' $(GIT_REVISION) | \
+	log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' $(GIT_BRANCH) | \
 	$(SED)	-e '/^[12]...-[01].-[0123].  [^<>]*  <[^<>]*>$$/,/^$$/ b' \
 	  		-e '/[^	 ]/,/^[	 ]*$$/ !d' \
 		    -e 's/^[	 ]*/	/' \
@@ -738,8 +769,10 @@ build-changelog:
 
 debian-package:
 	rm -f debian/changelog
-	dch -v $(DEBIAN_PKG_VERSION) --package softgred --create
+	dch -v "$(DEBIAN_PKG_VERSION)" --package softgred --create debian/changelog
 	debuild -us -uc -B
+
+.PHONY: dist-changelog
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

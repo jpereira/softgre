@@ -1,15 +1,21 @@
 /**
- * Copyright (C) 2014 Jorge Pereira <jpereiran@gmail.com>
+ *  This file is part of SoftGREd
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2
- * as published by the Free Software Foundation
+ *    SoftGREd is free software: you can redistribute it and/or modify it under the terms
+ *  of the GNU General Public License as published by the Free Software Foundation, either
+ *  version 3 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  SoftGREd is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ *  See the GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with SoftGREd.
+ *  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
+
 #define _GNU_SOURCE
 #include "general.h"
 #include "softgred.h"
@@ -35,6 +41,7 @@ softgred_sig_handler(int signo)
             break;
 
         case SIGUSR1:
+        case SIGUSR2:
             D_INFO("Received SIGUSR1, unprovision all!\n");
             /* unprovisione all interfaces */
             provision_delall();
@@ -88,7 +95,7 @@ main (int argc,
 
     /* prepare.. */
     setlocale(LC_CTYPE, "");
-    umask(0037);
+    umask(0122);
 
     if (!softgred_config_load_cli(argc, argv))
     {
@@ -103,7 +110,7 @@ main (int argc,
         exit(EXIT_FAILURE);
     }
 
-    // Check debug level
+    /* Check debug level */
     if (cfg->debug_mode > 0)
     {
         D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n",
@@ -117,6 +124,12 @@ main (int argc,
 
         fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->debug_mode);
     }
+
+    /* registering signals */
+    signal(SIGINT, softgred_sig_handler);
+    signal(SIGTERM, softgred_sig_handler);
+    signal(SIGUSR1, softgred_sig_handler);
+    signal(SIGUSR2, softgred_sig_handler);
 
     D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
         cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
@@ -152,11 +165,6 @@ main (int argc,
             exit(EXIT_FAILURE);
         }
     }
-
-    /* registering signals */
-    signal(SIGINT, softgred_sig_handler);
-    signal(SIGTERM, softgred_sig_handler);
-    signal(SIGUSR1, softgred_sig_handler);
 
     /* pre-run */
     softgred_init();

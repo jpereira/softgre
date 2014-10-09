@@ -1,17 +1,11 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 09 Out 2014 11:37:11 BRT
+# Last Change: Qui 09 Out 2014 15:22:56 BRT
 ####
 
 AM_CFLAGS = -W -Wall -fstack-protector
 
-if SOFTGRE_HAVE_SELF_IFADDRS
-SOFTGRE_IFADDRS_sources = \
-	src/helper/ifaddr/getifaddrs.c \
-	src/helper/ifaddr/ifaddrs.h
-endif
-
-bin_PROGRAMS = softgred
+sbin_PROGRAMS = softgred
 
 softgred_SOURCES =            \
 	$(SOFTGRE_IFADDR_sources) \
@@ -48,34 +42,6 @@ softgred_LDFLAGS = $(AM_LIBS)
 softgred_LDADD = $(AM_LIBS)         \
                  $(LIBPTHREAD_LIBS) \
                  $(LIBPCAP_LIBS)	\
-				 $(LIBNL_LIBS)		\
-				 $(LIBNFNETLINK_LIBS) \
+				 $(LIBNETLINK_LIBS) \
 				 $(LIBDHASH_LIBS)
-
-if MAINTAINER_MODE
-dist-hook: dist-changelog
-else
-dist-hook:
-endif
-
-dist-changelog:
-	$(AM_V_at)if git --git-dir=$(top_srcdir)/.git --work-tree=$(top_srcdir) \
-		log --no-merges --date=short --pretty='tformat:%cd  %an  <%ae>%n%n%s%n%n%b' master.. | \
-	 $(SED)	-e '/^[12]...-[01].-[0123].  [^<>]*  <[^<>]*>$$/,/^$$/ b' \
-		-e '/[^	 ]/,/^[	 ]*$$/ !d' \
-		-e 's/^[	 ]*/	/' \
-		-e 's/^[	 ]*$$//' >.ChangeLog.tmp; \
-	then mv -f .ChangeLog.tmp "$(top_distdir)/ChangeLog"; \
-	else rm -f .ChangeLog.tmp; exit 1; fi
-
-#dist_noinst_SCRIPTS = autogen.sh
-
-#CLEANFILES = 
-
-DISTCLEANFILES = \
-	intltool-extract \
-	intltool-merge \
-	intltool-update 
-
-.PHONY: dist-changelog
 
