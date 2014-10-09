@@ -31,10 +31,12 @@
 # trash
 *~
 Makefile
+Makefile.in
 aclocal.m4
 autom4te.cache/
 bin/.deps/
 bin/Makefile
+bin/Makefile.in
 bin/softgred
 build.sh
 changes
