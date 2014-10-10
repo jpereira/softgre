@@ -34,6 +34,24 @@ provision_data_get()
     return &ref;
 }
 
+void
+provision_stats()
+{
+    struct softgred_config *cfg = softgred_config_get();
+    hash_statistics_t st;
+
+    D_INFO("HashTable 'tunnel_context'(%p) quantity=%ld\n", cfg->table, hash_count(cfg->table));
+
+    // about tunnels
+    if (hash_get_statistics(cfg->table, &st) < 0)
+    {
+        D_CRIT("Problems with hash_get_statistics()\n");
+        return;
+    }
+    D_INFO("HashTable 'tunnel_context'(%p) stats: { accesses=%ld, collisions=%ld }, table:{ expansions=%ld, contractions=%ld }\n",
+                cfg->table, st.hash_accesses, st.hash_collisions, st.table_expansions, st.table_contractions);
+}
+
 hash_entry_t *
 tunnel_context_new (const struct in_addr *ip_remote,
                    uint16_t id,
@@ -66,8 +84,8 @@ struct tunnel_context *
 provision_has_tunnel(const struct in_addr *ip_remote,
                      hash_value_t *out_entry)
 {
-    hash_value_t value;
     struct softgred_config *cfg = softgred_config_get();
+    hash_value_t value;
     hash_key_t key = { .type = HASH_KEY_ULONG, .ul = ip_remote->s_addr };
     int error = 0;
 
@@ -85,8 +103,12 @@ provision_has_tunnel(const struct in_addr *ip_remote,
 
     assert (value.type != HASH_VALUE_ULONG);
 
+    helper_lock();
+
     if (out_entry != NULL)
         *out_entry = value;
+
+    helper_unlock();
 
     return value.ptr;
 }
@@ -188,6 +210,7 @@ provision_delall()
         return;
     }
 
+    helper_lock();
     iter = new_hash_iter_context(cfg->table);
     while ((entry = iter->next(iter)) != NULL)
     {
@@ -206,6 +229,7 @@ provision_delall()
         hash_delete(cfg->table, &entry->key);
     }
     free(iter);
+    helper_unlock();
 }
 
 bool
@@ -246,12 +270,14 @@ provision_tunnel_allow_mac(const struct tunnel_context *tun,
         return false;
     }
 
+    helper_lock();
     // saving rules
     *pos += 1;
     strncpy(filter->src_mac, src_mac, strnlen(src_mac, PROVISION_MAC_SIZE));
 
     // apply
     iface_ebtables_set ("ACCEPT", "FORWARD", tun->ifgre, src_mac);
+    helper_unlock();
 
     return true;
 }

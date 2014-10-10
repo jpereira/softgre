@@ -58,6 +58,8 @@ struct tunnel_context {
     uint16_t filter_pos;
 };
 
+void provision_stats();
+
 hash_entry_t *tunnel_context_new (const struct in_addr *ip_remote,
                                   uint16_t id,
                                   const char *new_ifgre);

@@ -21,11 +21,27 @@
 #include "softgred.h"
 #include "iface_ebtables.h"
 #include "softgred_config.h"
+#include "softgred_service.h"
 
 #include "log.h"
 #include "payload.h"
 #include "helper.h"
 #include "provision.h"
+
+void
+softgred_show_stats()
+{
+    D_INFO("SoftGREd Status\n");
+    D_INFO("<begin status>\n");
+
+    // hash table
+    provision_stats();
+
+    // about service
+    softgred_service_stats();
+
+    D_INFO("<end status>\n");
+}
 
 void
 softgred_sig_handler(int signo)
@@ -58,19 +74,9 @@ softgred_sig_handler(int signo)
         break;
 
         case SIGUSR2: {
-            struct softgred_config *cfg = softgred_config_get();
-            hash_statistics_t st;
-
             D_INFO("Received SIGUSR2, show statistics!\n");
-
-            if (hash_get_statistics(cfg->table, &st) < 0)
-            {
-                D_CRIT("Problems with hash_get_statistics()\n");
-                return;
-            }
-
-            D_INFO("Statistics for table (%p) hash:{ accesses=%ld, collisions=%ld }, table:{ expansions=%ld, contractions=%ld }\n",
-                        cfg->table, st.hash_accesses, st.hash_collisions, st.table_expansions, st.table_contractions);
+            
+            softgred_show_stats();
         }
         break;
     }
@@ -95,6 +101,9 @@ softgred_init()
     if (softgred_config_init() < 0)
         return -1;
 
+    if (softgred_service_init() < 0)
+        return -1;
+   
     if (iface_ebtables_init() < 0)
         return -1;
 
@@ -104,7 +113,7 @@ softgred_init()
         softgred_end ();
         return -1;
     }
-
+  
     return 0;
 }
 
@@ -120,6 +129,9 @@ softgred_end()
 
     /* reset firewall rules */
     iface_ebtables_end();
+
+    /* shutdown clients, finalize sockets */
+    softgred_service_end();
 
     /* release config */
     softgred_config_end();
@@ -215,13 +227,13 @@ main (int argc,
     softgred_init();
 
     /* busyloop */
-    D_DEBUG1("Entering main loop\n");
+    D_INFO("Entering main loop\n");
     payload_loop_run ();
 
     /* cleanup */
     softgred_end ();
 
-    D_DEBUG1("Capture complete, exiting.\n");
+    D_INFO("Capture complete, exiting.\n");
 
     return EXIT_SUCCESS;
 }
