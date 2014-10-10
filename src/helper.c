@@ -156,7 +156,7 @@ helper_system(bool verbose,
 }
 
 void
-helper_enable_highpriority()
+helper_enable_high_priority()
 {
     int which = PRIO_PROCESS;
     id_t pid = getpid();
@@ -170,5 +170,16 @@ helper_enable_highpriority()
         D_CRIT("Problems with setpriority(), errno=%d (%s)\n", errno, strerror(errno));
     }
 
+}
+
+void
+helper_enable_coredump()
+{
+    struct rlimit core_limit = {
+        .rlim_cur = RLIM_INFINITY,
+        .rlim_max = RLIM_INFINITY
+    };
+
+    setrlimit(RLIMIT_CORE, &core_limit);
 }
 

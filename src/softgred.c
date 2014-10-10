@@ -73,6 +73,10 @@ softgred_init()
 {
     D_DEBUG1("Initializing...\n");
 
+    helper_enable_coredump();
+
+    helper_enable_high_priority();
+
     /* registering signals */
     signal(SIGINT, softgred_sig_handler);
     signal(SIGTERM, softgred_sig_handler);
@@ -91,8 +95,6 @@ softgred_init()
         softgred_end ();
         return -1;
     }
-
-    helper_enable_highpriority();
 
     return 0;
 }

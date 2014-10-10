@@ -35,7 +35,9 @@ int helper_system(bool verbose,
                   const char *format, 
                   ...);
 
-void helper_enable_highpriority();
+void helper_enable_high_priority();
+
+void helper_enable_coredump();
 
 #endif /*HELPER_H_*/
 

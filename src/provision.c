@@ -73,6 +73,7 @@ provision_has_tunnel(const struct in_addr *ip_remote,
 
     assert (cfg->table != NULL);
     assert (ip_remote != NULL);
+    assert (cfg->table != NULL);
 
     if ((error = hash_lookup(cfg->table, &key, &value)) != HASH_SUCCESS)
     {
