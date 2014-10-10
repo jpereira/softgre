@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 10 Oct 2014 12:33:35 AM EDT
+# Last Change: Fri 10 Oct 2014 09:35:33 AM BRT
 ####
 
 AC_PREREQ([2.50])
@@ -22,6 +22,9 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_LANG(C)
 GCC_STACK_PROTECTOR
+
+# Cflags
+CFLAGS="$CFLAGS -fPIC -W -Wall -rdynamic"
 
 # enable debug/devel mode
 AC_ARG_ENABLE(debug,
