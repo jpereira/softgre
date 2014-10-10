@@ -150,7 +150,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         return;
 
     // dump/debug message
-    if (cfg->debug.packet)
+    if (is_debug(payload))
     {
         printf("\n");
         printf("####################################################\n");
@@ -182,7 +182,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         ether_type = htons(pkt_vlan[1]); // update ether type
     }
 
-    if (cfg->debug.packet)
+    if (is_debug(payload))
     {
         printf(" @GRE ether_type(%#04x) pad=%ld vlan_id=%d\n", ether_type, pad, vlan_id);
     }
@@ -196,7 +196,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     register struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
     //size_t pktgre_len = ntohs(ip_gre->ip_len);
 
-    if (cfg->debug.packet)
+    if (is_debug(payload))
     {
 	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip_gre->ip_src), ether_ntoa((const struct ether_addr *)ether_gre->ether_shost));
 	    printf("   ->    To: %s (%s)\n", inet_ntoa(ip_gre->ip_dst), ether_ntoa((const struct ether_addr *)ether_gre->ether_dhost));
@@ -215,19 +215,19 @@ payload_handler_packet_cb (u_char *UNUSED(args),
     tun = provision_has_tunnel(&ip->ip_src, NULL);
     if (tun)
     {
-        if (provision_tunnel_has_mac(tun, src_mac) == true)
+        if (provision_tunnel_has_mac(tun, src_mac))
         {
-            //D_DEBUG3("the mac %s is already allowed over %s@%s\n", smac, inet_ntoa(tun->ip_remote), tun->ifgre);
+            //D_DEBUG3("the mac %s is already allowed over %s@%s\n", src_mac, inet_ntoa(tun->ip_remote), tun->ifgre);
             return;
         }
 
-        if (provision_tunnel_allow_mac(tun, src_mac) != true)
+        if (!provision_tunnel_allow_mac(tun, src_mac))
         {
             D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", src_mac);
             return;
         }
 
-        D_DEBUG3("the mac address '%s' was allowed over %s\n", src_mac, tun->ifgre);
+        //D_DEBUG3("the mac address '%s' was allowed over %s\n", src_mac, tun->ifgre);
 
         return;
     }

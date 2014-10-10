@@ -219,8 +219,11 @@ provision_tunnel_has_mac(const struct tunnel_context *tun,
 
     for (; i < PROVISION_MAX_CLIENTS; i++)
     {
-        //D_DEBUG3("Checking mac=%s == %s\n", ether_ntoa(&tun->ether[i].shost), ether_ntoa(ether_shost));
-        if (!strncmp(tun->filter[i].src_mac, src_mac, strnlen(src_mac, PROVISION_MAC_SIZE)))
+        const char *cur = tun->filter[i].src_mac;
+
+        if_debug(provision, D_DEBUG3("Checking if (src_mac=['%s'] == cur['%s'])\n", src_mac, cur));
+
+        if (!strncmp(src_mac, cur, strnlen(cur, PROVISION_MAC_SIZE)))
             return true;
     }
 

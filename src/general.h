@@ -111,5 +111,15 @@
 #define SOFTGRED_CMD_BRCTL  "/sbin/brctl"
 #define SOFTGRED_CMD_IP     "/bin/ip"
 
+// version.h
+#ifndef CURRENT_COMMIT
+#   warning "oops! the file 'version.h' wasn't created!"
+#   define CURRENT_COMMIT "not defined"
+#endif
+#ifndef CURRENT_BRANCH
+#   warning "oops! the file 'version.h' wasn't created!"
+#   define CURRENT_BRANCH "not defined"
+#endif
+
 #endif /*GENERAL_H_*/
 

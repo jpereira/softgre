@@ -44,11 +44,8 @@ struct softgred_config_debug_env {
     bool *flag;
 };
 
-#define is_debug_cmd()     (softgred_config_get()->debug.cmd == true)
-#define if_debug_cmd(x)    if(is_debug_cmd()) { x; }
-
-#define is_debug_packet()  (softgred_config_get()->debug.packet == true)
-#define if_debug_packet(x) if(is_debug_packet()) { x; }
+#define is_debug(__peace)             (softgred_config_get()->debug_env.__peace == true)
+#define if_debug(__peace, __doit)     if(is_debug(__peace)) { __doit; }
 
 struct softgred_config {
     bool is_foreground;        /* --foreground */
@@ -61,9 +58,10 @@ struct softgred_config {
     uint8_t bridge_slot;
 
     struct {
-        bool packet;         /* getenv("SOFTGRED_DEBUG_PACKET") */
+        bool payload;        /* getenv("SOFTGRED_DEBUG_PAYLOAD") */
         bool cmd;            /* getenv("SOFTGRED_DEBUG_CMD") */
-    } debug;
+        bool provision;      /* getenv("SOFTGRED_DEBUG_PROVISION") */
+    } debug_env; /* set by softgred_config_load_envs() */
 
     struct tunnel_context_priv priv;
     struct rtnl_handle rth;

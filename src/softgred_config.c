@@ -32,9 +32,10 @@ softgred_config_get()
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .debug_mode    = 0,
         .debug_xmode   = false,
-        .debug = {
-            .packet = false,
-            .cmd = false,
+        .debug_env = {
+            .payload   = false,
+            .cmd       = false,
+            .provision = false,
         },
         .bridge = {
             { NULL, 0 },
@@ -83,8 +84,9 @@ softgred_config_load_envs()
 {
     struct softgred_config *cfg = softgred_config_get();
     struct softgred_config_debug_env debug_envs[] = {
-        { "SOFTGRED_DEBUG_PACKET", &cfg->debug.packet },
-        { "SOFTGRED_DEBUG_CMD",    &cfg->debug.cmd    }
+        { "SOFTGRED_DEBUG_PAYLOAD",   &(softgred_config_get())->debug_env.payload    },
+        { "SOFTGRED_DEBUG_CMD",       &(softgred_config_get())->debug_env.cmd        },
+        { "SOFTGRED_DEBUG_PROVISION", &(softgred_config_get())->debug_env.provision  }
     };
     size_t i = 0;
 
@@ -267,11 +269,8 @@ softgred_print_version()
     printf("Latest Build:    %s - %s\n", __TIME__, __DATE__);
     printf("Project Website: %s\n", PACKAGE_URL);
     printf("Bug Report:      %s\n", PACKAGE_BUGREPORT);
-#ifndef CURRENT_COMMIT
-#   warning "oops! the file 'version.h' wasn't created!"
-#else
+    printf("GIT Branch:      %s\n", CURRENT_BRANCH);
     printf("GIT Commit:      %s\n", CURRENT_COMMIT);
-#endif
 }
 
 void
