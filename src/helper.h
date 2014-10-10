@@ -39,5 +39,7 @@ void helper_enable_high_priority();
 
 void helper_enable_coredump();
 
+void helper_print_stacktrace();
+
 #endif /*HELPER_H_*/
 

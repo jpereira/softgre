@@ -183,3 +183,25 @@ helper_enable_coredump()
     setrlimit(RLIMIT_CORE, &core_limit);
 }
 
+void
+helper_print_stacktrace()
+{
+    void *array[10];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    D_DEBUG0("<begin>\n");
+
+    size = backtrace (array, 10);
+    strings = backtrace_symbols ((void *const *)array, size);
+
+    for (i = 0; i < size; i++)
+    {
+        fprintf(stderr, "  [%02d] %s\n", i, strings[i]);
+    }
+
+    free (strings);
+    D_DEBUG0("<end>\n");
+}
+

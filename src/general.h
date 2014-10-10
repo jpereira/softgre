@@ -38,6 +38,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <execinfo.h>
+
 #include <errno.h>
 #include <assert.h>
 

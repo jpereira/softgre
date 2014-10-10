@@ -32,6 +32,12 @@ softgred_sig_handler(int signo)
 {
     switch(signo)
     {
+        case SIGSEGV: {
+            helper_print_stacktrace();
+            exit(EXIT_FAILURE);
+        }
+        break;
+
         case SIGINT:
         case SIGTERM: {
             D_INFO("Ooops! received %s, cleaning & leaving...\n", strsignal(signo));
@@ -82,6 +88,7 @@ softgred_init()
     signal(SIGTERM, softgred_sig_handler);
     signal(SIGUSR1, softgred_sig_handler);
     signal(SIGUSR2, softgred_sig_handler);
+    signal(SIGSEGV, softgred_sig_handler);
 
     if (softgred_config_init() < 0)
         return -1;
