@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 09 Out 2014 19:12:51 BRT
+# Last Change: Thu 09 Oct 2014 11:58:22 PM EDT
 ####
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -13,8 +13,8 @@ GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
 GIT_COMMIT := $(shell git log --no-color | sed '1!d; s/.* //g')
 GIT_TAG    := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)
 
-#DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_COMMIT)
-DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_TAG)
+#DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_TAG)
+DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_COMMIT)
 
 if MAINTAINER_MODE
 dist-hook: dist-changelog

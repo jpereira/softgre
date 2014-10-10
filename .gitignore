@@ -3,6 +3,7 @@
 *.ko
 *.obj
 *.elf
+*.swp
 
 # Precompiled Headers
 *.gch
@@ -43,24 +44,21 @@ bin/softgred
 build.sh
 changes
 compile
-compile
 config.h
 config.h.in
 config.log
 config.status
 configure
-debian/softgred.substvars
-depcomp
 depcomp
 install-sh
-install-sh
-missing
 missing
 src/.deps
 src/.dirstamp
 stamp-h1
 tmp/
 
+debian/softgred.substvars
+debian/files
 debian/softgred/*
 debian/softgred*.debhelper
 debian/changelog
