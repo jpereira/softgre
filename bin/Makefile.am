@@ -1,9 +1,7 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 10 Oct 2014 12:32:33 AM EDT
+# Last Change: Fri 10 Oct 2014 01:01:40 AM EDT
 ####
-
-AM_CFLAGS = -W -Wall -rdynamic
 
 sbin_PROGRAMS = softgred
 
