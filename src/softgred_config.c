@@ -22,6 +22,18 @@
 #include "helper.h"
 #include "log.h"
 
+#include "version.h" /* Generated automatic */
+
+// version.h
+#ifndef CURRENT_COMMIT
+#   warning "oops! the file 'version.h' wasn't created!"
+#   define CURRENT_COMMIT "not defined"
+#endif
+#ifndef CURRENT_BRANCH
+#   warning "oops! the file 'version.h' wasn't created!"
+#   define CURRENT_BRANCH "not defined"
+#endif
+
 struct softgred_config *
 softgred_config_get()
 {
