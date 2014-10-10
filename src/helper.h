@@ -41,5 +41,9 @@ void helper_enable_coredump();
 
 void helper_print_stacktrace();
 
+void helper_lock();
+
+void helper_unlock();
+
 #endif /*HELPER_H_*/
 

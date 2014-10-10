@@ -205,3 +205,17 @@ helper_print_stacktrace()
     D_DEBUG0("<end>\n");
 }
 
+static pthread_mutex_t m;
+
+void
+helper_lock()
+{
+    pthread_mutex_lock(&m);
+}
+
+void
+helper_unlock()
+{
+    pthread_mutex_unlock(&m);
+}
+
