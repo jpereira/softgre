@@ -53,6 +53,7 @@ struct softgred_config {
     const char *tunnel_prefix; /* --tunnel-prefix */
     uint8_t debug_mode;        /* --debug */
     bool debug_xmode;          /* --xdebug */
+    bool print_time;           /* --print-time */
 
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;

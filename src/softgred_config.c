@@ -44,6 +44,7 @@ softgred_config_get()
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
         .debug_mode    = 0,
         .debug_xmode   = false,
+        .print_time    = false,
         .debug_env = {
             .payload   = false,
             .cmd       = false,
@@ -127,6 +128,7 @@ softgred_config_load_cli(int argc,
         { "attach",        required_argument, NULL, 'a'},
         { "debug",         optional_argument, NULL, 'd'},
         { "xdebug",        optional_argument, NULL, 'x'},
+        { "print-time",    no_argument,       NULL, 't'},
         { "help",          no_argument,       NULL, 'h'},
         { "version",       no_argument,       NULL, 'v'},
         { NULL,            0,                 NULL,  0 }
@@ -135,7 +137,7 @@ softgred_config_load_cli(int argc,
     int opt;
 
     /* parsing arguments ... */
-    while ((opt = getopt_long(argc, argv, "fhvi:a:p:dx", long_opts, NULL)) != EOF)
+    while ((opt = getopt_long(argc, argv, "fhvti:a:p:dx", long_opts, NULL)) != EOF)
     {
         switch (opt)
         {
@@ -162,6 +164,9 @@ softgred_config_load_cli(int argc,
             case 'x': /* --xdebug */
                 D_DEBUG0("Enabling all debug options, extreme mode!\n");
                 cfg->debug_xmode = true;
+                break;
+            case 't': /* --print-time */
+                cfg->print_time = true;
                 break;
             case 'v': /* --version */
                 softgred_print_version();
@@ -290,7 +295,7 @@ softgred_print_usage(char *argv[])
 {
     const char *arg0 = basename (argv[0]);
 
-    printf("Usage: %s [-fxdvh] [ -i interface ] [ -p tun_prefix ] \n" \
+    printf("Usage: %s [-t] [-fxdvh] [ -i interface ] [ -p tun_prefix ] \n" \
            "                 [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
            " OPTIONS\n" \
            "\n" \
@@ -301,6 +306,7 @@ softgred_print_usage(char *argv[])
            "   -h, --help           Display this help text\n" \
            "   -d, --debug          Enable debug mode. e.g: -dd (more debug), -ddd (crazy debug level)\n"      \
            "   -x, --xdebug         Enable debug in 'extreme mode'. (enable all environments variables)\n"      \
+           "   -t, --print-time     Show the current time in debug/messages.\n"      \
            "   -v, --version        Display the %s version\n" \
            "\n" \
            " EXAMPLE\n" \
