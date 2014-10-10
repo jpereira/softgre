@@ -33,6 +33,8 @@ softgred_sig_handler(int signo)
     switch(signo)
     {
         case SIGSEGV: {
+            D_INFO("Ooops! received SIGSEGV, show the stactrace!\n");
+
             helper_print_stacktrace();
             exit(EXIT_FAILURE);
         }

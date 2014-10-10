@@ -198,7 +198,7 @@ helper_print_stacktrace()
 
     for (i = 0; i < size; i++)
     {
-        fprintf(stderr, "  [%02d] %s\n", i, strings[i]);
+        fprintf(stderr, "  [%02ld] %s\n", i, strings[i]);
     }
 
     free (strings);

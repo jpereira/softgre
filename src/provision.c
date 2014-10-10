@@ -77,7 +77,9 @@ provision_has_tunnel(const struct in_addr *ip_remote,
 
     if ((error = hash_lookup(cfg->table, &key, &value)) != HASH_SUCCESS)
     {
-        D_CRIT("Problems with hash_lookup(), error=%d(%s)\n", error, hash_error_string(error));
+        if (error != HASH_ERROR_KEY_NOT_FOUND)
+            D_CRIT("Problems with hash_lookup(), error=%d(%s)\n", error, hash_error_string(error));
+
         return NULL;
     }
 
