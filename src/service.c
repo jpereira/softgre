@@ -19,13 +19,13 @@
 #define _GNU_SOURCE
 
 #include "general.h"
-#include "softgred_service.h"
+#include "service.h"
 #include "log.h"
 
-struct softgred_service *
-softgred_service_getref() 
+struct service *
+service_get_ref() 
 {
-    static struct softgred_service ref;
+    static struct service ref;
     return &ref;
 }
 
@@ -102,7 +102,7 @@ quote_run(struct connection *con,
  * here is the heart of SoftGREd/service
  */
 static void *
-softgred_service_thread_client(void *arg)
+thread_handler(void *arg)
 {
     struct connection *con = arg;
     const char *host = inet_ntoa(con->saddr.sin_addr);
@@ -127,7 +127,7 @@ softgred_service_thread_client(void *arg)
 }
 
 static void *
-softgred_service_thread_server(void *UNUSED(arg))
+thread_service(void *UNUSED(arg))
 {
     int sock_client = -1, sock_desc = -1;
     struct sockaddr_in s_server = { 0, };
@@ -175,7 +175,7 @@ softgred_service_thread_server(void *UNUSED(arg))
         D_DEBUG0("Connection accepted\n");
 
         conn = connection_new (sock_client, &s_client);
-        if (pthread_create(&tid, NULL, softgred_service_thread_client, conn) < 0)
+        if (pthread_create(&tid, NULL, thread_handler, conn) < 0)
         {
             D_CRIT("Problems with pthread_create(), leaving.\n");
             return NULL;
@@ -202,13 +202,13 @@ softgred_service_thread_server(void *UNUSED(arg))
 }
 
 int
-softgred_service_init()
+service_init()
 {
-    struct softgred_service *srv = softgred_service_getref();
+    struct service *srv = service_get_ref();
 
     D_DEBUG0("Initializing SoftGREd Service (socket-file://%s)\n", SOFTGRED_SERVICE_FILESOCK);
 
-    if (pthread_create(&srv->tid, NULL, softgred_service_thread_server, NULL) < 0)
+    if (pthread_create(&srv->tid, NULL, thread_service, NULL) < 0)
     {
         D_CRIT("Problems with pthread_create(), leaving.\n");
         return -1;
@@ -218,9 +218,9 @@ softgred_service_init()
 }
 
 int
-softgred_service_end()
+service_end()
 {
-    struct softgred_service *srv = softgred_service_getref();
+    struct service *srv = service_get_ref();
 
     D_DEBUG0("Unitializing SoftGREd Service\n");
 
@@ -236,7 +236,7 @@ softgred_service_end()
 }
 
 void
-softgred_service_stats()
+service_stats()
 {
     D_INFO("Show stats of SoftGREd/Service (socket-file://%s\n", SOFTGRED_SERVICE_FILESOCK);
 }

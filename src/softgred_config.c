@@ -35,10 +35,10 @@
 #endif
 
 struct softgred_config *
-softgred_config_get()
+softgred_config_get_ref()
 {
     /* below default settings */
-    static struct softgred_config singleton = {
+    static struct softgred_config ref = {
         .is_foreground = false,
         .ifname        = NULL,
         .tunnel_prefix = SOFTGRED_TUN_PREFIX,
@@ -60,13 +60,13 @@ softgred_config_get()
         }
     };
 
-    return &singleton;
+    return &ref;
 }
 
 int
 softgred_config_init()
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     int error;
 
     if ((error = hash_create(0, &cfg->table, NULL,  NULL)) != HASH_SUCCESS)
@@ -84,7 +84,7 @@ softgred_config_init()
 int
 softgred_config_end()
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
 
     /* Free the table */
     hash_destroy(cfg->table);
@@ -95,11 +95,11 @@ softgred_config_end()
 void
 softgred_config_load_envs()
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     struct softgred_config_debug_env debug_envs[] = {
-        { "SOFTGRED_DEBUG_PAYLOAD",   &(softgred_config_get())->debug_env.payload    },
-        { "SOFTGRED_DEBUG_CMD",       &(softgred_config_get())->debug_env.cmd        },
-        { "SOFTGRED_DEBUG_PROVISION", &(softgred_config_get())->debug_env.provision  }
+        { "SOFTGRED_DEBUG_PAYLOAD",   &(softgred_config_get_ref())->debug_env.payload    },
+        { "SOFTGRED_DEBUG_CMD",       &(softgred_config_get_ref())->debug_env.cmd        },
+        { "SOFTGRED_DEBUG_PROVISION", &(softgred_config_get_ref())->debug_env.provision  }
     };
     size_t i = 0;
 
@@ -133,7 +133,7 @@ softgred_config_load_cli(int argc,
         { "version",       no_argument,       NULL, 'v'},
         { NULL,            0,                 NULL,  0 }
     };
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     int opt;
 
     /* parsing arguments ... */

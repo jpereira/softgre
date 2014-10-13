@@ -61,7 +61,7 @@ log_message(int priority,
             ...)
 {
     va_list vl;
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     const char *label = &log_class[priority].label[0];
     const char *file = basename(filename);
     char *buf = NULL;

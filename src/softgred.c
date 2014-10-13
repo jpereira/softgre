@@ -21,7 +21,7 @@
 #include "softgred.h"
 #include "iface_ebtables.h"
 #include "softgred_config.h"
-#include "softgred_service.h"
+#include "service.h"
 
 #include "log.h"
 #include "payload.h"
@@ -38,7 +38,7 @@ softgred_show_stats()
     provision_stats();
 
     // about service
-    softgred_service_stats();
+    service_stats();
 
     D_INFO("<end status>\n");
 }
@@ -101,7 +101,7 @@ softgred_init()
     if (softgred_config_init() < 0)
         return -1;
 
-    if (softgred_service_init() < 0)
+    if (service_init() < 0)
         return -1;
    
     if (iface_ebtables_init() < 0)
@@ -131,7 +131,7 @@ softgred_end()
     iface_ebtables_end();
 
     /* shutdown clients, finalize sockets */
-    softgred_service_end();
+    service_end();
 
     /* release config */
     softgred_config_end();
@@ -144,7 +144,7 @@ int
 main (int argc,
       char *argv[])
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
 
     if (argc < 2)
     {

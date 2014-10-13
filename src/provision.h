@@ -42,7 +42,7 @@ struct provision_data {
     int tunnel_pos;
 };
 
-struct provision_data *provision_data_get();
+struct provision_data *provision_data_get_ref();
 
 struct tunnel_filter {
     const char *in_face;

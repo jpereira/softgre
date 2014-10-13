@@ -25,7 +25,7 @@
 #include "softgred_config.h"
 
 inline struct payload_config *
-payload_config_get()
+payload_config_get_ref()
 {
     static struct payload_config ref;
     return &ref;
@@ -34,8 +34,8 @@ payload_config_get()
 int
 payload_loop_init ()
 {
-    struct softgred_config *cfg = softgred_config_get();
-    struct payload_config *pl_cfg = payload_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct payload_config *pl_cfg = payload_config_get_ref();
 
     assert (cfg->ifname != NULL);
 
@@ -52,7 +52,7 @@ payload_loop_init ()
 void
 payload_loop_end ()
 {
-    struct payload_config *pl_cfg = payload_config_get();
+    struct payload_config *pl_cfg = payload_config_get_ref();
 
     /* pcap */  
     if (pl_cfg->handle)
@@ -67,8 +67,8 @@ payload_loop_end ()
 int
 payload_loop_run()
 {
-    struct softgred_config *cfg = softgred_config_get();
-    struct payload_config *pl_cfg = payload_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct payload_config *pl_cfg = payload_config_get_ref();
     char filter_exp[] = "proto gre";
 
     /* open capture device */
@@ -116,7 +116,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
                            const u_char *packet)
 {
     register const struct tunnel_context *tun;
-    register struct softgred_config *cfg = softgred_config_get();
+    register struct softgred_config *cfg = softgred_config_get_ref();
     register struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
 
     // only IPv4!

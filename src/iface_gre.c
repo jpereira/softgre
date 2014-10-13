@@ -49,7 +49,7 @@ static int
 iplink_have_newlink(void)                                                        
 {
     struct iplink_req req;
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
 
     if (have_rtnl_newlink < 0)
     {
@@ -91,7 +91,7 @@ iplink_modify(int cmd,
     uint8_t ttl = 0; // 255?
     uint8_t tos = 0;
     int preferred_family = AF_PACKET;
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
 
     memset(&req, 0, sizeof(req));
 
@@ -184,7 +184,7 @@ iface_gre_add(const char *gre_iface,
               const struct in_addr *in_local,
               const struct in_addr *in_remote)
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     int ret = true;
     char *ip_local = strdupa(inet_ntoa(*in_local));
     char *ip_remote = strdupa(inet_ntoa(*in_remote));
@@ -224,7 +224,7 @@ iface_gre_add(const char *gre_iface,
 int
 iface_gre_del(const char *gre_iface)
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     int ret;
     errno = 0;
 

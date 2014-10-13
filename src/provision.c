@@ -28,7 +28,7 @@
 #include "iface_ebtables.h"
 
 struct provision_data *
-provision_data_get()
+provision_data_get_ref()
 {
     static struct provision_data ref;
     return &ref;
@@ -37,7 +37,7 @@ provision_data_get()
 void
 provision_stats()
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     hash_statistics_t st;
 
     D_INFO("HashTable 'tunnel_context'(%p) quantity=%ld\n", cfg->table, hash_count(cfg->table));
@@ -84,7 +84,7 @@ struct tunnel_context *
 provision_has_tunnel(const struct in_addr *ip_remote,
                      hash_value_t *out_entry)
 {
-    struct softgred_config *cfg = softgred_config_get();
+    struct softgred_config *cfg = softgred_config_get_ref();
     hash_value_t value;
     hash_key_t key = { .type = HASH_KEY_ULONG, .ul = ip_remote->s_addr };
     int error = 0;
@@ -116,8 +116,8 @@ provision_has_tunnel(const struct in_addr *ip_remote,
 struct tunnel_context *
 provision_add(const struct in_addr *ip_remote)
 {
-    struct provision_data *p = provision_data_get();
-    struct softgred_config *cfg = softgred_config_get();
+    struct provision_data *p = provision_data_get_ref();
+    struct softgred_config *cfg = softgred_config_get_ref();
     struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
     char new_ifgre[SOFTGRED_MAX_IFACE+1];
     size_t size_new_ifgre;
@@ -197,8 +197,8 @@ provision_del(const struct in_addr *ip_remote)
 void
 provision_delall()
 {
-    struct provision_data *p = provision_data_get();
-    struct softgred_config *cfg = softgred_config_get();
+    struct provision_data *p = provision_data_get_ref();
+    struct softgred_config *cfg = softgred_config_get_ref();
     struct hash_iter_context_t *iter;
     hash_entry_t *entry;
 

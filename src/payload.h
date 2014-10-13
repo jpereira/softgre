@@ -54,7 +54,7 @@ struct payload_config {
     bpf_u_int32 net;               /* ip */
 };
 
-struct payload_config *payload_config_get();
+struct payload_config *payload_config_get_ref();
 
 int payload_loop_init();
 

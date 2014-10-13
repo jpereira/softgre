@@ -44,7 +44,7 @@ struct softgred_config_debug_env {
     bool *flag;
 };
 
-#define is_debug(__peace)             (softgred_config_get()->debug_env.__peace == true)
+#define is_debug(__peace)             (softgred_config_get_ref()->debug_env.__peace == true)
 #define if_debug(__peace, __doit)     if(is_debug(__peace)) { __doit; }
 
 struct softgred_config {
@@ -69,7 +69,7 @@ struct softgred_config {
     hash_table_t *table;
 };
 
-struct softgred_config *softgred_config_get();
+struct softgred_config *softgred_config_get_ref();
 
 int softgred_config_init();
 

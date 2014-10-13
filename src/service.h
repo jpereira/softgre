@@ -16,25 +16,25 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef IFACE_SERVICE_H_
-#define IFACE_SERVICE_H_
+#ifndef SERVICE_H_
+#define SERVICE_H_
 
 #include "general.h"
 
 #define SOFTGRED_SERVICE_MAX      10
 #define SOFTGRED_SERVICE_FILESOCK "/tmp/softgred.sock"
 
-struct softgred_service {
+struct service {
     pthread_t tid;
 };
 
-struct softgred_service *softgred_service_getref();
+struct service *service_get_ref();
 
-int softgred_service_init();
+int service_init();
 
-int softgred_service_end();
+int service_end();
 
-void softgred_service_stats();
+void service_stats();
 
-#endif /*IFACE_SERVICE_H_*/
+#endif /*SERVICE_H_*/
 
