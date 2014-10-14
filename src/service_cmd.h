@@ -62,9 +62,9 @@ bool service_handler(struct request *con);
 /* callback list*/
 int cmd_cb_HELP(struct request *req);
 int cmd_cb_QUIT(struct request *req);
-int cmd_cb_SMBIP(struct request *req);
-int cmd_cb_SIPBM(struct request *req);
-int cmd_cb_STATUS(struct request *req);
+int cmd_cb_LMIP(struct request *req);
+int cmd_cb_GTMC(struct request *req);
+int cmd_cb_STAT(struct request *req);
 
 #endif /*SERVICE_CMD_H_*/
 

@@ -247,8 +247,10 @@ provision_tunnel_has_mac(const struct tunnel_context *tun,
 
         if_debug(provision, D_DEBUG3("Checking if (src_mac=['%s'] == cur['%s'][%d])\n", src_mac, cur, i));
 
-        if (cur[0] && !strncmp(src_mac, cur, strnlen(cur, PROVISION_MAC_SIZE)))
+        if (cur[0] && !strcmp(src_mac, cur))
+        {
             return true;
+        }
     }
 
     return false;

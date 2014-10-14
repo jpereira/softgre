@@ -24,11 +24,11 @@
 #include "provision.h"
 
 static struct service_cmd service_cmd_list[] = {
-    { "HELP",   cmd_cb_HELP,   0, "<no args>",       "show list of commands" },
-    { "QUIT",   cmd_cb_QUIT,   0, "<no args>",       "quit connection"},
-    { "SMBIP",  cmd_cb_SMBIP,  1, "<ip of cpe>",     "show macs by IP of CPE"},
-    { "SIPBM",  cmd_cb_SIPBM,  1, "<mac of client>", "show tunnel ip by connected mac"},
-    { "STATUS", cmd_cb_STATUS, 0, "<no args>",       "show status of SoftGREd"},
+    { "HELP", cmd_cb_HELP, 0, NULL,              "show list of commands" },
+    { "QUIT", cmd_cb_QUIT, 0, NULL,              "quit connection"},
+    { "LMIP", cmd_cb_LMIP, 1, "<ip of cpe>",     "list macs by IP of CPE"},
+    { "GTMC", cmd_cb_GTMC, 1, "<mac of client>", "get tunnel infos by MAC of client, result: $iface, $ip_remote"},
+    { "STAT", cmd_cb_STAT, 0, NULL,              "show status of SoftGREd"},
 };
 
 int
@@ -45,7 +45,14 @@ cmd_cb_HELP(struct request *req)
         if (!strncmp(req->argv[0], q->cmd, strlen(q->cmd)))
             continue;
 
-        dprintf(req->fd, "%s - %s (%s)\n", q->cmd, q->syntax, q->desc);
+        if (q->syntax)
+        {
+            dprintf(req->fd, "%s - desc: %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
+        }
+        else
+        {
+            dprintf(req->fd, "%s - desc: %s\n", q->cmd, q->desc);
+        }
     }
 
     dprintf(req->fd, "\n");
@@ -64,7 +71,7 @@ cmd_cb_QUIT(struct request *req)
 }
 
 int
-cmd_cb_SMBIP(struct request *req)
+cmd_cb_LMIP(struct request *req)
 {
     struct tunnel_context *tun;
     size_t i = 0;
@@ -98,7 +105,7 @@ cmd_cb_SMBIP(struct request *req)
 }
 
 int
-cmd_cb_SIPBM(struct request *req)
+cmd_cb_GTMC(struct request *req)
 {
     struct tunnel_context *tun;
 
@@ -114,17 +121,17 @@ cmd_cb_SIPBM(struct request *req)
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
-    dprintf(req->fd, "RESULT: OK\nBODY: ip_remote=\"%s\", iface=\"%s\"\n", ip_remote, tun->ifgre);
+    dprintf(req->fd, "RESULT: OK\nBODY: %s, %s\n", tun->ifgre, ip_remote);
 
     return 1;
 }
 
 int
-cmd_cb_STATUS(struct request *req)
+cmd_cb_STAT(struct request *req)
 {
     assert(req != NULL);
 
-    dprintf(req->fd, "STATUS: OK\nBODY: var=data\n");
+    dprintf(req->fd, "STAT: OK\nBODY: var=data\n");
 
     return 1;
 }
