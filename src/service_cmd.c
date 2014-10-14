@@ -148,7 +148,8 @@ service_handler(struct request *req)
         if (strncmp(req->argv[0], q->cmd, strlen(q->cmd)))
             continue;
 
-        D_DEBUG3("Calling command '%s' (req->argc=%d, q->max_args=%d)\n", q->cmd, req->argc, q->max_args);
+        D_DEBUG3("Calling command '%s' with %d arguments, expected is %d (%s)\n", q->cmd, 
+                    req->argc - 1, q->max_args, (req->argc-1 != q->max_args) ? "bad args" : "ok");
 
         if ((req->argc-1) != q->max_args)
         {
@@ -172,6 +173,8 @@ request_new (int sock,
 
     ref->fd = sock;
     ref->saddr = *saddr; 
+
+    D_DEBUG3("request accepted from %s\n", inet_ntoa(ref->saddr.sin_addr));
 
     /* read the data */
     if ((ref->data_len = read(ref->fd, ref->data, sizeof(ref->data))) < 1)
@@ -204,6 +207,7 @@ request_free(struct request *req)
 {
     assert(req != NULL);
 
+    D_DEBUG3("Closing\n");
     shutdown(req->fd, SHUT_RDWR);
     close(req->fd);
 

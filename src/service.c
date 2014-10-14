@@ -37,11 +37,12 @@ static void *
 thread_handler(void *arg)
 {
     struct request *req = arg;
+
+#if 0
     const char *host = inet_ntoa(req->saddr.sin_addr);
 
     D_DEBUG0("[fd=%d] handling request from %s\n", req->fd, host);
 
-#if 0
     int i = 0;
     for (i=0; i < req->argc; i++)
         D_DEBUG2("argv[%d]='%s'\n", i, req->argv[i]);
@@ -105,8 +106,6 @@ thread_service(void *UNUSED(arg))
         struct request *req;
         pthread_t tid;
 
-        D_DEBUG0("request accepted\n");
-
         req = request_new (sock_client, &s_client);
         if (pthread_create(&tid, NULL, thread_handler, req) < 0)
         {
@@ -114,7 +113,7 @@ thread_service(void *UNUSED(arg))
             return NULL;
         }
      
-        D_DEBUG3("handler assigned for thread %#x\n", tid);
+        //D_DEBUG3("handler assigned for thread %#x\n", tid);
 
         if (pthread_detach(tid) < 0)
         {
