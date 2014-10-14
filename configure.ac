@@ -1,12 +1,12 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 10 Oct 2014 09:35:33 AM BRT
+# Last Change: Tue 14 Oct 2014 04:42:10 PM BRT
 ####
 
 AC_PREREQ([2.50])
 
 AC_INIT([SoftGRE],
-        [0.1],
+        [1.0rc1],
         [https://github.com/jpereira/softgre/issues],
         [softgre],
         [https://github.com/jpereira/softgre/])

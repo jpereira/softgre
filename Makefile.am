@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Tue 14 Oct 2014 03:13:41 PM BRT
+# Last Change: Tue 14 Oct 2014 04:58:45 PM BRT
 ####
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -8,13 +8,15 @@ AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
 
 SUBDIRS = bin
-
 GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
-GIT_COMMIT := $(shell git log --no-color | sed '1!d; s/.* //g')
+GIT_HASH   := $(shell git log --pretty=format:"%h" | head -1)
 GIT_TAG    := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)
 
-#DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_TAG)
-DEBIAN_PKG_VERSION := $(PACKAGE_VERSION)-$(GIT_COMMIT)
+#ifeq($(BUILD), "y")
+#DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_TAG)
+#else
+DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_HASH)
+#endif
 
 if MAINTAINER_MODE
 dist-hook: dist-changelog
@@ -27,7 +29,7 @@ all: version_header dist-changelog
 	
 version_header:
 	echo "/*Generated automatic ($(shell date))*/" > version.h
-	echo "#define CURRENT_COMMIT \"$(GIT_COMMIT)\"" >> version.h
+	echo "#define CURRENT_COMMIT \"$(GIT_HASH)\"" >> version.h
 	echo "#define CURRENT_BRANCH \"$(GIT_BRANCH)\"" >> version.h
 	echo "#define CURRENT_TAG    \"$(GIT_TAG)\"" >> version.h
 
