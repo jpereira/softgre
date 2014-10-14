@@ -121,7 +121,7 @@ cmd_cb_GTMC(struct request *req)
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
-    dprintf(req->fd, "RESULT: OK\nBODY: %s, %s\n", tun->ifgre, ip_remote);
+    dprintf(req->fd, "RESULT: OK\nBODY: %s, %s\n", ip_remote, tun->ifgre);
 
     return 1;
 }
@@ -188,17 +188,22 @@ request_new (int sock,
         arg != NULL && ref->argc < SOFTGRED_REQUEST_MAX_PARAMS;
         arg = strtok(NULL, " "))
     {
-        ref->argv[ref->argc++] = arg;
+        if (arg[0] != '\0')
+            ref->argv[ref->argc++] = arg;
     }
 
     /* strip */
-    char *str;
-    for (str = ref->argv[ref->argc-1]; *str; str++)
+    if (ref->argc > 0)
     {
-        if (*str == '\n' || *str == '\r' || *str == '\t')
-            *str = '\0';
+        char *str = ref->argv[ref->argc-1];
+
+        for (; *str; str++)
+        {
+            if (*str == '\n' || *str == '\r' || *str == '\t')
+                *str = '\0';
+        }
     }
-        
+
     return ref;
 }
 

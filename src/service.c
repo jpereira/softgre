@@ -107,6 +107,10 @@ thread_service(void *UNUSED(arg))
         pthread_t tid;
 
         req = request_new (sock_client, &s_client);
+
+        if (!req)
+            continue;
+
         if (pthread_create(&tid, NULL, thread_handler, req) < 0)
         {
             D_CRIT("Problems with pthread_create(), leaving.\n");
