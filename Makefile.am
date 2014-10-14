@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 10 Oct 2014 12:32:10 AM EDT
+# Last Change: Tue 14 Oct 2014 03:13:41 PM BRT
 ####
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -44,7 +44,8 @@ dist-changelog:
     else rm -f .ChangeLog.tmp; exit 1; fi
 
 debian-package:
-	rm -f debian/changelog
+	rm -f ../softgred*.{build,deb,install} debian/changelog
+	./autogen.sh
 	dch -v "$(DEBIAN_PKG_VERSION)" --package softgred --create debian/changelog
 	debuild -us -uc -B
 
