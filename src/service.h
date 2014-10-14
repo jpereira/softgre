@@ -21,8 +21,9 @@
 
 #include "general.h"
 
-#define SOFTGRED_SERVICE_MAX      10
-#define SOFTGRED_SERVICE_FILESOCK "/tmp/softgred.sock"
+#define SOFTGRED_SERVICE_MAX        10
+#define SOFTGRED_SERVICE_FILESOCK   "/tmp/softgred.sock"
+#define SOFTGRED_SERVICE_PORT       8888
 
 struct service {
     pthread_t tid;

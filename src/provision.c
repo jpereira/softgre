@@ -282,3 +282,34 @@ provision_tunnel_allow_mac(const struct tunnel_context *tun,
     return true;
 }
 
+struct tunnel_context *
+provision_has_tunnel_by_mac(const char *src_mac)
+{
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct hash_iter_context_t *iter;
+    struct tunnel_context *tun = NULL;
+    hash_entry_t *entry;
+
+    assert(cfg->table != NULL);
+
+    if (hash_count(cfg->table) < 1)
+    {
+        D_WARNING("Don't have any tunnel to unattached!\n");
+        return NULL;
+    }
+
+    helper_lock();
+    iter = new_hash_iter_context(cfg->table);
+    while ((entry = iter->next(iter)) != NULL)
+    {
+        tun = entry->value.ptr;
+
+        if (provision_tunnel_has_mac(tun, src_mac))
+            break;
+    }
+    free(iter);
+    helper_unlock();
+
+    return tun;
+}
+

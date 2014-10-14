@@ -79,5 +79,7 @@ bool provision_tunnel_has_mac(const struct tunnel_context *tun,
 bool provision_tunnel_allow_mac (const struct tunnel_context *tun,
                                  const char *src_mac);
 
+struct tunnel_context *provision_has_tunnel_by_mac(const char *src_mac);
+
 #endif /*PROVISION_H_*/
 

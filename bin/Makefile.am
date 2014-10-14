@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 13 Out 2014 18:56:39 BRT
+# Last Change: Seg 13 Out 2014 19:40:52 BRT
 ####
 
 sbin_PROGRAMS = softgred
@@ -13,6 +13,8 @@ softgred_SOURCES =            \
 	../src/softgred_config.h  \
 	../src/service.c          \
 	../src/service.h          \
+	../src/service_cmd.c      \
+	../src/service_cmd.h      \
 	../src/helper.c           \
 	../src/helper.h           \
 	../src/log.c              \
