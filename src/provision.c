@@ -245,9 +245,9 @@ provision_tunnel_has_mac(const struct tunnel_context *tun,
     {
         const char *cur = tun->filter[i].src_mac;
 
-        if_debug(provision, D_DEBUG3("Checking if (src_mac=['%s'] == cur['%s'])\n", src_mac, cur));
+        if_debug(provision, D_DEBUG3("Checking if (src_mac=['%s'] == cur['%s'][%d])\n", src_mac, cur, i));
 
-        if (!strncmp(src_mac, cur, strnlen(cur, PROVISION_MAC_SIZE)))
+        if (cur[0] && !strncmp(src_mac, cur, strnlen(cur, PROVISION_MAC_SIZE)))
             return true;
     }
 
@@ -289,6 +289,7 @@ provision_has_tunnel_by_mac(const char *src_mac)
     struct hash_iter_context_t *iter;
     struct tunnel_context *tun = NULL;
     hash_entry_t *entry;
+    bool ret = false;
 
     assert(cfg->table != NULL);
 
@@ -305,11 +306,14 @@ provision_has_tunnel_by_mac(const char *src_mac)
         tun = entry->value.ptr;
 
         if (provision_tunnel_has_mac(tun, src_mac))
+        {
+            ret = true;
             break;
+        }
     }
     free(iter);
     helper_unlock();
 
-    return tun;
+    return ret ? tun : NULL;
 }
 

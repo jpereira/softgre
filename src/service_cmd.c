@@ -84,7 +84,7 @@ cmd_cb_SMBIP(struct request *req)
     }
 
     helper_lock();
-    dprintf(req->fd, "RESULT: OK\n BODY: ");
+    dprintf(req->fd, "RESULT: OK\nBODY: ");
     for (; i < PROVISION_MAX_CLIENTS; i++)
     {
         const char *cur = tun->filter[i].src_mac;
