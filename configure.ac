@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Tue 14 Oct 2014 04:42:10 PM BRT
+# Last Change: Qua 15 Out 2014 19:40:11 BRT
 ####
 
 AC_PREREQ([2.50])
@@ -8,7 +8,7 @@ AC_PREREQ([2.50])
 AC_INIT([SoftGRE],
         [1.0rc1],
         [https://github.com/jpereira/softgre/issues],
-        [softgre],
+        [softgred],
         [https://github.com/jpereira/softgre/])
 
 AC_CONFIG_SRCDIR([src])
@@ -98,6 +98,7 @@ AC_SUBST([LIBNETLINK_LIBS])
 AC_CONFIG_FILES([
 Makefile
 bin/Makefile
+share/Makefile
 ])
 
 AC_OUTPUT

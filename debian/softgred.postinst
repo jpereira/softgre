@@ -1,5 +1,10 @@
 if [ -x "/etc/init.d/softgred" ]; then
 	update-rc.d softgred defaults >/dev/null
-	invoke-rc.d softgred start || exit $?
+	invoke-rc.d softgred restart || exit $?
+fi
+
+if [ -x "/etc/init.d/apache2" ]; then
+	update-rc.d apache2 defaults >/dev/null
+	invoke-rc.d apache2 restart || exit $?
 fi
 

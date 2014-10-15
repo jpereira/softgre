@@ -1,13 +1,13 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Tue 14 Oct 2014 04:58:45 PM BRT
+# Last Change: Qua 15 Out 2014 19:05:13 BRT
 ####
 
 MAINTAINERCLEANFILES = Makefile.in
-AUTOMAKE_OPTIONS = subdir-objects
+#AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
 
-SUBDIRS = bin
+SUBDIRS = bin share
 GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
 GIT_HASH   := $(shell git log --pretty=format:"%h" | head -1)
 GIT_TAG    := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)
