@@ -115,6 +115,12 @@ tunnel_context_get_all(struct tunnel_context ***_entries,
     }
 
     entries = calloc(num_entries, sizeof(struct tunnel_context *));
+    if (!entries)
+    {
+        D_CRIT("Problems with calloc(%ld, sizeof(struct tunnel_context *)), error=%d(%s)\n",
+                        num_entries, error, hash_error_string(error));
+        return -1;
+    }
 
     for (i=0; i < num_entries; i++)
     {

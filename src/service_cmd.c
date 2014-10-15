@@ -141,7 +141,7 @@ int
 cmd_cb_STUN(struct request *req)
 {
     struct tunnel_context **tuns = NULL;
-    uint64_t tuns_len = NULL;
+    uint64_t tuns_len = 0;
     uint64_t i = 0;
 
     assert (req != NULL);
