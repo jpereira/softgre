@@ -212,7 +212,7 @@ payload_handler_packet_cb (u_char *UNUSED(args),
         return;
     }
 
-    tun = provision_has_tunnel(&ip->ip_src, NULL);
+    tun = provision_get_tunnel_byip(&ip->ip_src, NULL);
     if (tun)
     {
         if (provision_tunnel_has_mac(tun, src_mac))

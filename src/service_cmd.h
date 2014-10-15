@@ -57,7 +57,7 @@ struct service_cmd {
     const char *desc;
 };
 
-bool service_handler(struct request *con);
+bool service_cmd_handler(struct request *con);
 
 /* callback list*/
 int cmd_cb_HELP(struct request *req);
@@ -65,6 +65,7 @@ int cmd_cb_QUIT(struct request *req);
 int cmd_cb_LMIP(struct request *req);
 int cmd_cb_GTMC(struct request *req);
 int cmd_cb_STAT(struct request *req);
+int cmd_cb_STUN(struct request *req);
 
 #endif /*SERVICE_CMD_H_*/
 

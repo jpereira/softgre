@@ -48,7 +48,7 @@ thread_handler(void *arg)
         D_DEBUG2("argv[%d]='%s'\n", i, req->argv[i]);
 #endif
 
-    if (!service_handler(req))
+    if (!service_cmd_handler(req))
         dprintf(req->fd, "The command '%s' is invalid, try 'HELP'\n", req->argv[0]);
 
     // end request

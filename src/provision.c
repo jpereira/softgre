@@ -52,13 +52,12 @@ provision_stats()
                 cfg->table, st.hash_accesses, st.hash_collisions, st.table_expansions, st.table_contractions);
 }
 
-hash_entry_t *
+struct tunnel_context *
 tunnel_context_new (const struct in_addr *ip_remote,
                    uint16_t id,
                    const char *new_ifgre)
 {
     struct tunnel_context *ref;
-    static hash_entry_t entry;
 
     assert (new_ifgre != NULL);
     assert (ip_remote != NULL);
@@ -67,22 +66,70 @@ tunnel_context_new (const struct in_addr *ip_remote,
     if (!ref)
         return NULL;
 
-    entry.key.type = HASH_KEY_ULONG;
-    entry.key.ul = ip_remote->s_addr;
-    entry.value.type = HASH_VALUE_PTR;
-    entry.value.ptr = ref;
-
     ref->id = id;
     memcpy(&ref->ip_remote, ip_remote, sizeof(struct in_addr));
     strncpy(ref->ifgre, new_ifgre, strlen(new_ifgre));
 
-    return &entry;
+    return ref;
 
 }
 
+void
+tunnel_context_free(struct tunnel_context *ctx)
+{
+    assert (ctx != NULL);
+
+    if (!ctx)
+    {
+        D_CRIT("Impossible to release pointer %p\n", ctx);
+        return;
+    }
+
+    free (ctx);
+}
+
+int
+tunnel_context_get_all(struct tunnel_context ***_entries,
+                       uint64_t *_num_entries)
+{
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct tunnel_context **entries = NULL;
+    uint64_t num_entries = 0;
+    uint64_t i = 0;
+    hash_value_t *values;
+    int error;
+    
+    assert(_entries != NULL);
+    assert(_num_entries != NULL);
+
+    if ((error = hash_values(cfg->table, &num_entries, &values)) != HASH_SUCCESS)
+    {
+        D_CRIT("Problems with hash_values(), error=%d(%s)\n", error, hash_error_string(error));
+        return -1;
+    }
+
+    if (num_entries < 1)
+    {
+        *_num_entries = num_entries;
+        return 0;
+    }
+
+    entries = calloc(num_entries, sizeof(struct tunnel_context *));
+
+    for (i=0; i < num_entries; i++)
+    {
+        entries[i] = values[i].ptr;
+    }
+    
+    *_num_entries = num_entries;
+    *_entries = entries;
+
+    return 0;
+}
+
 struct tunnel_context *
-provision_has_tunnel(const struct in_addr *ip_remote,
-                     hash_value_t *out_entry)
+provision_get_tunnel_byip(const struct in_addr *ip_remote,
+                          hash_value_t *out_entry)
 {
     struct softgred_config *cfg = softgred_config_get_ref();
     hash_value_t value;
@@ -124,6 +171,8 @@ provision_add(const struct in_addr *ip_remote)
     int ret;
     int pos = p->tunnel_pos;
     int i = 0;
+    int error;
+    hash_entry_t entry;
 
     assert (ip_remote != NULL);
     assert (cfg != NULL);
@@ -163,22 +212,26 @@ provision_add(const struct in_addr *ip_remote)
     }
 
     // save the entry
-    int error;
-    hash_entry_t *entry = tunnel_context_new(ip_remote, pos, new_ifgre);
-    if ((error = hash_enter(cfg->table, &entry->key, &entry->value)) != HASH_SUCCESS)
+    entry.key.type = HASH_KEY_ULONG;
+    entry.key.ul = ip_remote->s_addr;
+    entry.value.type = HASH_VALUE_PTR;
+    entry.value.ptr = tunnel_context_new(ip_remote, pos, new_ifgre);
+
+    if ((error = hash_enter(cfg->table, &entry.key, &entry.value)) != HASH_SUCCESS)
     {
-        fprintf(stderr, "cannot add to table \"%lu\" (%s)\n", entry->key.ul, hash_error_string(error));
+        fprintf(stderr, "cannot add to table \"%lu\" (%s)\n", entry.key.ul, hash_error_string(error));
         return NULL;
     }
 
     p->tunnel_pos += 1;
-    return entry->value.ptr;
+
+    return entry.value.ptr;
 }
 
 int
 provision_del(const struct in_addr *ip_remote)
 {
-    struct tunnel_context *tun = provision_has_tunnel(ip_remote, NULL);
+    struct tunnel_context *tun = provision_get_tunnel_byip(ip_remote, NULL);
 
     if (!tun)
         return -1;
@@ -223,10 +276,11 @@ provision_delall()
         }
 
         p->tunnel_pos -= 1;
-        free(tun);
 
         // removing key
         hash_delete(cfg->table, &entry->key);
+
+        tunnel_context_free(tun);
     }
     free(iter);
     helper_unlock();
@@ -285,7 +339,7 @@ provision_tunnel_allow_mac(const struct tunnel_context *tun,
 }
 
 struct tunnel_context *
-provision_has_tunnel_by_mac(const char *src_mac)
+provision_get_tunnel_by_mac(const char *src_mac)
 {
     struct softgred_config *cfg = softgred_config_get_ref();
     struct hash_iter_context_t *iter;

@@ -28,6 +28,7 @@ static struct service_cmd service_cmd_list[] = {
     { "QUIT", cmd_cb_QUIT, 0, NULL,              "quit connection"},
     { "LMIP", cmd_cb_LMIP, 1, "<ip of cpe>",     "list macs by IP of CPE"},
     { "GTMC", cmd_cb_GTMC, 1, "<mac of client>", "get tunnel infos by MAC of client, result: $iface, $ip_remote"},
+    { "STUN", cmd_cb_STUN, 0, NULL,              "show list with all provisioning, result: $ip_remote1@$iface1;$ip_remoteN@$ifaceN;... "},
     { "STAT", cmd_cb_STAT, 0, NULL,              "show status of SoftGREd"},
 };
 
@@ -56,7 +57,7 @@ cmd_cb_HELP(struct request *req)
     }
 
     dprintf(req->fd, "\n");
-    return 1;
+    return 0;
 }
 
 int
@@ -67,7 +68,7 @@ cmd_cb_QUIT(struct request *req)
     shutdown(req->fd, SHUT_RDWR);
     close(req->fd);
 
-    return 1;
+    return 0;
 }
 
 int
@@ -83,11 +84,11 @@ cmd_cb_LMIP(struct request *req)
 
     addr.s_addr = inet_addr(req->argv[1]);
 
-    tun = provision_has_tunnel(&addr, NULL);
+    tun = provision_get_tunnel_byip(&addr, NULL);
     if (!tun)
     {
         dprintf(req->fd, "RESULT: NOTFOUND\n");
-        return 1;
+        return 0;
     }
 
     helper_lock();
@@ -101,7 +102,7 @@ cmd_cb_LMIP(struct request *req)
     }
     helper_unlock();
 
-    return 1;
+    return 0;
 }
 
 int
@@ -113,17 +114,17 @@ cmd_cb_GTMC(struct request *req)
 
     D_DEBUG2("Checking CPE by MAC '%s'\n", req->argv[1]);
 
-    tun = provision_has_tunnel_by_mac(req->argv[1]);
+    tun = provision_get_tunnel_by_mac(req->argv[1]);
     if (!tun)
     {
         dprintf(req->fd, "RESULT: NOTFOUND\n");
-        return 1;
+        return 0;
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
     dprintf(req->fd, "RESULT: OK\nBODY: %s, %s\n", ip_remote, tun->ifgre);
 
-    return 1;
+    return 0;
 }
 
 int
@@ -133,11 +134,49 @@ cmd_cb_STAT(struct request *req)
 
     dprintf(req->fd, "STAT: OK\nBODY: var=data\n");
 
-    return 1;
+    return 0;
+}
+
+int
+cmd_cb_STUN(struct request *req)
+{
+    struct tunnel_context **tuns = NULL;
+    uint64_t tuns_len = NULL;
+    uint64_t i = 0;
+
+    assert (req != NULL);
+
+    D_DEBUG2("Return list with all GRE tunnels.\n");
+
+    if (tunnel_context_get_all(&tuns, &tuns_len) != 0)
+    {
+        D_CRIT("Problems with tunnel_context_get_all()\n");
+    }
+
+    if (tuns_len < 1)
+    {
+        dprintf(req->fd, "RESULT: NULL\n");
+        return 0;
+    }
+
+    dprintf(req->fd, "RESULT: OK\nBODY: ");
+    for (i=0; i < tuns_len; i++)
+    {
+        struct tunnel_context *tun = tuns[i];
+        const char *ip_remote = inet_ntoa(tun->ip_remote);
+
+        dprintf(req->fd, "%s@%s;", ip_remote, tun->ifgre);
+    }
+
+    dprintf(req->fd, "\n");
+
+    free (tuns);
+
+    return 0;
 }
 
 bool
-service_handler(struct request *req)
+service_cmd_handler(struct request *req)
 {
     size_t i;
 

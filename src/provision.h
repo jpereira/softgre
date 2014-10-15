@@ -60,12 +60,30 @@ struct tunnel_context {
 
 void provision_stats();
 
-hash_entry_t *tunnel_context_new (const struct in_addr *ip_remote,
-                                  uint16_t id,
-                                  const char *new_ifgre);
+struct tunnel_context *tunnel_context_new (const struct in_addr *ip_remote,
+                                           uint16_t id,
+                                           const char *new_ifgre);
 
-struct tunnel_context *provision_has_tunnel(const struct in_addr *ip_remote,
-                                            hash_value_t *out_entry);
+void tunnel_context_free(struct tunnel_context *ctx);
+
+/*
+   Function: tunnel_context_getall()
+
+   Return all provisioned tunnels.
+
+   Parameters:
+
+   Returns:
+
+      The array with all provisioned tunnels, needs call free() to release.
+
+   See Also:    
+*/
+int tunnel_context_get_all(struct tunnel_context ***entries,
+                           uint64_t *num_entries);
+
+struct tunnel_context *provision_get_tunnel_byip(const struct in_addr *ip_remote,
+                                                 hash_value_t *out_entry);
 
 struct tunnel_context *provision_add(const struct in_addr *ip_remote);
 
@@ -79,7 +97,7 @@ bool provision_tunnel_has_mac(const struct tunnel_context *tun,
 bool provision_tunnel_allow_mac (const struct tunnel_context *tun,
                                  const char *src_mac);
 
-struct tunnel_context *provision_has_tunnel_by_mac(const char *src_mac);
+struct tunnel_context *provision_get_tunnel_by_mac(const char *src_mac);
 
 #endif /*PROVISION_H_*/
 
