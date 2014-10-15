@@ -21,6 +21,6 @@ aclocal
 autoconf
 autoreconf -fvi
 automake --add-missing
-./configure
+./configure $@
 set +fx
 
