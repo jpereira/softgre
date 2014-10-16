@@ -30,7 +30,11 @@ core
 *.x86_64
 *.hex
 
-# trash
+# ignoring by project
+share/etc/apache_softgred.conf
+share/webinterface/api.php
+
+# build
 ChangeLog
 version.h
 *~

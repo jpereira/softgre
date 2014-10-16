@@ -16,13 +16,11 @@
  *
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
-
 class REST {
-    public $_allow = array();
     public $_content_type = "application/json";
-    public $_request = array();
-    
-    private $_method = "";        
+    private $_method = null;
+    private $_func = null;
+    private $_args = array();
     private $_code = 200;
     
     public function __construct()
@@ -35,15 +33,26 @@ class REST {
         return $_SERVER['HTTP_REFERER'];
     }
     
-    public function response($data,$status)
+    public function response($data, $status)
     {
-        $this->_code = ($status)?$status:200;
+        $this->_code = ($status)? $status : 200;
         $this->set_headers();
         echo $data;
         exit;
     }
     
-    private function get_status_message(){
+    public function get_func()
+    {
+        return $this->_func;
+    }
+
+    public function get_args()
+    {
+        return $this->_args;
+    }
+
+    private function get_status_message()
+    {
         $status = array(
                     100 => 'Continue',  
                     101 => 'Switching Protocols',  
@@ -94,48 +103,50 @@ class REST {
         return $_SERVER['REQUEST_METHOD'];
     }
     
-    private function inputs(){
+    private function inputs()
+    {
         switch($this->get_request_method())
         {
             case "POST":
-                //$this->_request = $this->cleanInputs($_POST);
-                $this->_request = getallheaders();
+                $this->_func = strip_tags($_POST['_func']);
+                $this->_args = $this->cleanInputs($_POST['_args']);
                 break;
             case "GET":
             case "DELETE":
-                //$this->_request = $this->cleanInputs($_GET);
-                $this->_request = getallheaders();
+                $this->_func = strip_tags($_GET['_func']);
+                $this->_args = $this->cleanInputs($_GET['_args']);
                 break;
             case "PUT":
-                parse_str(file_get_contents("php://input"),$this->_request);
-                $this->_request = $this->cleanInputs($this->_request);
+                parse_str(file_get_contents("php://input"), $this->_args);
+                $this->_args = $this->cleanInputs($this->_args);
                 break;
             default:
-                $this->response('',406);
+                $this->response('', 406);
                 break;
         }
     }        
     
-    private function cleanInputs($data){
+    private function cleanInputs($_args)
+    {
         $clean_input = array();
-        if(is_array($data))
+
+        if (is_array($_args))
+            $this->response("erro: need to declare \$_GET['_args'] with string, not array!",405);
+
+        $arr = array_chunk(explode('/', trim($_args,'/')), 2);
+        foreach($arr as $pair)
         {
-            foreach($data as $k => $v)
-            {
-                $clean_input[$k] = $this->cleanInputs($v);
-            }
-        }
-        else
-        {
+            $key = $pair[0];
+            $val = isset($pair[1]) ? $pair[1] : null;
+
             if(get_magic_quotes_gpc())
             {
-                $data = trim(stripslashes($data));
+                $val = strip_tags($val);
             }
 
-            $data = strip_tags($data);
-            $clean_input = trim($data);
+            $clean_input[$key] = $val;
         }
-
+        //debug_array($clean_input);
         return $clean_input;
     }        
     

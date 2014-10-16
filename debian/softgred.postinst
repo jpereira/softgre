@@ -4,6 +4,7 @@ if [ -x "/etc/init.d/softgred" ]; then
 fi
 
 if [ -x "/etc/init.d/apache2" ]; then
+    a2enmod rewrite
 	update-rc.d apache2 defaults >/dev/null
 	invoke-rc.d apache2 restart || exit $?
 fi

@@ -1,0 +1,42 @@
+# SoftGREd default Apache configuration
+
+Alias /softgre @SOFTGRED_DIR@/webinterface
+
+<Directory @SOFTGRED_DIR@/webinterface>
+    AllowOverride None
+	Options FollowSymLinks -MultiViews
+
+	DirectoryIndex index.php
+    Order allow,deny
+    Allow from all
+
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteBase /softgre/
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteCond %{REQUEST_FILENAME} !-s
+        RewriteRule ^api/([^/]*)(.*)$ api.php?_func=$1&_args=$2 [L,QSA]
+    </IfModule>
+
+	<IfModule mod_php5.c>
+		AddType application/x-httpd-php .php
+
+        php_flag error_reporting  E_ALL
+        php_flag display_errors On
+
+		php_flag magic_quotes_gpc Off
+		php_flag track_vars On
+		php_flag register_globals Off
+		php_admin_flag allow_url_fopen Off
+		php_value include_path .
+		php_admin_value open_basedir @SOFTGRED_DIR@/webinterface/:/etc/softgred/:/var/log/
+	</IfModule>
+
+</Directory>
+
+# Disallow web access to directories that don't need it
+<Directory @SOFTGRED_DIR@/webinterface/lib>
+    Order Deny,Allow
+    Deny from All
+</Directory>
+

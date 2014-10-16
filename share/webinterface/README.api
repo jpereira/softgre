@@ -1,0 +1,30 @@
+
+        Defining the SoftGREd API
+The API consists of the following methods:
+
+#######################################
+#         Method  URL Action          #
+#######################################
+
+GET /softgre/api/ues/{cpe-ip}  List all mac-address of UES (User Equipments) by IP of CPE, 
+                               e.g: /api/ue/201.26.122.22
+                               result: $mac_ue1;$mac_ue2;...
+
+GET /softgre/api/cpe/{ue-mac}  Show tunnel info by mac-address of UE (User Equipment)
+                               e.g: /api/cpe/7c:fa:df:a1:f7:30
+                               result: $ip_cpe@$iface
+
+GET /softgre/api/tunnels       Show all provisioned tunnels. (IP_CPE@GRE-INTERFACE)
+                               result: $ip_cpe1@$iface1;$ip_cpe@$ifaceN;
+
+GET /softgre/api/status        Show status of SoftGREd
+                               result: OK or DOWN
+
+########################################
+# All methods return the object return #
+########################################
+{
+  "status": "OK",             // Possible values: OK, DOWN, NOTFOUND, INVALID or NULL
+  "body": "return of command" // Only when 'status' was "OK"
+}
+

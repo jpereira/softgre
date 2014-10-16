@@ -122,7 +122,7 @@ cmd_cb_GTMC(struct request *req)
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
-    dprintf(req->fd, "RESULT: OK\nBODY: %s, %s\n", ip_remote, tun->ifgre);
+    dprintf(req->fd, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
 
     return 0;
 }
@@ -142,7 +142,6 @@ cmd_cb_STUN(struct request *req)
 {
     struct tunnel_context **tuns = NULL;
     uint64_t tuns_len = 0;
-    uint64_t i = 0;
 
     assert (req != NULL);
 
@@ -160,9 +159,9 @@ cmd_cb_STUN(struct request *req)
     }
 
     dprintf(req->fd, "RESULT: OK\nBODY: ");
-    for (i=0; i < tuns_len; i++)
+    while(tuns_len--)
     {
-        struct tunnel_context *tun = tuns[i];
+        struct tunnel_context *tun = tuns[tuns_len];
         const char *ip_remote = inet_ntoa(tun->ip_remote);
 
         dprintf(req->fd, "%s@%s;", ip_remote, tun->ifgre);

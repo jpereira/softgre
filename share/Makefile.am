@@ -1,25 +1,34 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qua 15 Out 2014 19:49:09 BRT
+# Last Change: Qui 16 Out 2014 18:39:51 BRT
 ####
 
+etc/apache/softgred.conf: etc/apache/softgred.conf.in
+	$(SED) -e "s|\@SOFTGRED_DIR\@|$(pkgdatadir)|" $< > $@
+
+webinterface/api.php: webinterface/api.php.in
+	$(SED) -e "s|\@SOFTGREDCONF_DIR\@|$(sysconfdir)/softgred|" $< > $@
+
 apacheconfdir = $(sysconfdir)/apache2/conf.d/
-dist_apacheconf_DATA = apache/softgred.conf
+apacheconf_DATA = etc/apache/softgred.conf
 
-wwwdir = $(pkgdatadir)/www
-www_DATA = \
-	www/index.php
+softgredconfdir = $(sysconfdir)/softgred/
+softgredconf_DATA = webinterface/config.php
 
-wwwlibdir = $(pkgdatadir)/www/lib
-wwwlib_DATA = \
-	www/lib/PHPTail.php \
-	www/lib/Rest.inc.php
+webinterfacedir = $(pkgdatadir)/webinterface
+webinterface_DATA =        \
+	webinterface/index.php \
+	webinterface/api.php   \
+	webinterface/README.api
 
-wwwapidir = $(pkgdatadir)/www/api
-wwwapi_DATA = \
-	www/api/.htaccess \
-	www/api/index.php \
-	www/api/README
+webinterfacelibdir = $(pkgdatadir)/webinterface/lib
+webinterfacelib_DATA =            \
+	webinterface/lib/PHPTail.php  \
+	webinterface/lib/Rest.inc.php \
+	webinterface/lib/Helper.inc.php
 
-EXTRA_DIST = $(www_DATA) $(wwwlib_DATA) $(wwwapi_DATA)
+EXTRA_DIST = $(apacheconf_DATA)     \
+			 $(softgredconf_DATA)   \
+			 $(webinterface_DATA)   \
+			 $(webinterfacelib_DATA)
 
