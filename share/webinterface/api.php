@@ -36,8 +36,8 @@ class SoftGREd extends REST {
 
     );
 
-    private $softgred_host = $cfg["DEFAULT_SOFTGRED_HOST"];
-    private $softgred_port = $CFG["DEFAULT_SOFTGRED_PORT"];
+    private $softgred_host = null;
+    private $softgred_port = null;
     private $data = "";
     private $gred = NULL;
 
@@ -46,13 +46,12 @@ class SoftGREd extends REST {
      */
     public function __construct($softgred_host=null, $softgred_port=null)
     {
+        global $cfg;
+
         parent::__construct();
 
-        if ($softgred_host)
-            $this->softgred_host = $softgred_host;
-
-        if ($softgred_port)
-            $this->softgred_port = $softgred_port;
+        $this->softgred_host = ($softgred_host) ? $softgred_host : $cfg["DEFAULT_SOFTGRED_HOST"];
+        $this->softgred_port = ($softgred_port) ? $softgred_port : $cfg["DEFAULT_SOFTGRED_PORT"];
 
         $this->sock = @socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if(!$this->sock)

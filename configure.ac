@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 17 Oct 2014 02:27:48 AM BRT
+# Last Change: Fri 17 Oct 2014 03:50:26 AM BRT
 ####
 
 AC_PREREQ([2.50])
@@ -118,9 +118,9 @@ LIBNETLINK_LIBS='-lnetlink'
 AC_SUBST([LIBNETLINK_LIBS])
 
 # path
-confdir=$prefix/etc/softgred
-logdir=$prefix/var/log
-piddir=$prefix/var/run
+confdir=$sysconfdir/softgred
+logdir=$localstatedir/log
+piddir=$localstatedir/run
 
 # substitute custom variables
 AC_SUBST(confdir)

@@ -20,5 +20,6 @@
 $cfg["SOFTGRED_HOST"] = "localhost";
 $cfg["SOFTGRED_PORT"] = "8888";
 $cfg["SOFTGRED_LOGFILE"] = "@SOFTGRED_LOGDIR@/softgred.log";
+$cfg["SOFTGRED_DEBUG"] = false;
 
 ?>

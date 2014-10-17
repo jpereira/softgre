@@ -20,7 +20,7 @@
 require_once("config.php");
 require_once("lib/PHPTail.php");
 
-$tail = new PHPTail(SOFTGRED_LOGFILE);
+$tail = new PHPTail($cfg['SOFTGRED_LOGFILE']);
 
 /**
  * We're getting an AJAX call
