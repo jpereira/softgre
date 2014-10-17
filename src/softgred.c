@@ -200,6 +200,13 @@ main (int argc,
         if (child > 0)
         {
             D_INFO("[pid=%d] Daemon SoftGREd was launched in background with success!\n", child);
+
+            if (softgred_config_create_pid_file(child) != 0)
+            {
+                fprintf(stderr, "helper_create_pid_file():  failed! errno=%d[%s]\n", errno, strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+
             exit(EXIT_SUCCESS);
         }
 

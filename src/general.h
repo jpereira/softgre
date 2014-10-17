@@ -46,6 +46,7 @@
 #include <locale.h>
 #include <signal.h>
 #include <getopt.h>
+#include <fcntl.h>
 
 // sys*
 #include <sys/socket.h>
@@ -70,7 +71,7 @@
 // libdhash
 #include <dhash.h>
 
-// pcap
+// libpcap
 #ifndef HAVE_PCAP_PCAP_H
     #error "Oops! Impossible to continue without pcap.h, exiting..."
 #endif

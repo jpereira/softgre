@@ -54,6 +54,7 @@ struct softgred_config {
     uint8_t debug_mode;        /* --debug */
     bool debug_xmode;          /* --xdebug */
     bool print_time;           /* --print-time */
+    char pid_file[128];        /* --pid-file */
 
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
@@ -85,6 +86,8 @@ int softgred_config_load_iface(const char *ifname,
 
 int softgred_config_load_attach(const char *arg,
                                 struct softgred_config *cfg);
+
+int softgred_config_create_pid_file(int pid);
 
 void softgred_print_version();
 

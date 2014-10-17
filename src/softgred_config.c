@@ -45,6 +45,7 @@ softgred_config_get_ref()
         .debug_mode    = 0,
         .debug_xmode   = false,
         .print_time    = false,
+        .pid_file      = { '\0', },
         .debug_env = {
             .payload   = false,
             .cmd       = false,
@@ -124,11 +125,12 @@ softgred_config_load_cli(int argc,
     struct option long_opts[] = {
         { "foreground",    no_argument,       NULL, 'f'},
         { "iface",         required_argument, NULL, 'i'},
-        { "tunnel-prefix", optional_argument, NULL, 'p'},
+        { "tunnel-prefix", optional_argument, NULL, 'P'},
         { "attach",        required_argument, NULL, 'a'},
         { "debug",         optional_argument, NULL, 'd'},
         { "xdebug",        optional_argument, NULL, 'x'},
         { "print-time",    no_argument,       NULL, 't'},
+        { "pid-file",      required_argument, NULL, 'p'},
         { "help",          no_argument,       NULL, 'h'},
         { "version",       no_argument,       NULL, 'v'},
         { NULL,            0,                 NULL,  0 }
@@ -137,14 +139,14 @@ softgred_config_load_cli(int argc,
     int opt;
 
     /* parsing arguments ... */
-    while ((opt = getopt_long(argc, argv, "fhvti:a:p:dx", long_opts, NULL)) != EOF)
+    while ((opt = getopt_long(argc, argv, "fhvti:a:P:p:dx", long_opts, NULL)) != EOF)
     {
         switch (opt)
         {
             case 'f': /* --foreground */
                 cfg->is_foreground = true;
                 break;
-            case 'p': /* --tunnel-prefix */
+            case 'P': /* --tunnel-prefix */
                 cfg->tunnel_prefix = optarg;
                 break;
             case 'i': /* --iface */
@@ -167,6 +169,12 @@ softgred_config_load_cli(int argc,
                 break;
             case 't': /* --print-time */
                 cfg->print_time = true;
+                break;
+            case 'p': /* --pid-file */
+                if (optarg)
+                    strncpy(cfg->pid_file, optarg, sizeof(cfg->pid_file));
+
+                D_DEBUG0("PID file %s\n", cfg->pid_file);
                 break;
             case 'v': /* --version */
                 softgred_print_version();
@@ -295,13 +303,14 @@ softgred_print_usage(char *argv[])
 {
     const char *arg0 = basename (argv[0]);
 
-    printf("Usage: %s [-t] [-fxdvh] [ -i interface ] [ -p tun_prefix ] \n" \
+    printf("Usage: %s [-t] [-fxdvh] [ -i interface ] [ -P tun_prefix ] [-p pid-file ]\n" \
            "                 [ -a vlan_id1@bridge0 -a vlan_id2@bridge1 ... ]\n" \
            " OPTIONS\n" \
            "\n" \
            "   -i, --iface          Network interface to listen GRE packets, e.g: -i eth0\n" \
            "   -a, --attach         Name of vlan/bridge to be attached, e.g: 10@br-vlan2410\n" \
-           "   -p, --tunnel-prefix  Prefix name to be used in gre-network-interfaces, default e.g: %sN (N num. of instance)\n" \
+           "   -P, --tunnel-prefix  Prefix name to be used in gre-network-interfaces, default e.g: %sN (N num. of instance)\n" \
+           "   -p, --pid-file       Path of pid-file, default in "SOFTGRED_PIDDIR"/"PACKAGE".pid\n" \
            "   -f, --foreground     Run in the foreground\n"  \
            "   -h, --help           Display this help text\n" \
            "   -d, --debug          Enable debug mode. e.g: -dd (more debug), -ddd (crazy debug level)\n"      \
@@ -338,5 +347,89 @@ softgred_print_usage(char *argv[])
            "\n" \
            " Everything that arrive in GRE tunnel, will be forwarded to internals VLANs/bridge.\n" \
            "\n", arg0, SOFTGRED_TUN_PREFIX, arg0, arg0);
+}
+
+int
+softgred_config_create_pid_file(int pid)
+{
+    struct softgred_config *cfg = softgred_config_get_ref();
+    int fd;
+    const char *prog_name = program_invocation_short_name;
+    char buf[100];
+    int flags = 1;
+    struct flock fl = {
+            .l_type = F_WRLCK,
+            .l_whence = 0,
+            .l_start = 0,
+            .l_len = 0
+    };
+
+    if (!cfg->pid_file[0])
+    {
+        snprintf(cfg->pid_file, sizeof(cfg->pid_file), "%s/%s.pid",
+                SOFTGRED_PIDDIR, PACKAGE);
+    }
+
+    D_DEBUG3("Saving pidfile in %s\n", cfg->pid_file);
+
+    fd = open(cfg->pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    if (fd == -1)
+    {
+        D_CRIT("Could not open PID file %s, errno=%d(%s)\n", cfg->pid_file, 
+                    errno, strerror(errno));
+        return -1;
+    }
+
+    if (flags & 1)
+    {
+
+        /* Instead of the following steps, we could (on Linux) have opened the
+           file with O_CLOEXEC flag. However, not all systems support open()
+           O_CLOEXEC (which was standardized only in SUSv4), so instead we use
+           fcntl() to set the close-on-exec flag after opening the file */
+
+        flags = fcntl(fd, F_GETFD);                     /* Fetch flags */
+        if (flags == -1)
+        {
+            D_CRIT("Could get flags for PID file %s, errno=%d(%s)\n", cfg->pid_file, 
+                    errno, strerror(errno));
+            return -1;
+        }
+
+        flags |= FD_CLOEXEC;                            /* Turn on FD_CLOEXEC */
+        if (fcntl(fd, F_SETFD, flags) == -1)            /* Update flags */
+        {
+            D_CRIT("Could set flags for PID file %s, errno=%d(%s)\n", cfg->pid_file, 
+                    errno, strerror(errno));
+            return -1;
+        }
+    }
+
+
+    if (fcntl(fd, F_SETLK, &fl) == -1)
+    {
+        if (errno  == EAGAIN || errno == EACCES)
+            D_CRIT("PID file '%s' is locked; probably ""'%s' is already running", cfg->pid_file, 
+                                    prog_name);
+        else
+            D_CRIT("Unable to lock PID file '%s'", cfg->pid_file);
+
+        return -1;
+    }
+
+    if (ftruncate(fd, 0) == -1)
+    {
+        D_CRIT("Could not truncate PID file '%s'", cfg->pid_file);
+        return -1;
+    }
+
+    snprintf(buf, sizeof(buf), "%ld\n", pid);
+    if (write(fd, buf, strlen(buf)) != strlen(buf))
+    {
+        D_CRIT("Could not write file '%s'", cfg->pid_file);
+        return -1;
+    }
+
+    return 0;
 }
 
