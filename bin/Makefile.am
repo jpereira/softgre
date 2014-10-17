@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 17 Oct 2014 12:28:35 AM BRT
+# Last Change: Fri 17 Oct 2014 02:53:11 AM BRT
 ####
 
 DISTCHECK_CONFIGURE_FLAGS = \
@@ -9,10 +9,14 @@ DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-service \
 	--enable-compile-warnings=maximum
 
+SOFTGRED_DEVEL_CFLAGS = -DSOFTGRED_CONFDIR=\"$(confdir)\" \
+					    -DSOFTGRED_LOGDIR=\"$(logdir)\"   \
+					    -DSOFTGRED_PIDDIR=\"$(piddir)\" 
+
 sbin_PROGRAMS = softgred
 
 if DEVEL
-SOFTGRED_DEVEL_CFLAGS = -DDEVEL -g3
+SOFTGRED_DEVEL_CFLAGS += -DDEVEL -g3
 endif
 
 if SOFTGRED_SERVICE

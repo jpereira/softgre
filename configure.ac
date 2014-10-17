@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 17 Oct 2014 12:25:59 AM BRT
+# Last Change: Fri 17 Oct 2014 02:27:48 AM BRT
 ####
 
 AC_PREREQ([2.50])
@@ -116,6 +116,43 @@ AC_CHECK_HEADERS([pcap/pcap.h])
 AC_CHECK_HEADERS([libnetlink.h])
 LIBNETLINK_LIBS='-lnetlink'
 AC_SUBST([LIBNETLINK_LIBS])
+
+# path
+confdir=$prefix/etc/softgred
+logdir=$prefix/var/log
+piddir=$prefix/var/run
+
+# substitute custom variables
+AC_SUBST(confdir)
+AC_SUBST(logdir)
+AC_SUBST(piddir)
+
+AC_ARG_WITH(
+    confdir,
+    AS_HELP_STRING(
+    [--with-confdir=DIR],
+    [conf dir @<:@SYSCONFDIR/softgred@:>@]
+    ),
+    [confdir="$withval"]
+)
+
+AC_ARG_WITH(
+    piddir,
+    AS_HELP_STRING(
+    [--with-piddir=DIR],
+    [pid dir @<:@LOCALSTATEDIR/run@:>@]
+    ),
+    [piddir="$withval"]
+)
+
+AC_ARG_WITH(
+    piddir,
+    AS_HELP_STRING(
+    [--with-piddir=DIR],
+    [.pid files @<:@LOCALSTATEDIR/run@:>@]
+    ),
+    [piddir="$withval"]
+)
 
 # Makefiles
 AC_CONFIG_FILES([

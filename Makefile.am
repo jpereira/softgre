@@ -1,12 +1,13 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 17 Oct 2014 12:25:29 AM BRT
+# Last Change: Fri 17 Oct 2014 02:22:58 AM BRT
 ####
 
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
 MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = bin share
+
 GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
 GIT_HASH   := $(shell git log --pretty=format:"%h" | head -1)
 GIT_TAG    := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)

@@ -1,18 +1,18 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Thu 16 Oct 2014 11:15:23 PM BRT
+# Last Change: Fri 17 Oct 2014 01:53:50 AM BRT
 ####
 
 etc/apache/softgred.conf: etc/apache/softgred.conf.in
 	$(SED) -e "s|@SOFTGRED_DIR@|$(pkgdatadir)|" $< > $@
 
 webinterface/config.php: webinterface/config.php.in
-	$(SED) -e "s|@SOFTGRED_CONFDIR@|$(sysconfdir)/softgred|" \
-		   -e "s|@SOFTGRED_LOGDIR@|$(localstatedir)/log|" $< > $@
+	$(SED) -e "s|@SOFTGRED_CONFDIR@|$(confdir)|" \
+		   -e "s|@SOFTGRED_LOGDIR@|$(logdir)|" $< > $@
 
 webinterface/webinterface_config.php: webinterface/webinterface_config.php.in 
-	$(SED) -e "s|@SOFTGRED_CONFDIR@|$(sysconfdir)/softgred|" \
-		   -e "s|@SOFTGRED_LOGDIR@|$(localstatedir)/log|" $< > $@
+	$(SED) -e "s|@SOFTGRED_CONFDIR@|$(confdir)|" \
+		   -e "s|@SOFTGRED_LOGDIR@|$(logdir)|" $< > $@
 
 apacheconfdir = $(sysconfdir)/apache2/conf.d/
 apacheconf_DATA = etc/apache/softgred.conf
