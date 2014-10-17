@@ -16,11 +16,7 @@
  *
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
-$config_file = "@SOFTGREDCONF_DIR@/config.php";
-if(!file_exists($config_file))
-    die("Failed to include '$config_file'");
-
-require_once($config_file);
+require_once("config.php");
 require_once("lib/Rest.inc.php");
 require_once("lib/Helper.inc.php");
 
@@ -40,8 +36,8 @@ class SoftGREd extends REST {
 
     );
 
-    private $softgred_host = "localhost";
-    private $softgred_port = "8888";
+    private $softgred_host = $cfg["DEFAULT_SOFTGRED_HOST"];
+    private $softgred_port = $CFG["DEFAULT_SOFTGRED_PORT"];
     private $data = "";
     private $gred = NULL;
 
@@ -206,7 +202,7 @@ class SoftGREd extends REST {
 }
 
 // Initiiate Library
-$api = new SoftGREd(SOFTGRED_HOST, SOFTGRED_PORT);
+$api = new SoftGREd($cfg["SOFTGRED_HOST"], $cfg["SOFTGRED_PORT"]);
 $api->run();
 ?>
 

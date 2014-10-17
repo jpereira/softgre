@@ -17,7 +17,18 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-define ("SOFTGRED_HOST", "localhost");
-define ("SOFTGRED_PORT", "8888");
+$cfg["DEFAULT_SOFTGRED_HOST"] = "localhost";
+$cfg["DEFAULT_SOFTGRED_PORT"] = "8888";
+$cfg["DEFAULT_SOFTGRED_DEBUG" = false;
+$cfg["DEFAULT_SOFTGRED_LOGFILE"] = "@SOFTGRED_LOGDIR@/softgred.log";
+
+$config_file = "@SOFTGRED_CONFDIR@/webinterface_config.php"
+if (!is_readable($config_file))
+{
+    $cfg["SOFTGRED_HOST"] = $cfg["DEFAULT_SOFTGRED_HOST"];
+    $cfg["SOFTGRED_PORT"] = $cfg["DEFAULT_SOFTGRED_PORT"];
+    $cfg["SOFTGRED_DEBUG"] = $cfg["DEFAULT_SOFTGRED_DEBUG"];
+    $cfg["SOFTGRED_LOGFILE"] = $cfg["DEFAULT_SOFTGRED_LOGFILE"];
+}
 
 ?>

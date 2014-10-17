@@ -17,7 +17,8 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-define ("SOFTGRED_HOST", "localhost");
-define ("SOFTGRED_PORT", "8888");
+$cfg["SOFTGRED_HOST"] = "localhost";
+$cfg["SOFTGRED_PORT"] = "8888";
+$cfg["SOFTGRED_LOGFILE"] = "@SOFTGRED_LOGDIR@/softgred.log";
 
 ?>

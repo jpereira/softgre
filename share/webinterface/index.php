@@ -17,12 +17,10 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once("config.php");
+require_once("lib/PHPTail.php");
 
-require_once 'lib/PHPTail.php';
-
-$tail = new PHPTail("/var/log/softgred.log");
+$tail = new PHPTail(SOFTGRED_LOGFILE);
 
 /**
  * We're getting an AJAX call
