@@ -151,7 +151,7 @@ class SoftGREd extends REST {
         if (($buf = socket_read($this->sock, 4096)) < 0)
             return null;
 
-        // TODO: ugly 'gohorse', just for fix a little problem in server side.
+        // TODO: ugly 'gohorse', just to fix a little problem with server side.
         $buf .= socket_read($this->sock, 4096);
 
         $buf = explode("\n", $buf);
