@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 16 Out 2014 16:52:43 BRT
+# Last Change: Fri 17 Oct 2014 12:25:59 AM BRT
 ####
 
 AC_PREREQ([2.50])
@@ -24,18 +24,41 @@ AC_LANG(C)
 GCC_STACK_PROTECTOR
 
 # Cflags
-CFLAGS="$CFLAGS -fPIC -W -Wall -rdynamic"
+AM_CFLAGS="$AM_CFLAGS -fPIC -W -Wall -rdynamic"
 
-# enable debug/devel mode
-AC_ARG_ENABLE(debug,
-              [AS_HELP_STRING([--enable-debug], [enable debugging messages (default enabled)])],
-              AC_DEFINE([DEBUG], [0], [debug mode off]),
-              AC_DEFINE([DEBUG], [1], [debug mode on]))
+# ---------------------------------------------------------------------
+# Enable options
+# ---------------------------------------------------------------------
 
-AC_ARG_ENABLE(devel,
-              [AS_HELP_STRING([--enable-devel], [enable development messages (default enabled)])],
-              AC_DEFINE([DEVEL], [0], [devel mode off]),
-              AC_DEFINE([DEVEL], [1], [devel mode on]))
+# debug mode
+AC_ARG_ENABLE([debug],
+    [  --enable-debug    Turn on debugging],
+        [case "${enableval}" in
+            yes) debug=true ;;
+            no)  debug=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
+        esac],[debug=true])
+AM_CONDITIONAL([DEBUG], [test x$debug = xtrue])
+
+# enable devel mode
+AC_ARG_ENABLE([devel],
+    [  --enable-devel    Turn on devel mode],
+        [case "${enableval}" in
+            yes) devel=true ;;
+            no)  devel=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-devel]) ;;
+        esac],[devel=true])
+AM_CONDITIONAL([DEVEL], [test x$devel = xtrue])
+
+# enable service
+AC_ARG_ENABLE([service],
+    [  --enable-service    Turn on the SoftGREd Service (web & API)],
+        [case "${enableval}" in
+            yes) service=true ;;
+            no)  service=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-service]) ;;
+        esac],[service=true])
+AM_CONDITIONAL([SOFTGRED_SERVICE], [test x$service = xtrue])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

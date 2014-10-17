@@ -1,22 +1,22 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Qui 16 Out 2014 17:21:02 BRT
+# Last Change: Fri 17 Oct 2014 12:25:29 AM BRT
 ####
 
-MAINTAINERCLEANFILES = Makefile.in
-#AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
+MAINTAINERCLEANFILES = Makefile.in
 
 SUBDIRS = bin share
 GIT_BRANCH := $(shell git branch --no-color | grep "^*" | sed -e 's/^\* //')
 GIT_HASH   := $(shell git log --pretty=format:"%h" | head -1)
 GIT_TAG    := $(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | cut -f1 -d^)
+CUR_TIME    = $(shell date "+%Y%m%d-%H%M%S")
 
-#ifeq($(BUILD), "y")
-#DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_TAG)
-#else
-DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_HASH)
-#endif
+if DEVEL
+DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_HASH)-$(CUR_TIME)
+else
+DEBIAN_PKG_VERSION = $(PACKAGE_VERSION)-$(GIT_TAG)
+endif
 
 if MAINTAINER_MODE
 dist-hook: dist-changelog

@@ -1,20 +1,34 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 13 Out 2014 19:40:52 BRT
+# Last Change: Fri 17 Oct 2014 12:28:35 AM BRT
 ####
+
+DISTCHECK_CONFIGURE_FLAGS = \
+	--enable-debug \
+	--enable-devel \
+	--enable-service \
+	--enable-compile-warnings=maximum
 
 sbin_PROGRAMS = softgred
 
+if DEVEL
+SOFTGRED_DEVEL_CFLAGS = -DDEVEL -g3
+endif
+
+if SOFTGRED_SERVICE
+SOFTGRED_SERVICE_FILES =      \
+	../src/service.c          \
+	../src/service.h          \
+	../src/service_cmd.c      \
+	../src/service_cmd.h
+SOFTGRED_SERVICE_CFLAGS = -DSOFTGRED_ENABLE_SERVICE
+endif
+
 softgred_SOURCES =            \
-	$(SOFTGRE_IFADDR_sources) \
 	../src/softgred.c         \
 	../src/softgred.h         \
 	../src/softgred_config.c  \
 	../src/softgred_config.h  \
-	../src/service.c          \
-	../src/service.h          \
-	../src/service_cmd.c      \
-	../src/service_cmd.h      \
 	../src/helper.c           \
 	../src/helper.h           \
 	../src/log.c              \
@@ -28,7 +42,8 @@ softgred_SOURCES =            \
 	../src/iface_gre.c        \
 	../src/iface_gre.h        \
 	../src/provision.c        \
-	../src/provision.h 
+	../src/provision.h        \
+	$(SOFTGRED_SERVICE_FILES)
 
 softgred_CFLAGS =            \
     $(AM_CFLAGS)             \
@@ -37,7 +52,9 @@ softgred_CFLAGS =            \
 	-I$(top_srcdir)/include  \
 	$(SOFTGRED_CFLAGS)       \
 	$(WARN_CFLAGS)           \
-	$(DISABLE_DEPRECATED) 
+	$(DISABLE_DEPRECATED)    \
+	$(SOFTGRED_DEVEL_CFLAGS) \
+	$(SOFTGRED_SERVICE_CFLAGS) 
 
 softgred_LDFLAGS = $(AM_LIBS)
 

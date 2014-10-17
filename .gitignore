@@ -31,8 +31,9 @@ core
 *.hex
 
 # ignoring by project
-share/etc/apache_softgred.conf
-share/webinterface/api.php
+share/etc/apache/softgred.conf
+share/webinterface/webinterface_config.php
+share/webinterface/config.php
 
 # build
 ChangeLog

@@ -11,6 +11,7 @@ Build-Depends: libpcap0.8-dev,
                iproute-dev,
                libdhash-dev,
                linux-libc-dev,
+               libapache2-mod-php5,
                debhelper (>= 8)
 
 Package: softgred
