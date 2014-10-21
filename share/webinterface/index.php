@@ -29,6 +29,8 @@ switch(@$_GET['action'])
 {
     case "log";
         if(isset($_GET['ajax']))  {
+//            header("Access-Control-Allow-Origin: *");
+//            header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
         	echo $tail->getNewLines($_GET['lastsize'], $_GET['grep'], $_GET['invert']);
 	        die();
         }
