@@ -4,6 +4,7 @@
 *.obj
 *.elf
 *.swp
+*.log
 core
 
 # Precompiled Headers
