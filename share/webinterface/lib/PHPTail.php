@@ -17,6 +17,8 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
+ini_set("memory_limit","512M");
+
 class PHPTail {
     /**
      * Location of the log file we're tailing
@@ -63,13 +65,14 @@ class PHPTail {
          * Define how much we should load from the log file 
          * @var 
          */
-        $fsize = filesize($this->log);
+        clearstatcache();
+        $fsize = sprintf("%u", filesize($this->log));
         $maxLength = ($fsize - $lastFetchedSize);
         /**
          * Verify that we don't load more data then allowed.
          */
         if($maxLength > $this->maxSizeToLoad) {
-            return json_encode(array("size" => $fsize, "data" => array("ERROR: PHPTail attempted to load more (".round(($maxLength / 1048576), 2)."MB) then the maximum size (".round(($this->maxSizeToLoad / 1048576), 2)."MB) of bytes into memory. You should lower the defaultUpdateTime to prevent this from happening. ")));    
+            $maxLength = $this->maxSizeToLoad;
         }
         /**
          * Actually load the data
