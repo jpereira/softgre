@@ -21,12 +21,15 @@
 
 #include "general.h"
 
+#include <glib.h>
+#include <glib/gprintf.h>
+
 /**
  *
  */
 #define SOFTGRED_REQUEST_MAX_PARAMS     3
 #define SOFTGRED_REQUEST_MAX_DATA       64
-
+#define SOFTGRED_REQUEST_BUF            2048
 #define RET_OK          "OK"
 #define RET_NOTFOUND    "NOTFOUND"
 #define RET_INVALID     "INVALID"
@@ -40,14 +43,19 @@ struct request {
     size_t data_len; /* len of data[] */
     int argc; /* argc & argv, same concept of main(int argc, char *argv[]) */
     char *argv[SOFTGRED_REQUEST_MAX_PARAMS];
+
+    char buf[SOFTGRED_REQUEST_BUF];
+    size_t len;
 };
 
-struct request *request_new (int sock,
-                             struct sockaddr_in *saddr);
+struct request *request_new(int sock,
+                            struct sockaddr_in *saddr);
+
+int request_append(struct request *req,
+                   const char *format,
+                   ...);
 
 void request_free(struct request *req);
-
-int request_load(struct request *req); 
 
 struct service_cmd {
     const char *cmd;

@@ -37,7 +37,7 @@ cmd_cb_HELP(struct request *req)
 {
     size_t i;
 
-    dprintf(req->fd, "Usage: <command> [args1] [args2] ... \n\n");
+    request_append(req, "Usage: <command> [args1] [args2] ... \n\n");
 
     for (i=0; i < ARRAY_SIZE(service_cmd_list); i++)
     {
@@ -48,15 +48,15 @@ cmd_cb_HELP(struct request *req)
 
         if (q->syntax)
         {
-            dprintf(req->fd, "%s - desc: %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
+            request_append(req, "%s - desc: %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
         }
         else
         {
-            dprintf(req->fd, "%s - desc: %s\n", q->cmd, q->desc);
+            request_append(req, "%s - desc: %s\n", q->cmd, q->desc);
         }
     }
 
-    dprintf(req->fd, "\n");
+    request_append(req, "\n");
     return 0;
 }
 
@@ -87,18 +87,18 @@ cmd_cb_LMIP(struct request *req)
     tun = provision_get_tunnel_byip(&addr, NULL);
     if (!tun)
     {
-        dprintf(req->fd, "RESULT: NOTFOUND\n");
+        request_append(req, "RESULT: NOTFOUND\n");
         return 0;
     }
 
     helper_lock();
-    dprintf(req->fd, "RESULT: OK\nBODY: ");
+    request_append(req, "RESULT: OK\nBODY: ");
     for (; i < PROVISION_MAX_CLIENTS; i++)
     {
         const char *cur = tun->filter[i].src_mac;
 
         if (cur[0] != '\0')
-            dprintf(req->fd, "%s;", cur);
+            request_append(req, "%s;", cur);
     }
     helper_unlock();
 
@@ -117,12 +117,12 @@ cmd_cb_GTMC(struct request *req)
     tun = provision_get_tunnel_by_mac(req->argv[1]);
     if (!tun)
     {
-        dprintf(req->fd, "RESULT: NOTFOUND\n");
+        request_append(req, "RESULT: NOTFOUND\n");
         return 0;
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
-    dprintf(req->fd, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
+    request_append(req, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
 
     return 0;
 }
@@ -132,7 +132,7 @@ cmd_cb_STAT(struct request *req)
 {
     assert(req != NULL);
 
-    dprintf(req->fd, "STAT: OK\nBODY: var=data\n");
+    request_append(req, "STAT: OK\nBODY: var=data\n");
 
     return 0;
 }
@@ -154,20 +154,20 @@ cmd_cb_STUN(struct request *req)
 
     if (tuns_len < 1)
     {
-        dprintf(req->fd, "RESULT: NULL\n");
+        request_append(req, "RESULT: NULL\n");
         return 0;
     }
 
-    dprintf(req->fd, "RESULT: OK\nBODY: ");
+    request_append(req, "RESULT: OK\nBODY: ");
     while(tuns_len--)
     {
         struct tunnel_context *tun = tuns[tuns_len];
         const char *ip_remote = inet_ntoa(tun->ip_remote);
 
-        dprintf(req->fd, "%s@%s;", ip_remote, tun->ifgre);
+        request_append(req, "%s@%s;", ip_remote, tun->ifgre);
     }
 
-    dprintf(req->fd, "\n");
+    request_append(req, "\n");
 
     free (tuns);
 
@@ -191,7 +191,7 @@ service_cmd_handler(struct request *req)
 
         if ((req->argc-1) != q->max_args)
         {
-            dprintf(req->fd, "RESULT: INVALID\nBODY: syntax of \"%s\" is \"%s\"\n", q->cmd, q->syntax);
+            request_append(req, "RESULT: INVALID\nBODY: syntax of \"%s\" is \"%s\"\n", q->cmd, q->syntax);
             return true;
         }
 
@@ -245,12 +245,47 @@ request_new (int sock,
     return ref;
 }
 
+int
+request_append(struct request *req,
+               const char *format,
+               ...)
+{
+    va_list args;
+    char *buf = NULL;
+    size_t len;
+
+    assert (req != NULL);
+    assert (format != NULL);
+
+    va_start (args, format);
+    len = vasprintf (&buf, format, args);
+    va_end (args);
+
+    if ((len + req->len) > SOFTGRED_REQUEST_BUF) {
+        D_CRIT("The response overflow! ([len + req->len]=%ld > [max]=%ld).\n", (len + req->len), SOFTGRED_REQUEST_BUF);
+    } else {
+        strncat(req->buf, buf, len);
+        req->len += len;
+    }
+
+    free (buf);
+
+    return ((len + req->len) > SOFTGRED_REQUEST_BUF) ? -1 : 1;
+}
+
 void
 request_free(struct request *req)
 {
     assert(req != NULL);
 
-    D_DEBUG3("Closing\n");
+    if (req->len > 0) {
+        ssize_t wrote;
+
+        wrote = write(req->fd, req->buf, req->len);
+        if (wrote != (ssize_t)req->len)
+            D_CRIT("Problems with write(), wrote is %ld but req->len=%ld\n", wrote, req->len);
+    }
+
     shutdown(req->fd, SHUT_RDWR);
     close(req->fd);
 
