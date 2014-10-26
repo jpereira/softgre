@@ -22,9 +22,11 @@
 #include "service_cmd.h"
 #include "log.h"
 #include "provision.h"
+#include "version.h"
 
 static struct service_cmd service_cmd_list[] = {
     { "HELP", cmd_cb_HELP, 0, NULL,              "show list of commands" },
+    { "VERS", cmd_cb_VERS, 0, NULL,              "show version of softgred" },
     { "QUIT", cmd_cb_QUIT, 0, NULL,              "quit connection"},
     { "LMIP", cmd_cb_LMIP, 1, "<ip of cpe>",     "list macs by IP of CPE"},
     { "GTMC", cmd_cb_GTMC, 1, "<mac of client>", "get tunnel infos by MAC of client, result: $iface, $ip_remote"},
@@ -48,15 +50,26 @@ cmd_cb_HELP(struct request *req)
 
         if (q->syntax)
         {
-            request_append(req, "%s - desc: %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
+            request_append(req, "%s - %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
         }
         else
         {
-            request_append(req, "%s - desc: %s\n", q->cmd, q->desc);
+            request_append(req, "%s - %s\n", q->cmd, q->desc);
         }
     }
 
     request_append(req, "\n");
+    return 0;
+}
+
+int
+cmd_cb_VERS(struct request *req)
+{
+    assert(req != NULL);
+
+    request_append(req, "RESULT: OK\nBODY: %s;%s\n", PACKAGE_VERSION,
+                                                     CURRENT_COMMIT);
+
     return 0;
 }
 

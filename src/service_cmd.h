@@ -27,10 +27,9 @@
 #define SOFTGRED_REQUEST_MAX_PARAMS     3
 #define SOFTGRED_REQUEST_MAX_DATA       64
 #define SOFTGRED_REQUEST_BUF            2048
-#define RET_OK          "OK"
-#define RET_NOTFOUND    "NOTFOUND"
-#define RET_INVALID     "INVALID"
-
+#define RET_OK                          "OK"
+#define RET_NOTFOUND                    "NOTFOUND"
+#define RET_INVALID                     "INVALID"
 
 struct request {
     int fd; /* socket of client */
@@ -66,6 +65,7 @@ bool service_cmd_handler(struct request *con);
 
 /* callback list*/
 int cmd_cb_HELP(struct request *req);
+int cmd_cb_VERS(struct request *req);
 int cmd_cb_QUIT(struct request *req);
 int cmd_cb_LMIP(struct request *req);
 int cmd_cb_GTMC(struct request *req);

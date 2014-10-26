@@ -49,7 +49,7 @@ thread_handler(void *arg)
 #endif
 
     if (!service_cmd_handler(req))
-        dprintf(req->fd, "The command '%s' is invalid, try 'HELP'\n", req->argv[0]);
+        request_append(req, "The command '%s' is invalid, try 'HELP'\n", req->argv[0]);
 
     // end request
     if (req)
