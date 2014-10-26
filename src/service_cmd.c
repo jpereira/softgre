@@ -93,7 +93,7 @@ cmd_cb_LMIP(struct request *req)
 
     assert (req != NULL);
 
-    D_DEBUG2("Checking macs from cpe '%s'\n", req->argv[1]);
+    if_debug(service, D_DEBUG2("Checking macs from cpe '%s'\n", req->argv[1]));
 
     addr.s_addr = inet_addr(req->argv[1]);
 
@@ -125,7 +125,7 @@ cmd_cb_GTMC(struct request *req)
 
     assert (req != NULL);
 
-    D_DEBUG2("Checking CPE by MAC '%s'\n", req->argv[1]);
+    if_debug(service, D_DEBUG2("Checking CPE by MAC '%s'\n", req->argv[1]));
 
     tun = provision_get_tunnel_by_mac(req->argv[1]);
     if (!tun)
@@ -158,7 +158,7 @@ cmd_cb_STUN(struct request *req)
 
     assert (req != NULL);
 
-    D_DEBUG2("Return list with all GRE tunnels.\n");
+    if_debug(service, D_DEBUG2("Return list with all GRE tunnels.\n"));
 
     if (tunnel_context_get_all(&tuns, &tuns_len) != 0)
     {
@@ -225,7 +225,7 @@ request_new (int sock,
     ref->fd = sock;
     ref->saddr = *saddr; 
 
-    D_DEBUG3("request accepted from %s\n", inet_ntoa(ref->saddr.sin_addr));
+    if_debug(service, D_DEBUG3("request accepted from %s\n", inet_ntoa(ref->saddr.sin_addr)));
 
     /* read the data */
     if ((ref->data_len = read(ref->fd, ref->data, sizeof(ref->data))) < 1)

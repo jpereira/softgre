@@ -50,6 +50,7 @@ softgred_config_get_ref()
             .payload   = false,
             .cmd       = false,
             .provision = false,
+            .service   = false,
         },
         .bridge = {
             { NULL, 0 },
@@ -100,7 +101,8 @@ softgred_config_load_envs()
     struct softgred_config_debug_env debug_envs[] = {
         { "SOFTGRED_DEBUG_PAYLOAD",   &(softgred_config_get_ref())->debug_env.payload    },
         { "SOFTGRED_DEBUG_CMD",       &(softgred_config_get_ref())->debug_env.cmd        },
-        { "SOFTGRED_DEBUG_PROVISION", &(softgred_config_get_ref())->debug_env.provision  }
+        { "SOFTGRED_DEBUG_PROVISION", &(softgred_config_get_ref())->debug_env.provision  },
+        { "SOFTGRED_DEBUG_SERVICE",   &(softgred_config_get_ref())->debug_env.service    },
     };
     size_t i = 0;
 

@@ -63,6 +63,7 @@ struct softgred_config {
         bool payload;        /* getenv("SOFTGRED_DEBUG_PAYLOAD") */
         bool cmd;            /* getenv("SOFTGRED_DEBUG_CMD") */
         bool provision;      /* getenv("SOFTGRED_DEBUG_PROVISION") */
+        bool service;        /* getenv("SOFTGRED_DEBUG_SERVICE") */
     } debug_env; /* set by softgred_config_load_envs() */
 
     struct tunnel_context_priv priv;
