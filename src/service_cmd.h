@@ -21,9 +21,6 @@
 
 #include "general.h"
 
-#include <glib.h>
-#include <glib/gprintf.h>
-
 /**
  *
  */
