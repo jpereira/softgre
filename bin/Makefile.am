@@ -49,22 +49,21 @@ softgred_SOURCES =            \
 	../src/provision.h        \
 	$(SOFTGRED_SERVICE_FILES)
 
-softgred_CFLAGS =            \
-    $(AM_CFLAGS)             \
-	-I$(top_srcdir)          \
-	-I$(top_srcdir)/src      \
-	-I$(top_srcdir)/include  \
-	$(SOFTGRED_CFLAGS)       \
-	$(WARN_CFLAGS)           \
-	$(DISABLE_DEPRECATED)    \
-	$(SOFTGRED_DEVEL_CFLAGS) \
-	$(SOFTGRED_SERVICE_CFLAGS) 
+softgred_CFLAGS =              \
+    $(AM_CFLAGS)               \
+	-I$(top_srcdir)            \
+	-I$(top_srcdir)/src        \
+	-I$(top_srcdir)/include    \
+	$(SOFTGRED_CFLAGS)         \
+	$(WARN_CFLAGS)             \
+	$(SOFTGRED_DEVEL_CFLAGS)   \
+	$(SOFTGRED_SERVICE_CFLAGS)
 
 softgred_LDFLAGS = $(AM_LIBS)
 
-softgred_LDADD = $(AM_LIBS)         \
-                 $(LIBPTHREAD_LIBS) \
-                 $(LIBPCAP_LIBS)	\
-				 $(LIBNETLINK_LIBS) \
-				 $(LIBDHASH_LIBS)
+softgred_LDADD = $(AM_LIBS)      \
+                 $(PTHREAD_LIBS) \
+                 $(PCAP_LIBS)	 \
+				 $(NETLINK_LIBS) \
+				 $(DHASH_LIBS)
 
