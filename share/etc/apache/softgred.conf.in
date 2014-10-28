@@ -6,7 +6,7 @@ Alias /softgre @SOFTGRED_DIR@/webinterface
     AllowOverride None
 	Options FollowSymLinks -MultiViews
 
-	DirectoryIndex index.php
+	DirectoryIndex index.html index.htm index.php
     Order allow,deny
     Allow from all
 

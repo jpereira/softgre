@@ -21,6 +21,7 @@
 angular.module('greStatusApp')
   .controller('MainCtrl', function ($scope, $http, $timeout) {
 
+    var host_gre = "http://" + window.location.host;
     var lastSize = 0; 
   	var grep = "";
     var invert = 0;
@@ -66,18 +67,8 @@ angular.module('greStatusApp')
       }
     }
 
-    pool();
-
-    function pool() {
-      $timeout(function() {
-        refreshInterfacestatus();
-        refreshLogs();
-        pool();
-      }, 3000);
-    }
-
     function refreshLogs() {
-      $http.get('http://gre.oiwifi.com.br/softgre/index.php?action=log&ajax=1&lastsize='+ lastSize + '&grep=' + grep + '&invert=' + invert).then(function(response){
+      $http.get(host_gre+'/softgre/wrapper.php?action=log&ajax=1&lastsize='+ lastSize + '&grep=' + grep + '&invert=' + invert).then(function(response){
         lastSize = response.data.size;
 
         var lastPage = $scope.logs.pages[$scope.logs.pages.length - 1];
@@ -95,8 +86,28 @@ angular.module('greStatusApp')
       });
     }
 
+    function refreshServerStatus() {
+      $http.get(host_gre+'/softgre/api/status').then(function(response){
+        if (response.data.status == 'OK') {
+          var temp = response.data.body.split(';');
+          $scope.sys_status = 'OK';
+          $scope.attr_status = {
+              os_name:      temp[0],
+              os_version:   temp[1],
+              os_arch:      temp[2],
+              sys_uptime:   moment.duration(temp[3]*1000).humanize(),
+              sgre_version: temp[4],
+              sgre_started: new Date(parseInt(temp[5])*1000)
+          };
+        } else {
+          $scope.sys_status = 'NOK';
+          $scope.attr_status = undefined;
+        }
+      });
+    }
+
     function refreshInterfacestatus() {
-      $http.get('http://gre.oiwifi.com.br/softgre/api/tunnels').then(function(response){
+      $http.get(host_gre+'/softgre/api/tunnels').then(function(response){
         if(response.data.status == 'OK') {
           $scope.status = 'OK';
           $scope.attrs = response.data.body.split(';');
@@ -119,4 +130,22 @@ angular.module('greStatusApp')
         }
       });
     }
+
+    function poolStatus() {
+      $timeout(function() {
+        refreshServerStatus();
+        poolStatus();
+      }, 5000);
+    }
+
+    function pool() {
+      $timeout(function() {
+        refreshInterfacestatus();
+        refreshLogs();
+        pool();
+      }, 3000);
+    }
+
+    poolStatus();
+    pool();
   });

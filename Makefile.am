@@ -1,6 +1,6 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Fri 17 Oct 2014 04:02:56 AM BRT
+# Last Change: Seg 27 Out 2014 20:48:20 BRST
 ####
 
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS} -I m4
@@ -22,7 +22,7 @@ endif
 if MAINTAINER_MODE
 dist-hook: dist-changelog
 else
-dist-hook:
+dist-hook: dashboard
 endif
 
 # always update the ChangeLog
@@ -47,7 +47,7 @@ dist-changelog:
     else rm -f .ChangeLog.tmp; exit 1; fi
 
 debian-package:
-	rm -f ../softgred*.{build,deb,install} debian/changelog
+	rm -f ../softgred*.{changes,build,deb,install} debian/changelog
 	./autogen.sh
 	dch -v "$(DEBIAN_PKG_VERSION)" --package softgred --create debian/changelog
 	debuild -us -uc -B
@@ -57,5 +57,5 @@ DISTCLEANFILES = \
 	intltool-merge \
 	intltool-update 
 
-.PHONY: dist-changelog
+.PHONY: dist-changelog 
 

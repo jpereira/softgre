@@ -137,7 +137,8 @@ class SoftGREd extends REST {
             $result = array(
                 'status' => 'error',
                 'body' => sprintf("socket_connect(%d, %s, %s) reason of failure is: %s", 
-                                $this->sock, $this->softgred_host, $this->softgred_port, socket_strerror(socket_last_error()))
+                                  $this->sock, $this->softgred_host, $this->softgred_port,
+                                  socket_strerror(socket_last_error()))
             );
             $this->response($this->json($result), 406);
         }
