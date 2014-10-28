@@ -211,3 +211,32 @@ share/Makefile
 ])
 
 AC_OUTPUT
+
+AC_MSG_RESULT([
+** **********************************************************
+** SoftGREd $VERSION:  Automatic configuration OK.
+**
+**  Configuration summary:
+**
+**     Debug mode: ...............${debug}
+**     Devel mode: ...............${devel}
+**     Service (API & Dashboard)..${service}
+**     Configuration dir..........$confdir
+**     Log dir....................$logdir
+**     Pid dir....................$piddir
+**
+**  Installation directories:
+**
+**     Program: ................. ${prefix}/sbin
+**
+** **********************************************************
+**
+**  Type 'make' to compile SoftGREd.
+**
+**  Type 'make install' to install SoftGREd. if you have doubts
+**  about service/api, please check the sofgre.conf in apache/conf.d
+**  
+**  Have fun with SoftGREd!
+**
+** **********************************************************
+])
