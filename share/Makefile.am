@@ -3,6 +3,10 @@
 # Last Change: Seg 27 Out 2014 20:57:37 BRST
 ####
 
+etc/softgred/softgred.conf: etc/softgred/softgred.conf.in
+	$(SED) -e "s|@SOFTGRED_PIDDIR@|$(confdir)|" \
+		   -e "s|@SOFTGRED_LOGDIR@|$(logdir)|" $< > $@
+
 etc/apache/softgred.conf: etc/apache/softgred.conf.in
 	$(SED) -e "s|@SOFTGRED_DIR@|$(pkgdatadir)|" $< > $@
 
@@ -18,7 +22,8 @@ apacheconfdir = $(sysconfdir)/apache2/conf.d/
 apacheconf_DATA = etc/apache/softgred.conf
 
 softgredconfdir = $(sysconfdir)/softgred/
-softgredconf_DATA = webinterface/webinterface_config.php
+softgredconf_DATA = etc/softgred/softgred.conf \
+                    webinterface/webinterface_config.php
 
 webinterfacedir = $(pkgdatadir)/webinterface
 webinterface_DATA =          \
@@ -51,8 +56,9 @@ EXTRA_DIST = $(apacheconf_DATA)       \
 			 $(dashboardstyles_DATA)  \
 			 $(dashboardviews_DATA)
 
-CLEANFILES = etc/apache/softgred.conf \
-			 webinterface/config.php \
+CLEANFILES = etc/softgred/softgred.conf \
+             etc/apache/softgred.conf   \
+			 webinterface/config.php    \
 			 webinterface/webinterface_config.php
 
 # dashboard

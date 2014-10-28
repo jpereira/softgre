@@ -41,11 +41,11 @@ softgred_config_get_ref()
     static struct softgred_config ref = {
         .is_foreground = false,
         .ifname        = NULL,
-        .tunnel_prefix = SOFTGRED_TUN_PREFIX,
+        .tunnel_prefix = NULL,
         .debug_mode    = 0,
         .debug_xmode   = false,
         .print_time    = false,
-        .pid_file      = { '\0', },
+        .pid_file      = NULL,
         .debug_env = {
             .payload   = false,
             .cmd       = false,
@@ -83,6 +83,13 @@ softgred_config_init()
     /* check and enable options */
     softgred_config_load_envs();
 
+    /* default values */
+    if (!cfg->tunnel_prefix)
+        cfg->tunnel_prefix = strdup(SOFTGRED_TUN_PREFIX);
+
+    if (!cfg->pid_file)
+        asprintf(&cfg->pid_file, "%s/%s.pid", SOFTGRED_PIDDIR, PACKAGE);
+
     return 0;
 }
 
@@ -91,8 +98,19 @@ softgred_config_end()
 {
     struct softgred_config *cfg = softgred_config_get_ref();
 
+    D_INFO("Releasing allocated memory in config system\n");
+
     /* Free the table */
     hash_destroy(cfg->table);
+
+    if (cfg->ifname)
+        free(cfg->ifname);
+
+    if (cfg->tunnel_prefix)
+        free(cfg->tunnel_prefix);
+
+    if (cfg->pid_file)
+        free(cfg->pid_file);
 
     return 0;
 }
@@ -121,6 +139,88 @@ softgred_config_load_envs()
 
         D_DEBUG3("Checking variable %s (%s)\n", env->var, print_bool(*env->flag));
     }
+}
+
+int
+softgred_config_load_config_file(const char *config_file)
+{
+    GKeyFile *keyfile;
+    GError *error = NULL;
+    int i = 0;
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct config_file cfile_data[] = {
+        { "global", "interface",     true, T_STRING, (void **)&cfg->ifname        },
+        { "global", "tunnel-prefix", true, T_STRING, (void **)&cfg->tunnel_prefix },
+        { "global", "bridge-map",    true, T_STRING, (void **)&cfg->bridge_map    },
+        { "global", "bridge-force",  true, T_BOOL,   (void **)&cfg->bridge_force  },
+        { "global", "pid-file",      true, T_STRING, (void **)&cfg->pid_file      },
+        { "log",    "log-file",      true, T_INT32,  (void **)&cfg->debug_mode    },
+    };
+
+    D_INFO("Loading the '%s' config file.\n", config_file);
+
+    keyfile = g_key_file_new ();
+
+    if (!g_key_file_load_from_file (keyfile, config_file, G_KEY_FILE_NONE, &error))
+    {
+        g_key_file_free(keyfile);
+        g_error (error->message);
+        return -1;
+    }
+
+    for (i=0; i < ARRAY_SIZE(cfile_data); i++)
+    {
+        struct config_file *cfile = &cfile_data[i];
+        gchar *val;
+
+        val = g_key_file_get_value (keyfile, cfile->group_name, cfile->key, NULL);
+        if (!val)
+            continue;
+
+        D_INFO("Loading [%s] %s = %s (expect %s)\n", cfile->group_name, cfile->key, val,
+                        data_T_get_name(cfile->type));
+
+        // load the data
+        switch (cfile->type)
+        {
+            case T_STRING:
+                *((char **)cfile->ptr) = strdup (val);
+                break;
+
+            case T_BOOL:
+                *((bool *)cfile->ptr) = strtol(val, NULL, 10) == 0 ? false : true;
+                break;
+
+            case T_INT32:
+                *((int32_t *)cfile->ptr) = strtol(val, NULL, 10);
+                break;
+
+            case T_UINT32:
+                *((uint32_t *)cfile->ptr) = strtol(val, NULL, 10);
+                break;
+
+            default:
+                assert(cfile->type);
+        }
+    }
+
+    g_key_file_free (keyfile);
+
+    // debug
+    D_DEBUG0("Dumping all config options\n");
+    for (i=0; i < ARRAY_SIZE(cfile_data); i++)
+    {
+        struct config_file *cfile = &cfile_data[i];
+
+        if (cfile->type == T_STRING)
+            D_DEBUG3("CONFIG-DUMP: [%s] %s=%s\n", cfile->group_name, cfile->key, *(char **)cfile->ptr);
+        else  
+            D_DEBUG3("CONFIG-DUMP: [%s] %s=%d\n", cfile->group_name, cfile->key, *(int **)cfile->ptr);
+    }
+
+    exit(1);
+
+    return 0;
 }
 
 int
@@ -215,7 +315,7 @@ softgred_config_load_iface(const char *ifname,
             {
                 struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
                 char *addr = inet_ntoa(sa->sin_addr);
-                cfg->ifname = ifname;
+                cfg->ifname = strdup(ifname);
 
                 strncpy(cfg->priv.ifname_ip, addr, SOFTGRED_MAX_IFACE);
                 memcpy(sin, sa, sizeof(struct sockaddr_in));
@@ -368,12 +468,6 @@ softgred_config_create_pid_file(int pid)
             .l_start = 0,
             .l_len = 0
     };
-
-    if (!cfg->pid_file[0])
-    {
-        snprintf(cfg->pid_file, sizeof(cfg->pid_file), "%s/%s.pid",
-                SOFTGRED_PIDDIR, PACKAGE);
-    }
 
     D_DEBUG3("Saving pidfile in %s\n", cfg->pid_file);
 

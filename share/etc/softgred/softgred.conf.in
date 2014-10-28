@@ -1,0 +1,38 @@
+####################################
+# SoftGREd Config File
+####################################
+
+[global]
+# Network interface to listen GRE packets.
+interface = eth0
+
+# Prefix name to be used in gre-network-interfaces, default e.g: sgreN (N num. of instance)
+tunnel-prefix = sgre
+
+# mapping
+bridge-map = 10@br-gre, 11@br-gre
+
+# create all bridges if don't exist
+bridge-force = yes
+
+# Path of pid-file, default in @SOFTGRED_PIDDIR@/softgred.pid
+pid-file = @SOFTGRED_PIDDIR@/softgred.pid
+
+[service]
+# only listening in localhost
+bind-in = lo 
+port = 8888
+max-listen = 10
+
+[debug]
+payload = false
+command = false
+provision = false
+service = false
+
+[log]
+level = 1
+debug = true
+print-time = true
+log-file = @SOFTGRED_LOGDIR@/softgred.log
+

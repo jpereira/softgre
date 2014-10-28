@@ -55,6 +55,7 @@ softgred_CFLAGS =              \
 	-I$(top_srcdir)/src        \
 	-I$(top_srcdir)/include    \
 	$(SOFTGRED_CFLAGS)         \
+    $(GLIB_CFLAGS)             \
 	$(WARN_CFLAGS)             \
 	$(SOFTGRED_DEVEL_CFLAGS)   \
 	$(SOFTGRED_SERVICE_CFLAGS)
@@ -65,5 +66,6 @@ softgred_LDADD = $(AM_LIBS)      \
                  $(PTHREAD_LIBS) \
                  $(PCAP_LIBS)	 \
 				 $(NETLINK_LIBS) \
-				 $(DHASH_LIBS)
+				 $(DHASH_LIBS)   \
+                 $(GLIB_LIBS)
 

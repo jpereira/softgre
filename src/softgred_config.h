@@ -47,17 +47,56 @@ struct softgred_config_debug_env {
 #define is_debug(__peace)             (softgred_config_get_ref()->debug_env.__peace == true)
 #define if_debug(__peace, __doit)     if(is_debug(__peace)) { __doit; }
 
-struct softgred_config {
-    bool is_foreground;        /* --foreground */
-    const char *ifname;        /* --iface */
-    const char *tunnel_prefix; /* --tunnel-prefix */
-    uint8_t debug_mode;        /* --debug */
-    bool debug_xmode;          /* --xdebug */
-    bool print_time;           /* --print-time */
-    char pid_file[128];        /* --pid-file */
+enum data_type {
+    T_STRING,
+    T_BOOL,
+    T_UINT32, 
+    T_INT32
+};
 
+static const char *
+data_T_get_name (enum data_type type)
+{
+    switch (type)
+    {
+        case T_STRING: return "string";
+        case T_BOOL: return "boolean";
+        case T_INT32: return "int32_t";
+        case T_UINT32: return "uint32_t";
+        default: return "unknown";
+    }
+}
+
+struct config_file {
+    const char *group_name; /* group name */
+    const char *key;        /* config key name */
+    bool is_necessary;      /* is necessary? */
+    enum data_type type;    /* expected type of value */
+    void **ptr;             /* where will be save */
+};
+
+struct softgred_config {
+    bool is_foreground;     /* --foreground */
+    char *ifname;           /* --iface */
+    char *tunnel_prefix;    /* --tunnel-prefix */
+    char *pid_file;         /* --pid-file */
+
+    int32_t debug_mode;     /* --debug */
+    bool debug_xmode;       /* --xdebug */
+    bool print_time;        /* --print-time */
+
+    bool bridge_force;
+    char *bridge_map;
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
+
+    struct {
+        char *bind_in;
+        uint16_t port;
+        uint32_t max_listen;
+    } service;
+
+    int debug_level;
 
     struct {
         bool payload;        /* getenv("SOFTGRED_DEBUG_PAYLOAD") */
@@ -80,6 +119,8 @@ int softgred_config_init();
 int softgred_config_end();
 
 void softgred_config_load_envs();
+
+int softgred_config_load_config_file(const char *config_file);
 
 int softgred_config_load_cli(int argc, 
                              char *argv[]);

@@ -145,6 +145,10 @@ main (int argc,
       char *argv[])
 {
     struct softgred_config *cfg = softgred_config_get_ref();
+    const char *config_file = SOFTGRED_CONFDIR"/softgred.conf";
+
+    softgred_config_load_config_file (config_file);
+    exit(1);
 
     if (argc < 2)
     {
@@ -216,7 +220,7 @@ main (int argc,
             exit(EXIT_FAILURE);
         }
 
-        signal(SIGCHLD,SIG_IGN);
+        signal(SIGCHLD, SIG_IGN);
         signal(SIGHUP, SIG_IGN);
     }
 

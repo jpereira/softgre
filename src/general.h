@@ -85,6 +85,9 @@
 // get/setifaddrs
 #include <ifaddrs.h>
 
+// glib
+#include <glib.h>        // GKeyFile
+
 #ifndef ARRAY_SIZE
 #   define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #   define ARRAY_AND_SIZE(x) (x), ARRAY_SIZE(x)
