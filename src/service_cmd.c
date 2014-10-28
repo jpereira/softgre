@@ -31,7 +31,7 @@ static struct service_cmd service_cmd_list[] = {
     { "LMIP", cmd_cb_LMIP, 1, "<ip of cpe>",     "list macs by IP of CPE"},
     { "GTMC", cmd_cb_GTMC, 1, "<mac of client>", "get tunnel infos by MAC of client, result: $iface, $ip_remote"},
     { "STUN", cmd_cb_STUN, 0, NULL,              "show list with all provisioning, result: $ip_remote1@$iface1;$ip_remoteN@$ifaceN;... "},
-    { "STAT", cmd_cb_STAT, 0, NULL,              "show status of SoftGREd"},
+    { "STAT", cmd_cb_STAT, 0, NULL,              "show status of SoftGREd, result: $os_name;$os_version;$os_arch;$sys_uptime;$sgre_version;$sgre_started"},
 };
 
 int
@@ -39,7 +39,7 @@ cmd_cb_HELP(struct request *req)
 {
     size_t i;
 
-    request_append(req, "Usage: <command> [args1] [args2] ... \n\n");
+    request_appendf(req, "Usage: <command> [args1] [args2] ... \n\n");
 
     for (i=0; i < ARRAY_SIZE(service_cmd_list); i++)
     {
@@ -50,15 +50,15 @@ cmd_cb_HELP(struct request *req)
 
         if (q->syntax)
         {
-            request_append(req, "%s - %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
+            request_appendf(req, "%s - %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
         }
         else
         {
-            request_append(req, "%s - %s\n", q->cmd, q->desc);
+            request_appendf(req, "%s - %s\n", q->cmd, q->desc);
         }
     }
 
-    request_append(req, "\n");
+    request_appendf(req, "\n");
     return 0;
 }
 
@@ -67,8 +67,8 @@ cmd_cb_VERS(struct request *req)
 {
     assert(req != NULL);
 
-    request_append(req, "RESULT: OK\nBODY: %s;%s\n", PACKAGE_VERSION,
-                                                     CURRENT_COMMIT);
+    request_appendf(req, "RESULT: OK\nBODY: %s;%s\n", PACKAGE_VERSION,
+                                                      CURRENT_COMMIT);
 
     return 0;
 }
@@ -100,18 +100,19 @@ cmd_cb_LMIP(struct request *req)
     tun = provision_get_tunnel_byip(&addr, NULL);
     if (!tun)
     {
-        request_append(req, "RESULT: NOTFOUND\n");
+        request_appendf(req, "RESULT: NOTFOUND\n");
         return 0;
     }
 
     helper_lock();
-    request_append(req, "RESULT: OK\nBODY: ");
+    request_appendf(req, "RESULT: OK\nBODY: ");
     for (; i < PROVISION_MAX_CLIENTS; i++)
     {
         const char *cur = tun->filter[i].src_mac;
+        char com = tun->filter[i+1].src_mac[0] != '\0' ? ';' : 0x00;
 
         if (cur[0] != '\0')
-            request_append(req, "%s;", cur);
+            request_appendf(req, "%s%c", cur, com);
     }
     helper_unlock();
 
@@ -130,12 +131,12 @@ cmd_cb_GTMC(struct request *req)
     tun = provision_get_tunnel_by_mac(req->argv[1]);
     if (!tun)
     {
-        request_append(req, "RESULT: NOTFOUND\n");
+        request_appendf(req, "RESULT: NOTFOUND\n");
         return 0;
     }
 
     const char *ip_remote = inet_ntoa(tun->ip_remote);
-    request_append(req, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
+    request_appendf(req, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
 
     return 0;
 }
@@ -143,9 +144,20 @@ cmd_cb_GTMC(struct request *req)
 int
 cmd_cb_STAT(struct request *req)
 {
+    struct softgred_config *cfg = softgred_config_get_ref();
+    struct sysinfo info;
+    char time_started[22];
+    const char *sgre_version = VERSION;
+
     assert(req != NULL);
 
-    request_append(req, "STAT: OK\nBODY: var=data\n");
+    sysinfo(&info);
+
+    /* $os_name;$os_version;$os_arch;$sys_uptime;$sgre_version;$sgre_started; */
+
+    request_appendf(req, "RESULT: OK\nBODY: %s %s;%s;%s;%ld;%s;%ld\n", cfg->uts.sysname, cfg->uts.release,
+                    cfg->uts.version, cfg->uts.machine, info.uptime, sgre_version, cfg->started_time
+    );
 
     return 0;
 }
@@ -167,20 +179,20 @@ cmd_cb_STUN(struct request *req)
 
     if (tuns_len < 1)
     {
-        request_append(req, "RESULT: NULL\n");
+        request_appendf(req, "RESULT: NULL\n");
         return 0;
     }
 
-    request_append(req, "RESULT: OK\nBODY: ");
+    request_appendf(req, "RESULT: OK\nBODY: ");
     while(tuns_len--)
     {
         struct tunnel_context *tun = tuns[tuns_len];
         const char *ip_remote = inet_ntoa(tun->ip_remote);
 
-        request_append(req, "%s@%s;", ip_remote, tun->ifgre);
+        request_appendf(req, "%s@%s;", ip_remote, tun->ifgre);
     }
 
-    request_append(req, "\n");
+    request_appendf(req, "\n");
 
     free (tuns);
 
@@ -195,16 +207,17 @@ service_cmd_handler(struct request *req)
     for (i=0; i < ARRAY_SIZE(service_cmd_list); i++)
     {
         struct service_cmd *q = &service_cmd_list[i];
+        const char *str = (req->argc-1 != q->max_args) ? "bad args" : "ok";
 
         if (strncmp(req->argv[0], q->cmd, strlen(q->cmd)))
             continue;
 
-        D_DEBUG3("Calling command '%s' with %d arguments, expected is %d (%s)\n", q->cmd, 
-                    req->argc - 1, q->max_args, (req->argc-1 != q->max_args) ? "bad args" : "ok");
+        if_debug(service, D_DEBUG3("Calling command '%s' with %d arguments, expected is %d (%s)\n",
+                        q->cmd, req->argc - 1, q->max_args, str));
 
         if ((req->argc-1) != q->max_args)
         {
-            request_append(req, "RESULT: INVALID\nBODY: syntax of \"%s\" is \"%s\"\n", q->cmd, q->syntax);
+            request_appendf(req, "RESULT: INVALID\nBODY: syntax of \"%s\" is \"%s\"\n", q->cmd, q->syntax);
             return true;
         }
 
@@ -250,7 +263,7 @@ request_new (int sock,
 
         for (; *str; str++)
         {
-            if (*str == '\n' || *str == '\r' || *str == '\t')
+            if (!isgraph(*str))
                 *str = '\0';
         }
     }
@@ -259,9 +272,9 @@ request_new (int sock,
 }
 
 int
-request_append(struct request *req,
-               const char *format,
-               ...)
+request_appendf(struct request *req,
+                const char *format,
+                 ...)
 {
     va_list args;
     char *buf = NULL;

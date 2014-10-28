@@ -47,9 +47,9 @@ struct request {
 struct request *request_new(int sock,
                             struct sockaddr_in *saddr);
 
-int request_append(struct request *req,
-                   const char *format,
-                   ...);
+int request_appendf(struct request *req,
+                    const char *format,
+                    ...);
 
 void request_free(struct request *req);
 

@@ -53,6 +53,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/resource.h>
+#include <sys/utsname.h>
 
 // pthreads
 #include <pthread.h>
@@ -67,6 +68,7 @@
 
 #include <linux/rtnetlink.h>
 #include <linux/if_tunnel.h>
+#include <linux/kernel.h>
 
 // libdhash
 #include <dhash.h>

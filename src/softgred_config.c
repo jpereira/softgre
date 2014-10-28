@@ -71,6 +71,9 @@ softgred_config_init()
     struct softgred_config *cfg = softgred_config_get_ref();
     int error;
 
+    cfg->started_time = time(NULL);
+    uname(&cfg->uts);
+
     if ((error = hash_create(0, &cfg->table, NULL,  NULL)) != HASH_SUCCESS)
     {
         fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));

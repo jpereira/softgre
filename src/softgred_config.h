@@ -69,6 +69,8 @@ struct softgred_config {
     struct tunnel_context_priv priv;
     struct rtnl_handle rth;
     hash_table_t *table;
+    time_t started_time;
+    struct utsname uts;
 };
 
 struct softgred_config *softgred_config_get_ref();
