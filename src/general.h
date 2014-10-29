@@ -111,6 +111,11 @@
 
 #define print_bool(x)   ((x == true) ? "true" : "false")
 
+// default options
+#define SOFTGRED_DEFAULT_CONFFILE       SOFTGRED_CONFDIR"/softgred.conf"
+#define SOFTGRED_DEFAULT_LOGFILE        SOFTGRED_LOGDIR"/softgred.log"
+#define SOFTGRED_DEFAULT_DBGLOGFILE     SOFTGRED_LOGDIR"/softgred_debug.log"
+
 // commands
 #define SOFTGRED_CMD_BRCTL  "/sbin/brctl"
 #define SOFTGRED_CMD_IP     "/bin/ip"

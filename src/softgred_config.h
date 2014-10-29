@@ -30,7 +30,7 @@
 #define SOFTGRED_TUN_MTU            1462
 
 struct tunnel_bridge {
-    const char *ifname;
+    char ifname[SOFTGRED_MAX_IFACE];
     uint16_t vlan_id;
 };
 
@@ -50,86 +50,83 @@ struct softgred_config_debug_env {
 enum data_type {
     T_STRING,
     T_BOOL,
-    T_UINT32, 
-    T_INT32
+    T_INTEGER,
+    T_CALLBACK
 };
 
 static const char *
-data_T_get_name (enum data_type type)
+data_type_get_name (enum data_type type)
 {
     switch (type)
     {
         case T_STRING: return "string";
         case T_BOOL: return "boolean";
-        case T_INT32: return "int32_t";
-        case T_UINT32: return "uint32_t";
+        case T_INTEGER: return "integer";
+        case T_CALLBACK: return "callback";
         default: return "unknown";
     }
 }
 
-struct config_file {
-    const char *group_name; /* group name */
-    const char *key;        /* config key name */
-    bool is_necessary;      /* is necessary? */
-    enum data_type type;    /* expected type of value */
-    void **ptr;             /* where will be save */
-};
-
 struct softgred_config {
+    char *config_file;      /* --config-file */
     bool is_foreground;     /* --foreground */
-    char *ifname;           /* --iface */
-    char *tunnel_prefix;    /* --tunnel-prefix */
-    char *pid_file;         /* --pid-file */
 
-    int32_t debug_mode;     /* --debug */
-    bool debug_xmode;       /* --xdebug */
-    bool print_time;        /* --print-time */
-
+    // [ global]
+    char *ifname;
+    char *tunnel_prefix;
+    char *pid_file;
+    char *log_file;
     bool bridge_force;
-    char *bridge_map;
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     uint8_t bridge_slot;
 
-    struct {
-        char *bind_in;
-        uint16_t port;
-        uint32_t max_listen;
-    } service;
+    // [service]
+    char *srv_bind_in;
+    uint16_t srv_port;
+    uint32_t srv_max_listen;
 
-    int debug_level;
+    // [debug]
+    bool dbg_enable;
+    char *dbg_file;
+    int32_t dbg_mode;      /* --debug */
+    bool dbg_time;         /* --debug-time */
 
+    // TODO: change this
+    struct tunnel_context_priv priv;
+    struct rtnl_handle rth;
+    hash_table_t *table;
+    time_t started_time;
+    struct utsname uts;
+
+    // TODO: Remover isto breve
     struct {
         bool payload;        /* getenv("SOFTGRED_DEBUG_PAYLOAD") */
         bool cmd;            /* getenv("SOFTGRED_DEBUG_CMD") */
         bool provision;      /* getenv("SOFTGRED_DEBUG_PROVISION") */
         bool service;        /* getenv("SOFTGRED_DEBUG_SERVICE") */
     } debug_env; /* set by softgred_config_load_envs() */
+};
 
-    struct tunnel_context_priv priv;
-    struct rtnl_handle rth;
-    hash_table_t *table;
-    time_t started_time;
-    struct utsname uts;
+struct softgred_config_map {
+    const char *group;       /* group name */
+    const char *key;         /* config key name */
+    bool is_necessary;       /* is necessary? */
+    enum data_type type;     /* expected type of value */
+    void **ptr;              /* where will save */
 };
 
 struct softgred_config *softgred_config_get_ref();
+
+void softgred_config_release();
 
 int softgred_config_init();
 
 int softgred_config_end();
 
-void softgred_config_load_envs();
-
-int softgred_config_load_config_file(const char *config_file);
+int softgred_config_load_conf(const char *config_file);
 
 int softgred_config_load_cli(int argc, 
                              char *argv[]);
-
-int softgred_config_load_iface(const char *ifname,
-                               struct softgred_config *cfg);
-
-int softgred_config_load_attach(const char *arg,
-                                struct softgred_config *cfg);
 
 int softgred_config_create_pid_file(int pid);
 

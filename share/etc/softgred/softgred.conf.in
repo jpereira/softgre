@@ -12,11 +12,14 @@ tunnel-prefix = sgre
 # mapping
 bridge-map = 10@br-gre, 11@br-gre
 
-# create all bridges if don't exist
-bridge-force = yes
+# if don't exist the target bridge, will be created!
+bridge-force = true
 
 # Path of pid-file, default in @SOFTGRED_PIDDIR@/softgred.pid
 pid-file = @SOFTGRED_PIDDIR@/softgred.pid
+
+# log file
+log-file = @SOFTGRED_LOGDIR@/softgred.log
 
 [service]
 # only listening in localhost
@@ -25,14 +28,9 @@ port = 8888
 max-listen = 10
 
 [debug]
-payload = false
-command = false
-provision = false
-service = false
-
-[log]
-level = 1
-debug = true
+enable = true
+mode = all
+# mode = payload, command, provision, service
 print-time = true
-log-file = @SOFTGRED_LOGDIR@/softgred.log
+dbg-file = @SOFTGRED_LOGDIR@/softgred_debug.log
 

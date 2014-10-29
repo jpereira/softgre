@@ -99,22 +99,22 @@ softgred_init()
     signal(SIGSEGV, softgred_sig_handler);
 
     if (softgred_config_init() < 0)
-        return -1;
+        return false;
 
     if (service_init() < 0)
-        return -1;
+        return false;
    
     if (iface_ebtables_init() < 0)
-        return -1;
+        return false;
 
     if (payload_loop_init() != 0)
     {
         D_CRIT("Problems with payload_loop_init()\n");
         softgred_end ();
-        return -1;
+        return false;
     }
   
-    return 0;
+    return true;
 }
 
 void
@@ -145,20 +145,18 @@ main (int argc,
       char *argv[])
 {
     struct softgred_config *cfg = softgred_config_get_ref();
-    const char *config_file = SOFTGRED_CONFDIR"/softgred.conf";
+    const char *config_file;
 
-    softgred_config_load_config_file (config_file);
-    exit(1);
-
-    if (argc < 2)
+    if (argc > 0)
     {
-        softgred_print_usage(argv);
-        exit(EXIT_SUCCESS);
+        if (!softgred_config_load_cli(argc, argv))
+            exit(EXIT_SUCCESS);
     }
 
-    if (!softgred_config_load_cli(argc, argv))
+    config_file = cfg->config_file != NULL ? cfg->config_file : SOFTGRED_DEFAULT_CONFFILE;
+    if (!softgred_config_load_conf(config_file))
     {
-        fprintf(stderr, "%s: Invalid options!\n", argv[0]);
+        fprintf(stderr, "Problems with configuration file '%s'\n", config_file);
         exit(EXIT_FAILURE);
     }
 
@@ -175,20 +173,6 @@ main (int argc,
 
     /* starting log */
     log_init();
-
-    /* Check debug level */
-    if (cfg->debug_mode > 0)
-    {
-        D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n", PACKAGE_VERSION, __TIME__, __DATE__);
-
-        if (cfg->debug_mode > DEBUG_MAX_LEVEL)
-        {
-            fprintf(stderr, "*** Ops!! the maximum of debug level is %d (-ddd).\n", DEBUG_MAX_LEVEL);
-            exit(EXIT_FAILURE);
-        }
-
-        fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->debug_mode);
-    }
 
     /* foreground || background */
     if (!cfg->is_foreground)
@@ -235,7 +219,8 @@ main (int argc,
     );
 
     /* pre-run */
-    softgred_init();
+    if (!softgred_init())
+        exit(EXIT_FAILURE);
 
     /* busyloop */
     D_INFO("Entering main loop\n");

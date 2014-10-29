@@ -1,10 +1,10 @@
 # Author: Jorge Pereira <jpereiran@gmail.com>
 # Created: Mon Sep 22 23:14:38 EDT 2014
-# Last Change: Seg 27 Out 2014 20:57:37 BRST
+# Last Change: Qua 29 Out 2014 19:00:34 BRST
 ####
 
 etc/softgred/softgred.conf: etc/softgred/softgred.conf.in
-	$(SED) -e "s|@SOFTGRED_PIDDIR@|$(confdir)|" \
+	$(SED) -e "s|@SOFTGRED_PIDDIR@|$(piddir)|" \
 		   -e "s|@SOFTGRED_LOGDIR@|$(logdir)|" $< > $@
 
 etc/apache/softgred.conf: etc/apache/softgred.conf.in

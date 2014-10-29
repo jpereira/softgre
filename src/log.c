@@ -69,7 +69,7 @@ log_message(int priority,
     va_start(vl, format);
     vasprintf(&buf, format, vl);
 
-    if (cfg->print_time)
+    if (cfg->dbg_time)
     {
         time_t t = time(NULL);
         struct tm tm = *localtime(&t);
@@ -78,7 +78,7 @@ log_message(int priority,
                     tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     }
 
-    switch(cfg->debug_mode)
+    switch(cfg->dbg_mode)
     {
         case L_DEBUG2:
             fprintf(stderr, "** %s: %s", label, buf);
