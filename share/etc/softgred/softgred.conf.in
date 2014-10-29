@@ -23,7 +23,7 @@ log-file = @SOFTGRED_LOGDIR@/softgred.log
 
 [service]
 # only listening in localhost
-bind-in = lo 
+bind-in = lo
 port = 8888
 max-listen = 10
 

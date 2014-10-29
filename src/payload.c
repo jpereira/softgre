@@ -42,7 +42,7 @@ payload_loop_init ()
     /* get network number and mask associated with capture device */
     if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) != 0)
     {
-        D_WARNING("pcap_lookupnet(): Couldn't get netmask for device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
+        D_WARNING("pcap_lookupnet(): Couldn't get ip/netmask, %s\n", cfg->ifname, pl_cfg->errbuf);
         return -1;
     }
 
