@@ -167,8 +167,6 @@ config_set_interface(struct softgred_config *cfg,
         {
             struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
             char *addr = inet_ntoa(sa->sin_addr);
-
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!! %s @ %s\n", ifname, addr);
             
             cfg->ifname = strdup(ifname);
             strncpy(cfg->priv.ifname_ip, addr, SOFTGRED_MAX_IFACE);
@@ -341,6 +339,8 @@ softgred_config_load_conf(const char *config_file)
 
             break;
         }
+
+        val = g_strstrip(val);
 
         D_DEBUG3("Setting the key [%s]::%s with '%s'\n", entry->group, entry->key, val);
 
