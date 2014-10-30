@@ -24,7 +24,7 @@
 #include "log.h"
 
 struct service *
-service_get_ref() 
+service_ref() 
 {
     static struct service ref;
     return &ref;
@@ -143,7 +143,7 @@ thread_service(void *UNUSED(arg))
 int
 service_init()
 {
-    struct service *srv = service_get_ref();
+    struct service *srv = service_ref();
 
     D_DEBUG0("Initializing SoftGREd Service (socket-file://%s)\n", SOFTGRED_SERVICE_FILESOCK);
 
@@ -159,7 +159,7 @@ service_init()
 int
 service_end()
 {
-    struct service *srv = service_get_ref();
+    struct service *srv = service_ref();
 
     D_DEBUG0("Unitializing SoftGREd Service\n");
 

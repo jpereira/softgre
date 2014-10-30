@@ -144,7 +144,7 @@ cmd_cb_GTMC(struct request *req)
 int
 cmd_cb_STAT(struct request *req)
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     struct sysinfo info;
     char time_started[22];
     const char *sgre_version = VERSION;

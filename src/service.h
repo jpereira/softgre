@@ -29,7 +29,7 @@ struct service {
     pthread_t tid;
 };
 
-struct service *service_get_ref();
+struct service *service_ref();
 
 int service_init();
 

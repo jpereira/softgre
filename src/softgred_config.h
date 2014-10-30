@@ -44,7 +44,7 @@ struct softgred_config_debug_env {
     bool *flag;
 };
 
-#define is_debug(__peace)             (softgred_config_get_ref()->debug_env.__peace == true)
+#define is_debug(__peace)             (softgred_config_ref()->debug_env.__peace == true)
 #define if_debug(__peace, __doit)     if(is_debug(__peace)) { __doit; }
 
 enum data_type {
@@ -115,7 +115,7 @@ struct softgred_config_map {
     void **ptr;              /* where will save */
 };
 
-struct softgred_config *softgred_config_get_ref();
+struct softgred_config *softgred_config_ref();
 
 void softgred_config_release();
 

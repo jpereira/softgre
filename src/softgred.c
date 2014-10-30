@@ -144,7 +144,7 @@ int
 main (int argc,
       char *argv[])
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     const char *config_file;
 
     if (argc > 0)

@@ -35,7 +35,7 @@
 #endif
 
 struct softgred_config *
-softgred_config_get_ref()
+softgred_config_ref()
 {
     /* below default settings */
     static struct softgred_config ref = {
@@ -84,7 +84,7 @@ softgred_config_get_ref()
 __attribute__ ((destructor)) void
 softgred_config_release()
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     char *ptrs[] = { /* pointers to be released */
         cfg->config_file,
         cfg->ifname,
@@ -109,7 +109,7 @@ softgred_config_release()
 int
 softgred_config_init()
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     int error;
 
     cfg->started_time = time(NULL);
@@ -127,7 +127,7 @@ softgred_config_init()
 int
 softgred_config_end()
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
 
     D_INFO("Releasing allocated memory in config system\n");
 
@@ -280,7 +280,7 @@ config_set_dbg_mode(struct softgred_config *cfg,
 int
 softgred_config_load_conf(const char *config_file)
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     struct softgred_config_map cfg_maps[] = {
         { "global",  "interface",     true,  T_CALLBACK, (void **)&config_set_interface     },
         { "global",  "tunnel-prefix", true,  T_CALLBACK, (void **)&config_set_tunnel_prefix },
@@ -407,7 +407,7 @@ softgred_config_load_cli(int argc,
         { "version",       no_argument,       NULL, 'v'},
         { NULL,            0,                 NULL,  0 }
     };
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     int opt;
 
     while ((opt = getopt_long(argc, argv, "c:fp:l:dthv", long_opts, NULL)) != EOF)
@@ -505,7 +505,7 @@ softgred_print_usage(char *argv[])
 int
 softgred_config_create_pid_file(int pid)
 {
-    struct softgred_config *cfg = softgred_config_get_ref();
+    struct softgred_config *cfg = softgred_config_ref();
     int fd;
     const char *prog_name = program_invocation_short_name;
     char buf[100];
