@@ -17,12 +17,12 @@ GET /softgre/api/cpe/{ue-mac}  Show tunnel info by mac-address of UE (User Equip
 GET /softgre/api/tunnels       Show all provisioned tunnels. (IP_CPE@GRE-INTERFACE)
                                result: $ip_cpe1@$iface1;$ip_cpe@$ifaceN;
 
-GET /softgre/api/status        Show status of SoftGREd
-                               result: OK or DOWN
+GET /softgre/api/status        Show status of SoftGREd,
+                               result: $os_name;$os_version;$os_arch;$sys_uptime;$sgre_version;$sgre_timestarted
 
-########################################
-# All methods return the object return #
-########################################
+######################################
+# All methods return the object      #
+######################################
 {
   "status": "OK",             // Possible values: OK, DOWN, NOTFOUND, INVALID or NULL
   "body": "return of command" // Only when 'status' was "OK"
