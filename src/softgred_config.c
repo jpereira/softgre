@@ -428,11 +428,11 @@ softgred_config_load_cli(int argc,
                 break;
             case 'p': /* --pid-file */
                 if (optarg)
-                    asprintf(&cfg->pid_file, "%s", optarg);
+                    cfg->pid_file = strdup(optarg);
                 break;
             case 'l': /* --log-file */
                 if (optarg)
-                    asprintf(&cfg->log_file, "%s", optarg);
+                    cfg->log_file = strdup(optarg);
                 break;
             case 'd': /* --debug */
                 cfg->dbg_mode += 1;
@@ -455,8 +455,6 @@ softgred_config_load_cli(int argc,
     /* Check debug level */
     if (cfg->dbg_mode > 0)
     {
-        D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n", PACKAGE_VERSION, __TIME__, __DATE__);
-
         if (cfg->dbg_mode > DEBUG_MAX_LEVEL)
         {
             fprintf(stderr, "*** Ops!! the maximum of debug level is %d (-ddd).\n", DEBUG_MAX_LEVEL);
@@ -465,6 +463,8 @@ softgred_config_load_cli(int argc,
 
         fprintf(stderr, "*** Entering in debug mode with level %d! ***\n", cfg->dbg_mode);
     }
+
+    D_INFO("** SoftGREd %s (Build %s - %s) - Daemon Started **\n", PACKAGE_VERSION, __TIME__, __DATE__);
 
     return true;
 }
