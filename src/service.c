@@ -63,9 +63,11 @@ thread_handler(void *arg)
 static void *
 thread_service(void *UNUSED(arg))
 {
-    int sock_client = -1, sock_desc = -1;
+    int sock_client = -1, sock_desc = -1, on = 1;
     struct sockaddr_in s_server = { 0, };
     struct sockaddr_in s_client = { 0, };
+    struct softgred_config *cfg = softgred_config_ref();
+    struct ifreq ifr;
 
     D_INFO("Starting Service!\n");
 
@@ -76,15 +78,27 @@ thread_service(void *UNUSED(arg))
         return NULL;
     }
 
-    int on = 1;
     setsockopt(sock_desc, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
     // Prepare the sockaddr_in structure
-    s_server.sin_family = AF_INET;
-    s_server.sin_addr.s_addr = INADDR_ANY;
-    s_server.sin_port = htons(SOFTGRED_SERVICE_PORT);
+    if (!strcmp(cfg->srv_bind_in, "any"))
+    {
+        s_server.sin_addr.s_addr = INADDR_ANY;
+    }
+    else
+    {
+        memset(&ifr, 0, sizeof(ifr));
+        snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", cfg->srv_bind_in);
+        if (setsockopt(sock_desc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0)
+        {
+            D_CRIT("Could not create socket\n");
+            return NULL;
+        }
+    }
      
     // Bind
+    s_server.sin_family = AF_INET;
+    s_server.sin_port = htons(cfg->srv_port);
     if (bind(sock_desc, (struct sockaddr *)&s_server , sizeof(s_server)) < 0)
     {
         D_CRIT("Problems with bind(), errno=%d (%s)\n", errno, strerror(errno));
@@ -144,8 +158,21 @@ int
 service_init()
 {
     struct service *srv = service_ref();
+    struct softgred_config *cfg = softgred_config_ref();
 
-    D_DEBUG0("Initializing SoftGREd Service (socket-file://%s)\n", SOFTGRED_SERVICE_FILESOCK);
+    // if empty, set default values!
+    if (!cfg->srv_bind_in)
+        cfg->srv_bind_in = strdup(SOFTGRED_DEFAULT_SERVICE_IFACE);
+
+    if (cfg->srv_port == 0)
+        cfg->srv_port = SOFTGRED_DEFAULT_SERVICE_PORT;
+
+    if (cfg->srv_max_listen == 0)
+        cfg->srv_max_listen = SOFTGRED_DEFAULT_SERVICE_MAX;
+
+    D_DEBUG0("Listening \"SoftGREd Service\", listening in %s:%d with max %d accepts\n",
+                    cfg->srv_bind_in, cfg->srv_port, cfg->srv_max_listen
+    );
 
     if (pthread_create(&srv->tid, NULL, thread_service, NULL) < 0)
     {
@@ -177,6 +204,10 @@ service_end()
 void
 service_stats()
 {
-    D_INFO("Show stats of SoftGREd/Service (socket-file://%s\n", SOFTGRED_SERVICE_FILESOCK);
+    struct softgred_config *cfg = softgred_config_ref();
+
+    D_INFO("Show stats of SoftGREd/Service interface=%s port=%d max_listen=%d\n",
+            cfg->srv_bind_in, cfg->srv_port, cfg->srv_max_listen
+    );
 }
 

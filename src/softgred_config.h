@@ -132,7 +132,7 @@ int softgred_config_create_pid_file(int pid);
 
 void softgred_print_version();
 
-void softgred_print_usage(char *argv[]);
+void softgred_print_usage();
 
 #endif /*SOFTGRED_CONFIG_H_*/
 

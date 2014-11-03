@@ -53,7 +53,7 @@ softgred_config_ref()
 
         // service
         .srv_bind_in    = NULL,
-        .srv_port       = 8888,
+        .srv_port       = SOFTGRED_DEFAULT_SERVICE_PORT,
         .srv_max_listen = 10,
 
         // debug
@@ -366,7 +366,7 @@ softgred_config_load_conf(const char *config_file)
             case T_BOOL: {
                    int32_t num = strtol(val, NULL, 10);
 
-                   *((bool *)entry->ptr) = (entry->type == T_BOOL) ? (num == true) : num;
+                   *((int32_t *)entry->ptr) = (entry->type == T_BOOL) ? (num == true) : num;
                 }
                 break;
 
@@ -441,13 +441,13 @@ softgred_config_load_cli(int argc,
                 cfg->dbg_time = true;
                 break;
             case 'h': /* --help */
-                softgred_print_usage(argv);
+                softgred_print_usage();
                 return false;
             case 'v': /* --version */
                 softgred_print_version();
                 return false;
             default:
-                softgred_print_usage(argv);
+                softgred_print_usage();
                 return false;
         }
     }
@@ -481,11 +481,12 @@ softgred_print_version()
 }
 
 void
-softgred_print_usage(char *argv[])
+softgred_print_usage()
 {
-    const char *arg0 = basename (argv[0]);
-    const char *default_conf = SOFTGRED_DEFAULT_CONFFILE;
-    const char *default_pid = SOFTGRED_PIDDIR"/"PACKAGE".pid";
+    const char *prog_name = program_invocation_short_name;
+    const char *default_cnf = SOFTGRED_DEFAULT_CONFFILE;
+    const char *default_pid = SOFTGRED_DEFAULT_PIDFILE;
+    const char *default_log = SOFTGRED_DEFAULT_LOGFILE;
 
     printf("Usage: %s [-c %s] [-f] [-d] [-dd] [-ddd] [-thv] [ -p pid-file ]\n" \
            "\n" \
@@ -499,7 +500,7 @@ softgred_print_usage(char *argv[])
            "   -l, --log-file       Path of log-file, default in %s\n" \
            "   -h, --help           Display this help text\n" \
            "   -v, --version        Display the %s version\n" \
-           "\n", arg0, default_conf, default_conf, default_pid, arg0, SOFTGRED_DEFAULT_LOGFILE);
+           "\n", prog_name, default_cnf, default_cnf, default_pid, prog_name, default_log);
 }
 
 int

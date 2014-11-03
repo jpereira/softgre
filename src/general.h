@@ -112,9 +112,16 @@
 #define print_bool(x)   ((x == true) ? "true" : "false")
 
 // default options
-#define SOFTGRED_DEFAULT_CONFFILE       SOFTGRED_CONFDIR"/softgred.conf"
-#define SOFTGRED_DEFAULT_LOGFILE        SOFTGRED_LOGDIR"/softgred.log"
-#define SOFTGRED_DEFAULT_DBGLOGFILE     SOFTGRED_LOGDIR"/softgred_debug.log"
+// [geral]
+#define SOFTGRED_DEFAULT_CONFFILE           SOFTGRED_CONFDIR"/softgred.conf"
+#define SOFTGRED_DEFAULT_LOGFILE            SOFTGRED_LOGDIR"/softgred.log"
+#define SOFTGRED_DEFAULT_DBGLOGFILE         SOFTGRED_LOGDIR"/softgred_debug.log"
+#define SOFTGRED_DEFAULT_PIDFILE            SOFTGRED_PIDDIR"/"PACKAGE".pid"
+
+// [service]
+#define SOFTGRED_DEFAULT_SERVICE_MAX        10
+#define SOFTGRED_DEFAULT_SERVICE_PORT       8888
+#define SOFTGRED_DEFAULT_SERVICE_IFACE      "lo"
 
 // commands
 #define SOFTGRED_CMD_BRCTL  "/sbin/brctl"
