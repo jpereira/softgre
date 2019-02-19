@@ -1,23 +1,23 @@
-dnl Author: Jorge Pereira <jpereiran@gmail.com>
-dnl Created: Mon Sep 22 23:14:38 EDT 2014
-dnl Last Change: Ter 28 Out 2014 13:04:56 BRST
+# -*- autoconf -*-
+# Author: Jorge Pereira <jpereiran@gmail.com>
+# Created: Mon Sep 22 23:14:38 EDT 2014
+# Last Change: Ter 28 Out 2014 13:04:56 BRST
+# Process this file with autoconf to produce a configure script.
+#
 
-dnl Process this file with autoconf to produce a configure script.
+# Require minimum autoconf version
+AC_PREREQ([2.68])
 
-dnl Require minimum autoconf version
-AC_PREREQ([2.50])
-
-AC_INIT([SoftGRE],
+AC_INIT([src/softgred.c],
         [1.0rc1],
         [https://github.com/jpereira/softgre/issues],
         [softgred],
         [https://github.com/jpereira/softgre/])
 
+AM_INIT_AUTOMAKE(foreign subdir-objects)
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE 
-AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([foreign])
 
 dnl
 dnl check for programs
@@ -31,7 +31,7 @@ GCC_STACK_PROTECTOR
 dnl
 dnl Default options
 dnl
-AM_CFLAGS="$AM_CFLAGS -fPIC -W -Wall -rdynamic"
+CFLAGS="$CFLAGS -fPIC -rdynamic"
 
 dnl
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -83,15 +83,6 @@ AM_MAINTAINER_MODE([enable])
 PKG_PROG_PKG_CONFIG([0.16])
 
 dnl
-dnl Detect GLib
-dnl
-PKG_CHECK_MODULES(GLIB, glib-2.0 >=  2.32.4, HAVE_GLIB="yes", [
-            echo "glib2.0 library is missing. libglib2.0-dev is required for this program"
-                        exit -1])
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LIBS)
-
-dnl
 dnl Detect pthreads libraries
 dnl
 PTHREAD_LIBS=error
@@ -106,26 +97,49 @@ if test "x$PTHREAD_LIBS" = xerror; then
         AC_CHECK_FUNC(pthread_attr_init, PTHREAD_LIBS="")
 fi
 AC_SUBST(PTHREAD_LIBS)
-
-dnl
-dnl Detect libdhash
-dnl
-PKG_CHECK_MODULES(DHASH, dhash)
-AC_SUBST(DHASH_CFLAGS)
-AC_SUBST(DHASH_LIBS)
+LDFLAGS="$LDFLAGS $PTHREAD_LIBS"
 
 dnl
 dnl Detect libpcap
 dnl
 AC_CHECK_LIB([pcap],[pcap_create])
 AC_CHECK_HEADERS([pcap/pcap.h])
+LDFLAGS="$LDFLAGS $PCAP_LIBS"
 
 dnl
-dnl Detect libnetlink (iproute-dev)
+dnl Detect GLib
 dnl
-AC_CHECK_HEADERS([libnetlink.h])
-NETLINK_LIBS='-lnetlink'
-AC_SUBST([NETLINK_LIBS])
+PKG_CHECK_MODULES(GLIB, glib-2.0 >=  2.32.4, HAVE_GLIB="yes", [
+            echo "glib2.0 library is missing. libglib2.0-dev is required for this program"
+                        exit -1])
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+CFLAGS="$CFLAGS $GLIB_CFLAGS"
+LDFLAGS="$LDFLAGS $GLIB_LIBS"
+
+dnl
+dnl Detect libdhash
+dnl
+PKG_CHECK_MODULES(DHASH, dhash >=  0.5, HAVE_DHASH="yes", [
+    echo "libdhash-dev library is missing. libdhash-dev is required for this program"
+    exit -1
+])
+AC_SUBST(DHASH_CFLAGS)
+AC_SUBST(DHASH_LIBS)
+CFLAGS="$CFLAGS $DHASH_CFLAGS"
+LDFLAGS="$LDFLAGS $DHASH_LIBS"
+
+dnl
+dnl Detect libnl-route-3.0
+dnl
+PKG_CHECK_MODULES(NLLIB3, libnl-route-3.0 >=  0.28, HAVE_NLROUTE3="yes", [
+    echo "libnl-route-3-dev library is missing. libnl-route-3-dev is required for this program"
+    exit -1
+])
+AC_SUBST(NLLIB3_CFLAGS)
+AC_SUBST(NLLIB3_LIBS)
+CFLAGS="$CFLAGS $NLLIB3_CFLAGS"
+LDFLAGS="$LDFLAGS $NLLIB3_LIBS"
 
 dnl
 dnl parameters path
@@ -174,7 +188,7 @@ AC_ARG_ENABLE([debug],
             yes) debug=true ;;
             no)  debug=false ;;
             *) AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
-        esac],[debug=true])
+        esac],[debug=false])
 AM_CONDITIONAL([DEBUG], [test x$debug = xtrue])
 
 dnl
@@ -186,8 +200,12 @@ AC_ARG_ENABLE([devel],
             yes) devel=true ;;
             no)  devel=false ;;
             *) AC_MSG_ERROR([bad value ${enableval} for --enable-devel]) ;;
-        esac],[devel=true])
+        esac],[devel=false])
 AM_CONDITIONAL([DEVEL], [test x$devel = xtrue])
+
+if test "x$devel" = "xtrue"; then
+    CFLAGS="-DDEVEL -g3 -W -Wall -Wextra $CFLAGS"
+fi
 
 dnl
 dnl enable service
@@ -200,6 +218,18 @@ AC_ARG_ENABLE([service],
             *) AC_MSG_ERROR([bad value ${enableval} for --enable-service]) ;;
         esac],[service=true])
 AM_CONDITIONAL([SOFTGRED_SERVICE], [test x$service = xtrue])
+
+dnl
+dnl enable webservice
+dnl
+AC_ARG_ENABLE([webservice],
+    [  --enable-webservice    Turn on the SoftGREd webservice (web & API)],
+        [case "${enableval}" in
+            yes) webservice=true ;;
+            no)  webservice=false ;;
+            *) AC_MSG_ERROR([bad value ${enableval} for --enable-webservice]) ;;
+        esac],[webservice=true])
+AM_CONDITIONAL([SOFTGRED_WEBSERVICE], [test x$webservice = xtrue])
 
 dnl
 dnl that's it!
@@ -221,9 +251,12 @@ AC_MSG_RESULT([
 **     Debug mode: ...............${debug}
 **     Devel mode: ...............${devel}
 **     Service (API & Dashboard)..${service}
+**     Prefix dir.................$prefix
 **     Configuration dir..........$confdir
 **     Log dir....................$logdir
 **     Pid dir....................$piddir
+**     CFLAGS.....................$CFLAGS
+**     LDFLAGS....................$LDFLAGS
 **
 **  Installation directories:
 **

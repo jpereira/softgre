@@ -30,7 +30,7 @@
 #define SOFTGRED_TUN_MTU            1462
 
 struct tunnel_bridge {
-    char ifname[SOFTGRED_MAX_IFACE];
+    char *ifname; //[SOFTGRED_MAX_IFACE];
     uint16_t vlan_id;
 };
 
@@ -72,7 +72,8 @@ struct softgred_config {
     bool is_foreground;     /* --foreground */
 
     // [ global]
-    char *ifname;
+    char *interface;
+    char *gre_interface;
     char *tunnel_prefix;
     char *pid_file;
     char *log_file;
@@ -93,7 +94,9 @@ struct softgred_config {
 
     // TODO: change this
     struct tunnel_context_priv priv;
-    struct rtnl_handle rth;
+
+    struct nl_sock *sk;
+
     hash_table_t *table;
     time_t started_time;
     struct utsname uts;
@@ -135,4 +138,3 @@ void softgred_print_version();
 void softgred_print_usage();
 
 #endif /*SOFTGRED_CONFIG_H_*/
-

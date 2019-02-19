@@ -41,14 +41,12 @@ log_class[] = {
 };
 
 void
-log_init()
-{
+log_init() {
 
 }
 
 void
-log_end()
-{
+log_end() {
 
 }
 
@@ -58,19 +56,21 @@ log_message(int priority,
             const char *filename,
             int lineno,
             const char *format, 
-            ...)
-{
+            ...) {
     va_list vl;
     struct softgred_config *cfg = softgred_config_ref();
     const char *label = &log_class[priority].label[0];
     const char *file = basename(filename);
     char *buf = NULL;
+    int ret;
 
     va_start(vl, format);
-    vasprintf(&buf, format, vl);
+    ret = vasprintf(&buf, format, vl);
+    if (ret < 0) {
+        fprintf(stderr, "Problems with vasprintf()\n");
+    }
 
-    if (cfg->dbg_time)
-    {
+    if (cfg->dbg_time) {
         time_t t = time(NULL);
         struct tm tm = *localtime(&t);
 
@@ -78,8 +78,7 @@ log_message(int priority,
                     tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     }
 
-    switch(cfg->dbg_mode)
-    {
+    switch(cfg->dbg_mode) {
         case L_DEBUG2:
             fprintf(stderr, "** %s: %s", label, buf);
             break;
@@ -94,4 +93,3 @@ log_message(int priority,
     free(buf);
     va_end(vl);
 }
-

@@ -64,11 +64,12 @@
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
 #include <arpa/inet.h>
-#include <libnetlink.h>
 
-#include <linux/rtnetlink.h>
-#include <linux/if_tunnel.h>
-#include <linux/kernel.h>
+// linl3
+#include <netlink/netlink.h>
+#include <netlink/route/link/ipgre.h>
+#include <netlink/route/link/vlan.h>
+#include <netlink/route/link/bridge.h>
 
 // libdhash
 #include <dhash.h>
@@ -95,13 +96,9 @@
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
-#else
-#  define UNUSED(x) UNUSED_ ## x
-#endif
-
-#ifdef __GNUC__
 #  define UNUSED_FUNCTION(x) __attribute__((__unused__)) UNUSED_ ## x
 #else
+#  define UNUSED(x) UNUSED_ ## x
 #  define UNUSED_FUNCTION(x) UNUSED_ ## x
 #endif
 
@@ -128,4 +125,3 @@
 #define SOFTGRED_CMD_IP     "/bin/ip"
 
 #endif /*GENERAL_H_*/
-

@@ -137,11 +137,17 @@ helper_system(bool verbose,
     int ret;
 
     va_start(vl, format);
-    vasprintf(&buf, format, vl);
+    ret = vasprintf(&buf, format, vl);
+    if (ret < 0) {
+        fprintf(stderr, "Problems with vasprintf()\n");
+    }
 
     if_debug(cmd, D_DEBUG3("call system() with '%s'\n", buf));
 
-    asprintf(&cmd, "%s %s", buf, !verbose ? "1> /dev/null 2>&1" : "");
+    ret = asprintf(&cmd, "%s %s", buf, !verbose ? "1> /dev/null 2>&1" : "");
+    if (ret < 0) {
+        fprintf(stderr, "Problems with asprintf()\n");
+    }    
 
     if ((ret = system(cmd)) != 0)
     {

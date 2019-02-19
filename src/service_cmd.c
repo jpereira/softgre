@@ -23,6 +23,7 @@
 #include "log.h"
 #include "provision.h"
 #include "version.h"
+#include <sys/sysinfo.h>
 
 static struct service_cmd service_cmd_list[] = {
     { "HELP", cmd_cb_HELP, 0, NULL,              "show list of commands" },
@@ -87,6 +88,7 @@ cmd_cb_QUIT(struct request *req)
 int
 cmd_cb_LMIP(struct request *req)
 {
+#if 0
     struct tunnel_context *tun;
     size_t i = 0;
     struct in_addr addr;
@@ -115,7 +117,7 @@ cmd_cb_LMIP(struct request *req)
             request_appendf(req, "%s%c", cur, com);
     }
     helper_unlock();
-
+#endif
     return 0;
 }
 

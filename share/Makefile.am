@@ -38,11 +38,11 @@ webinterfacelib_DATA =            \
 	webinterface/lib/Rest.inc.php \
 	webinterface/lib/Helper.inc.php
 
-include dashboard.mk
+#include dashboard.mk
 
 dashboarddir = $(webinterfacedir)
-dashboard_DATA = webinterface/dashboard/dist/index.html \
-				 webinterface/dashboard/dist/favicon.ico
+dashboard_DATA = webinterface/dashboard/app/index.html \
+				 webinterface/dashboard/app/favicon.ico
 
 # extra dist files
 EXTRA_DIST = $(apacheconf_DATA)       \
@@ -61,12 +61,15 @@ CLEANFILES = etc/softgred/softgred.conf \
 			 webinterface/config.php    \
 			 webinterface/webinterface_config.php
 
+all:
+	echo "done"
+
 # dashboard
 #hook-dist: build-dashboard
 
-build-dashboard:
-	make -C webinterface/dashboard release
-	scripts/gen-dist-dashboard.sh > dashboard.mk
+#build-dashboard:
+#	make -C webinterface/dashboard release
+#	scripts/gen-dist-dashboard.sh > dashboard.mk
 
 #.PHONY: build-dashboard
 

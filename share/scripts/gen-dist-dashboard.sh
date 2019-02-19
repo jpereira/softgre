@@ -1,11 +1,11 @@
 #!/bin/bash
 dashboard_dirs="fonts images scripts styles views"
 
-dashboard_DATA="webinterface/dashboard/dist/index.html \\
-                webinterface/dashboard/dist/favicon.ico"
+dashboard_DATA="webinterface/dashboard/app/index.html \\
+                webinterface/dashboard/app/favicon.ico"
 
 for arg in ${dashboard_dirs}; do
-    dir="webinterface/dashboard/dist/$arg/"
+    dir="webinterface/dashboard/app/$arg/"
     target="dashboard${arg}"
 
     echo "${target}dir = \$(pkgdatadir)/webinterface/$arg"

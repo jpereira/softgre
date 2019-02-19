@@ -42,12 +42,13 @@ softgred_config_ref()
         // global
         .config_file   = NULL,
         .is_foreground = false,
-        .ifname        = NULL,
+        .interface     = NULL,
+        .gre_interface = NULL,
         .tunnel_prefix = NULL,
         .pid_file      = NULL,
         .bridge_force  = false,
         .bridge = {
-            { '\0', 0 },
+            { NULL, 0 },
          },
         .bridge_slot = 0,
 
@@ -87,23 +88,18 @@ softgred_config_release()
     struct softgred_config *cfg = softgred_config_ref();
     char *ptrs[] = { /* pointers to be released */
         cfg->config_file,
-        cfg->ifname,
+        cfg->interface,
         cfg->tunnel_prefix,
         cfg->log_file,
         cfg->pid_file,
         cfg->srv_bind_in,
-        cfg->dbg_file
+        cfg->dbg_file,
     };
     int n = 0;
 
-    for (n=0; n < ARRAY_SIZE(ptrs); n++)
-    {
-        if (ptrs[n] != NULL)
-        {
-            free(ptrs[n]);
-            ptrs[n] = NULL;
-        }
-    }
+    for (n=0; n < ARRAY_SIZE(ptrs); n++) if (ptrs[n]) free(ptrs[n]);
+
+    for (n=0; n < cfg->bridge_slot; n++) if (cfg->bridge[n].ifname) free(cfg->bridge[n].ifname);
 }
 
 int
@@ -115,8 +111,7 @@ softgred_config_init()
     cfg->started_time = time(NULL);
     uname(&cfg->uts);
 
-    if ((error = hash_create(0, &cfg->table, NULL,  NULL)) != HASH_SUCCESS)
-    {
+    if ((error = hash_create(0, &cfg->table, NULL,  NULL)) != HASH_SUCCESS) {
         fprintf(stderr, "cannot create hash table (%s)\n", hash_error_string(error));
         return false;
     }
@@ -138,6 +133,13 @@ softgred_config_end()
 }
 
 int
+config_set_gre_interface(struct softgred_config *cfg,
+                         const char *ifname) {
+    cfg->gre_interface = (char *)ifname;
+    return true;
+}
+
+int
 config_set_interface(struct softgred_config *cfg,
                      const char *ifname)
 {
@@ -149,26 +151,23 @@ config_set_interface(struct softgred_config *cfg,
     assert (cfg != NULL);
     assert (sin != NULL);
 
-    if (cfg->ifname)
-    {
-        D_CRIT("The parameter 'interface' is already set with '%s'. releasing!\n", cfg->ifname);
-        free(cfg->ifname);
-        cfg->ifname = NULL;
+    if (cfg->interface) {
+        D_CRIT("The parameter 'interface' is already set with '%s'. releasing!\n", cfg->interface);
+        free(cfg->interface);
+        cfg->interface = NULL;
     }
 
     getifaddrs (&ifap);
 
-    for (ifa = ifap; ifa; ifa = ifa->ifa_next)
-    {
+    for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
         if (strncmp(ifname, ifa->ifa_name, ifacen))
             continue;
 
-        if (ifa->ifa_addr->sa_family == AF_INET)
-        {
+        if (ifa->ifa_addr->sa_family == AF_INET) {
             struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
             char *addr = inet_ntoa(sa->sin_addr);
             
-            cfg->ifname = strdup(ifname);
+            cfg->interface = strdup(ifname);
             strncpy(cfg->priv.ifname_ip, addr, SOFTGRED_MAX_IFACE);
             memcpy(sin, sa, sizeof(struct sockaddr_in));
 
@@ -178,9 +177,8 @@ config_set_interface(struct softgred_config *cfg,
 
     freeifaddrs(ifap);
 
-    if (!cfg->ifname)
-    {
-        fprintf(stderr, "** impossible to listening in '%s' network interface, exiting...\n", ifname);
+    if (!cfg->interface) {
+        fprintf(stderr, "** impossible to listening in '%s' network interface, the interface has an ipaddr configured?? exiting...\n", ifname);
         return 0;
     }
 
@@ -209,6 +207,8 @@ config_set_bridge_map(struct softgred_config *cfg,
 
     D_DEBUG3("argument is '%s'\n", br_ifaces);
 
+    cfg->bridge_slot = 0;
+
     strings = g_strsplit(br_ifaces, ",", 10);
     for (ptr = strings; *ptr; ptr++)
     {
@@ -216,50 +216,51 @@ config_set_bridge_map(struct softgred_config *cfg,
         char *tmp = (char *)g_strstrip(arg);
         const char *str_vlan_id = strtok((char *)arg, "@");
         const char *br_name = strtok(NULL, "@");
-        uint8_t pos = cfg->bridge_slot;
 
         // have args?
-        if (!str_vlan_id || !br_name)
-        {
+        if (!str_vlan_id || !br_name) {
             fprintf(stderr, "** error! wrong argument! expected is vlan_id@bridge-to-attach, eg.: -a 10@br-vlan123\n");
             break;
         }
 
         // vlan validate
         uint16_t vlan_id = strtol(str_vlan_id, NULL, 10);
-        if (vlan_id < 1 || vlan_id > 4096)
-        {
+        if (vlan_id < 1 || vlan_id > 4096) {
             fprintf(stderr, "** error! The argument '%s' is a wrong vlan id, exiting...\n", str_vlan_id);
             break;
         }
 
         // bridge validate, expected: "<name><number>" <= SOFTGRED_MAX_IFACE
         size_t br_len = strnlen(br_name, 64);
-        if (br_len < 3)
-        {
+        if (br_len < 3) {
             fprintf(stderr, "** error! The argument '%s' (%ld) is a wrong bridge name. (len >= 3 && len <= %d)\n", 
                                                             br_name, br_len,  SOFTGRED_TUN_PREFIX_MAX);
             break;
         }
 
-        if (if_nametoindex(br_name) < 1) // TODO: Change for validate if is a real bridge-interface.
-        {
-            fprintf(stderr, "** error! The bridge '%s' don't exist in your system! try to create, eg.: brctl addbr %s\n",
-                                br_name, br_name);
-            break;
+        // TODO: Change for validate if is a real bridge-interface.
+        D_DEBUG3("$$$$$$$ bridge_force=%d\n", cfg->bridge_force);
+        if (!cfg->bridge_force) {
+            if (if_nametoindex(br_name) < 1) {
+                fprintf(stderr, "** error! The bridge '%s' don't exist in your system! try to create, eg.: brctl addbr %s\n",
+                                    br_name, br_name);
+                break;
+            }
         }
 
-        if (pos >= SOFTGRED_MAX_ATTACH)
-        {
+        if (cfg->bridge_slot >= SOFTGRED_MAX_ATTACH) {
             fprintf(stderr, "** error! The maximum number of slots was reached.\n");
             break;
         }
 
         // adding arguments
-        D_DEBUG3("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s' }\n", tmp, vlan_id, br_name);
-        strcpy(cfg->bridge[pos].ifname, br_name);
-        cfg->bridge[pos].vlan_id = vlan_id;
-        cfg->bridge_slot += 1;
+        cfg->bridge[cfg->bridge_slot].ifname = strdup(br_name);
+        cfg->bridge[cfg->bridge_slot].vlan_id = vlan_id;
+        
+        D_DEBUG3("Loading the argument '%s' { .vlan_id='%d', .br_iface='%s' } slot=%d\n", tmp, 
+                cfg->bridge[cfg->bridge_slot].vlan_id, cfg->bridge[cfg->bridge_slot].ifname, cfg->bridge_slot);
+
+        cfg->bridge_slot++;
         status = true;
     }
 
@@ -270,8 +271,7 @@ config_set_bridge_map(struct softgred_config *cfg,
 
 bool
 config_set_dbg_mode(struct softgred_config *cfg,
-                      const char *val)
-{
+                      const char *val) {
     D_DEBUG3("argument is '%s'\n", val);
 
     return true;
@@ -283,9 +283,10 @@ softgred_config_load_conf(const char *config_file)
     struct softgred_config *cfg = softgred_config_ref();
     struct softgred_config_map cfg_maps[] = {
         { "global",  "interface",     true,  T_CALLBACK, (void **)&config_set_interface     },
+        { "global",  "gre_interface", true,  T_CALLBACK, (void **)&config_set_gre_interface },
         { "global",  "tunnel-prefix", true,  T_CALLBACK, (void **)&config_set_tunnel_prefix },
-        { "global",  "bridge-map",    true,  T_CALLBACK, (void **)&config_set_bridge_map    },
         { "global",  "bridge-force",  false, T_BOOL,     (void **)&cfg->bridge_force        },
+        { "global",  "bridge-map",    true,  T_CALLBACK, (void **)&config_set_bridge_map    },
         { "global",  "pid-file",      true,  T_STRING,   (void **)&cfg->pid_file            },
         { "global",  "log-file",      true,  T_STRING,   (void **)&cfg->log_file            },
 
@@ -305,33 +306,28 @@ softgred_config_load_conf(const char *config_file)
 
     D_INFO("Loading the '%s' config file.\n", config_file);
 
-    if (access(config_file, R_OK))
-    {
+    if (access(config_file, R_OK)) {
         fprintf(stderr, "** Problems with config file %s! errno=%d(%s)\n", config_file,
-                                    errno, strerror(errno));
+                            errno, strerror(errno));
         return false;
     }
 
     keyfile = g_key_file_new ();
 
-    if (!g_key_file_load_from_file (keyfile, config_file, G_KEY_FILE_NONE, NULL))
-    {
+    if (!g_key_file_load_from_file (keyfile, config_file, G_KEY_FILE_NONE, NULL)) {
         fprintf(stderr, "The config file %s is invalid, exiting...\n", config_file);
         g_key_file_free(keyfile);
         return false;
     }
 
-    for (i=0; is_ok && i < ARRAY_SIZE(cfg_maps); i++)
-    {
+    for (i=0; is_ok && i < ARRAY_SIZE(cfg_maps); i++) {
         struct softgred_config_map *entry = &cfg_maps[i];
         gchar *val = NULL;
 
         D_DEBUG3("Checking the key [%s]::%s\n", entry->group, entry->key);
         val = g_key_file_get_value (keyfile, entry->group, entry->key, NULL);
-        if (!val)
-        {
-            if (entry->is_necessary)
-            {
+        if (!val) {
+            if (entry->is_necessary) {
                 D_INFO("Impossible to continue without the key '%s' in [%s], exiting!\n", 
                                     entry->key, entry->group);
                 is_ok = false;
@@ -344,37 +340,35 @@ softgred_config_load_conf(const char *config_file)
 
         D_DEBUG3("Setting the key [%s]::%s with '%s'\n", entry->group, entry->key, val);
 
-        switch(entry->type)
-        {
+        switch(entry->type) {
             case T_STRING: {
                     char **ptr = ((char **)entry->ptr);
 
-                    if (*ptr)
-                    {
+                    if (*ptr) {
                         D_INFO("the pointer of key [%s]::%s is already set with '%s', ignoring '%s'.\n",
                                                 entry->group, entry->key, *ptr, val
                         );
-                    }
-                    else
-                    {
+                    } else {
                         *ptr = strdup (val);
                     }
                 }
                 break;
 
-            case T_INTEGER:
-            case T_BOOL: {
+            case T_INTEGER: {
                    int32_t num = strtol(val, NULL, 10);
-
                    *((int32_t *)entry->ptr) = (entry->type == T_BOOL) ? (num == true) : num;
+                }
+                break;
+
+            case T_BOOL: {
+                   *((int32_t *)entry->ptr) = (!strcmp(val, "1") || !strcmp(val, "true"));
                 }
                 break;
 
             case T_CALLBACK: {
                     int (*cb)(struct softgred_config *, const char *) = (void *)entry->ptr;
 
-                    if (!cb(cfg, val))
-                    {
+                    if (!cb(cfg, val)) {
                         D_CRIT("Problems with parameters for key '%s' in [%s], exiting!\n", 
                                                                             entry->key, entry->group);
                         is_ok = false;
@@ -410,13 +404,10 @@ softgred_config_load_cli(int argc,
     struct softgred_config *cfg = softgred_config_ref();
     int opt;
 
-    while ((opt = getopt_long(argc, argv, "c:fp:l:dthv", long_opts, NULL)) != EOF)
-    {
-        switch (opt)
-        {
+    while ((opt = getopt_long(argc, argv, "c:fp:l:dthv", long_opts, NULL)) != EOF) {
+        switch (opt) {
             case 'c': /* --config-file */
-                if (!optarg)
-                {
+                if (!optarg) {
                     fprintf(stderr, "option '-c', is necessary to set the path of config file\n");
                     return false;
                 }
@@ -453,10 +444,8 @@ softgred_config_load_cli(int argc,
     }
 
     /* Check debug level */
-    if (cfg->dbg_mode > 0)
-    {
-        if (cfg->dbg_mode > DEBUG_MAX_LEVEL)
-        {
+    if (cfg->dbg_mode > 0) {
+        if (cfg->dbg_mode > DEBUG_MAX_LEVEL) {
             fprintf(stderr, "*** Ops!! the maximum of debug level is %d (-ddd).\n", DEBUG_MAX_LEVEL);
             exit(EXIT_FAILURE);
         }
@@ -470,8 +459,7 @@ softgred_config_load_cli(int argc,
 }
 
 void
-softgred_print_version()
-{
+softgred_print_version() {
     printf("%s By Jorge Pereira <jpereiran@gmail.com>\n", PACKAGE_STRING);
     printf("Daemon Built:    %s - %s\n", __TIME__, __DATE__);
     printf("Project Website: %s\n", PACKAGE_URL);
@@ -481,8 +469,7 @@ softgred_print_version()
 }
 
 void
-softgred_print_usage()
-{
+softgred_print_usage() {
     const char *prog_name = program_invocation_short_name;
     const char *default_cnf = SOFTGRED_DEFAULT_CONFFILE;
     const char *default_pid = SOFTGRED_DEFAULT_PIDFILE;
@@ -504,8 +491,7 @@ softgred_print_usage()
 }
 
 int
-softgred_config_create_pid_file(int pid)
-{
+softgred_config_create_pid_file(int pid) {
     struct softgred_config *cfg = softgred_config_ref();
     int fd;
     const char *prog_name = program_invocation_short_name;
@@ -521,39 +507,34 @@ softgred_config_create_pid_file(int pid)
     D_DEBUG3("Saving pidfile in %s\n", cfg->pid_file);
 
     fd = open(cfg->pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-    if (fd == -1)
-    {
+    if (fd == -1) {
         D_CRIT("Could not open PID file %s, errno=%d(%s)\n", cfg->pid_file, 
                     errno, strerror(errno));
         return -1;
     }
 
-    if (flags & 1)
-    {
+    if (flags & 1) {
         /* Instead of the following steps, we could (on Linux) have opened the
            file with O_CLOEXEC flag. However, not all systems support open()
            O_CLOEXEC (which was standardized only in SUSv4), so instead we use
            fcntl() to set the close-on-exec flag after opening the file */
 
         flags = fcntl(fd, F_GETFD);                     /* Fetch flags */
-        if (flags == -1)
-        {
+        if (flags == -1) {
             D_CRIT("Could get flags for PID file %s, errno=%d(%s)\n", cfg->pid_file, 
                     errno, strerror(errno));
             return -1;
         }
 
         flags |= FD_CLOEXEC;                            /* Turn on FD_CLOEXEC */
-        if (fcntl(fd, F_SETFD, flags) == -1)            /* Update flags */
-        {
+        if (fcntl(fd, F_SETFD, flags) == -1) {          /* Update flags */
             D_CRIT("Could set flags for PID file %s, errno=%d(%s)\n", cfg->pid_file, 
                     errno, strerror(errno));
             return -1;
         }
     }
 
-    if (fcntl(fd, F_SETLK, &fl) == -1)
-    {
+    if (fcntl(fd, F_SETLK, &fl) == -1) {
         if (errno  == EAGAIN || errno == EACCES)
             D_CRIT("PID file '%s' is locked; probably ""'%s' is already running", cfg->pid_file, 
                                     prog_name);
@@ -563,19 +544,16 @@ softgred_config_create_pid_file(int pid)
         return -1;
     }
 
-    if (ftruncate(fd, 0) == -1)
-    {
+    if (ftruncate(fd, 0) == -1) {
         D_CRIT("Could not truncate PID file '%s'", cfg->pid_file);
         return -1;
     }
 
-    size_t len = snprintf(buf, sizeof(buf), "%ld\n", pid);
-    if (write(fd, buf, strlen(buf)) != len)
-    {
+    size_t len = snprintf(buf, sizeof(buf), "%d\n", pid);
+    if (write(fd, buf, strlen(buf)) != len) {
         D_CRIT("Could not write file '%s'", cfg->pid_file);
         return -1;
     }
 
     return 0;
 }
-

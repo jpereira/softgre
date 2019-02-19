@@ -4,7 +4,10 @@
 
 [global]
 # Network interface to listen GRE packets.
-interface = eth0
+interface = wlo1
+
+# It is created by `gre.ko` kernel module by default.
+gre_interface = gre0
 
 # Prefix name to be used in gre-network-interfaces, default e.g: sgreN (N num. of instance)
 tunnel-prefix = sgre
@@ -33,4 +36,3 @@ mode = all
 # mode = payload, command, provision, service
 print-time = true
 dbg-file = @SOFTGRED_LOGDIR@/softgred_debug.log
-

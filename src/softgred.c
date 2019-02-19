@@ -37,8 +37,10 @@ softgred_show_stats()
     // hash table
     provision_stats();
 
+#if SOFTGRED_SERVICE_TRUE
     // about service
     service_stats();
+#endif
 
     D_INFO("<end status>\n");
 }
@@ -101,14 +103,15 @@ softgred_init()
     if (softgred_config_init() < 0)
         return false;
 
+#if SOFTGRED_SERVICE_TRUE
     if (service_init() < 0)
         return false;
-   
+#endif
+
     if (iface_ebtables_init() < 0)
         return false;
 
-    if (payload_loop_init() != 0)
-    {
+    if (payload_loop_init() != 0) {
         D_CRIT("Problems with payload_loop_init()\n");
         softgred_end ();
         return false;
@@ -130,9 +133,10 @@ softgred_end()
     /* reset firewall rules */
     iface_ebtables_end();
 
+#if SOFTGRED_SERVICE_TRUE
     /* shutdown clients, finalize sockets */
     service_end();
-
+#endif
     /* release config */
     softgred_config_end();
 
@@ -215,7 +219,7 @@ main (int argc,
     }
 
     D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
-        cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
+        cfg->interface, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
     );
 
     /* pre-run */

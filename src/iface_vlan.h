@@ -16,16 +16,12 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef IFACE_BRIDGE_H_
-#define IFACE_BRIDGE_H_
+#ifndef IFACE_VLAN_H_
+#define IFACE_VLAN_H_
 
 #include "general.h"
 
 int
-iface_bridge_create(const char *br_ifname);
+iface_vlan_add(const char *br_ifname, uint16_t vlan_id);
 
-int
-iface_bridge_add(const char *br_ifname,
-				 const char *ifname);
-
-#endif /*IFACE_BRIDGE_H_*/
+#endif /*IFACE_VLAN_H_*/

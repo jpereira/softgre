@@ -9,15 +9,11 @@ DISTCHECK_CONFIGURE_FLAGS = \
     --enable-service \
     --enable-compile-warnings=maximum
 
-SOFTGRED_DEVEL_CFLAGS = -DSOFTGRED_CONFDIR=\"$(confdir)\" \
-                        -DSOFTGRED_LOGDIR=\"$(logdir)\"   \
-                        -DSOFTGRED_PIDDIR=\"$(piddir)\" 
+SOFTGRED_CFLAGS = -DSOFTGRED_CONFDIR=\"$(confdir)\" \
+                  -DSOFTGRED_LOGDIR=\"$(logdir)\"   \
+                  -DSOFTGRED_PIDDIR=\"$(piddir)\" 
 
 sbin_PROGRAMS = softgred
-
-if DEVEL
-SOFTGRED_DEVEL_CFLAGS += -DDEVEL -g3
-endif
 
 if SOFTGRED_SERVICE
 SOFTGRED_SERVICE_FILES =      \
@@ -41,6 +37,8 @@ softgred_SOURCES =            \
     ../src/payload.h          \
     ../src/iface_bridge.c     \
     ../src/iface_bridge.h     \
+    ../src/iface_vlan.c       \
+    ../src/iface_vlan.h       \
     ../src/iface_ebtables.h   \
     ../src/iface_ebtables.c   \
     ../src/iface_gre.c        \
@@ -50,22 +48,14 @@ softgred_SOURCES =            \
     $(SOFTGRED_SERVICE_FILES)
 
 softgred_CFLAGS =              \
-    $(AM_CFLAGS)               \
+    $(CFLAGS)                  \
     -I$(top_srcdir)            \
     -I$(top_srcdir)/src        \
     -I$(top_srcdir)/include    \
-    $(SOFTGRED_CFLAGS)         \
-    $(GLIB_CFLAGS)             \
     $(WARN_CFLAGS)             \
-    $(SOFTGRED_DEVEL_CFLAGS)   \
+    $(SOFTGRED_CFLAGS)         \
     $(SOFTGRED_SERVICE_CFLAGS)
 
-softgred_LDFLAGS = $(AM_LIBS)
+softgred_LDFLAGS = $(AM_LIBS) $(LDFLAGS)
 
-softgred_LDADD = $(AM_LIBS)      \
-                 $(PTHREAD_LIBS) \
-                 $(PCAP_LIBS)    \
-                 $(NETLINK_LIBS) \
-                 $(DHASH_LIBS)   \
-                 $(GLIB_LIBS)
-
+softgred_LDADD = $(AM_LIBS) $(LDFLAGS)
