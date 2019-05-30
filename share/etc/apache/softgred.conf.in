@@ -3,20 +3,20 @@
 Alias /softgre @SOFTGRED_DIR@/webinterface
 
 <Directory @SOFTGRED_DIR@/webinterface>
-    AllowOverride None
-	Options FollowSymLinks -MultiViews
+	AllowOverride None
+	Options +FollowSymLinks -MultiViews
 
 	DirectoryIndex index.html index.htm index.php
-    Order allow,deny
-    Allow from all
+	Order allow,deny
+	Allow from all
 
-    <IfModule mod_rewrite.c>
-        RewriteEngine On
-        RewriteBase /softgre/
-        RewriteCond %{REQUEST_FILENAME} !-d
-        RewriteCond %{REQUEST_FILENAME} !-s
-        RewriteRule ^api/([^/]*)(.*)$ api.php?_func=$1&_args=$2 [L,QSA]
-    </IfModule>
+	<IfModule mod_rewrite.c>
+		RewriteEngine On
+		RewriteBase /softgre/
+		RewriteCond %{REQUEST_FILENAME} !-d
+		RewriteCond %{REQUEST_FILENAME} !-s
+		RewriteRule ^api/([^/]*)(.*)$ api.php?_func=$1&_args=$2 [L,QSA]
+	</IfModule>
 
 	<IfModule mod_php5.c>
 		AddType application/x-httpd-php .php
