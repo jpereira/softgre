@@ -1,5 +1,7 @@
 all:
-	npm install
+	ncu -u
+	npm install --force
+	npm audit fix --force
 	bower install
 
 devel:
