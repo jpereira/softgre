@@ -171,19 +171,6 @@ footer {
 .skip { position: absolute; left: -9999px; }
 .skip:focus { left: 1rem; top: .5rem; background: var(--panel); padding: .7rem; z-index: 5; }
 [hidden] { display: none !important; }
-.language-home { padding-top: 6rem; }
-.language-home h1 { font-size: clamp(4rem, 12vw, 8rem); margin: 1rem 0; }
-.accent { color: var(--accent); }
-.language-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 3rem 0; }
-.language-cards a { padding: 2rem; background: var(--panel); border: 1px solid var(--line); }
-.language-cards a:hover { border-color: var(--accent); text-decoration: none; }
-.language-cards small {
-  display: block;
-  color: var(--muted);
-  font: 12px/1.6 ui-monospace, monospace;
-}
-.language-cards strong { display: block; font-size: 1.7rem; margin: .5rem 0 1rem; }
-.language-cards span { color: var(--muted); font-size: .85rem; }
 @media (max-width: 800px) {
   .topbar { gap: 1rem; flex-wrap: wrap; }
   .shell { padding: 0 1.2rem; }
@@ -194,8 +181,6 @@ footer {
   .hero { padding: 3rem 0 2rem; }
   .node { font-size: .7rem; padding: .7rem .4rem; }
   .arrow { padding: 0 .4rem; }
-  .language-home { padding-top: 3rem; }
-  .language-cards { grid-template-columns: 1fr; }
   footer { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

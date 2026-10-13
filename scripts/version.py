@@ -47,7 +47,7 @@ def bump(root, requested):
               f"  * Release {requested}.\n\n"
               f" -- Jorge Pereira <jpereiran@gmail.com>  {date}\n\n")
     documents = []
-    for relative in ("README.md", "docs/en_US/index.md", "docs/pt_BR/index.md"):
+    for relative in ("README.md", "docs/en_US/index.md"):
         document = root / relative
         if document.exists():
             documents.append((document, document.read_text().replace(current, requested)))

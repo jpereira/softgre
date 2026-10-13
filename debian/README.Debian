@@ -8,4 +8,4 @@ Build with dpkg-buildpackage -us -uc -b. Build dependencies are declared in
 control; runtime networking requires root, bridge/GRE/VLAN kernel support,
 and ebtables. The package installs the daemon, configuration and systemd unit.
 
-Full guides are available in docs/en_US/index.md and docs/pt_BR/index.md.
+The full guide is available in docs/en_US/index.md.

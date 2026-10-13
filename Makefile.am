@@ -2,7 +2,7 @@ SUBDIRS = bin share
 EXTRA_DIST = README.md COPYING LICENSE.md autogen.sh Dockerfile .dockerignore \
     tests/test_core.c tests/test_netlink.c tests/integration.py \
     scripts/check-linux.sh
-EXTRA_DIST += docs/en_US/index.md docs/pt_BR/index.md docs/assets/site.css docs/assets/site.js \
+EXTRA_DIST += docs/en_US/index.md docs/assets/site.css docs/assets/site.js \
     scripts/build-docs.py tests/test_docs.py share/softgred.service Dockerfile.test \
     .github/workflows/ci.yml .github/workflows/pages.yml
 EXTRA_DIST += tests/test_web.py debian/control debian/rules debian/changelog \

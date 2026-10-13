@@ -8,19 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = {
-    "pt_BR": {
-        "lang": "pt-BR", "label": "Português", "other": "en_US", "other_label": "English",
-        "eyebrow": "REDES LINUX / GRE DINÂMICO",
-        "title": "Túneis sob demanda.\nControle no Linux.",
-        "intro": "Descubra remotos GRE, conecte VLANs a bridges e deixe o kernel encaminhar o tráfego.",
-        "search": "Buscar na documentação", "contents": "Neste guia", "copy": "Copiar",
-        "copied": "Copiado", "empty": "Nenhuma seção encontrada.", "guide": "Guia completo",
-        "source": "Código-fonte", "footer": "Documentação do projeto · LGPL-3.0-or-later",
-        "nodes": ["Remoto GRE", "SoftGRE", "Bridge Linux"],
-        "detail": "IPv4 + Ethernet + VLAN → descoberta → gretap + VLAN → encaminhamento no kernel",
-    },
     "en_US": {
-        "lang": "en-US", "label": "English", "other": "pt_BR", "other_label": "Português",
+        "lang": "en-US", "label": "English",
         "eyebrow": "LINUX NETWORKING / DYNAMIC GRE",
         "title": "Tunnels on demand.\nLinux in control.",
         "intro": "Discover GRE peers, connect VLANs to bridges and let the kernel forward traffic.",
@@ -148,14 +137,14 @@ def render(markdown, labels):
     return "\n".join(sections), toc
 
 
-def page(locale, markdown):
+def page(locale, markdown, prefix="../"):
     labels = LANGUAGES[locale]
     article, toc = render(markdown, labels)
     nav = "".join(f'<a href="#{anchor}">{html.escape(title)}</a>' for anchor, title in toc)
     nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
         f'<span class="node">{name}</span>' for name in labels["nodes"])
-    dark_label = "Tema escuro" if locale == "pt_BR" else "Dark theme"
-    light_label = "Tema claro" if locale == "pt_BR" else "Light theme"
+    dark_label = "Dark theme"
+    light_label = "Light theme"
     title = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
     return f'''<!doctype html>
 <html lang="{labels['lang']}">
@@ -163,18 +152,17 @@ def page(locale, markdown):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{html.escape(labels['intro'])}">
 <title>SoftGRE · {labels['label']}</title>
-<link rel="icon" type="image/svg+xml" href="../assets/softgre-logo.svg">
-<link rel="stylesheet" href="../assets/site.css">
-<script src="../assets/theme.js"></script>
-<script src="../assets/site.js" defer></script>
+<link rel="icon" type="image/svg+xml" href="{prefix}assets/softgre-logo.svg">
+<link rel="stylesheet" href="{prefix}assets/site.css">
+<script src="{prefix}assets/theme.js"></script>
+<script src="{prefix}assets/site.js" defer></script>
 </head>
 <body data-copy="{labels['copy']}" data-copied="{labels['copied']}">
 <a class="skip" href="#documentation">{labels['guide']}</a>
-<header class="topbar"><a class="brand" href="../index.html">
-<img class="brand-logo" src="../assets/softgre-logo.svg" alt="" width="42" height="42">
+<header class="topbar"><a class="brand" href="{prefix}index.html">
+<img class="brand-logo" src="{prefix}assets/softgre-logo.svg" alt="" width="42" height="42">
 SoftGRE</a>
-<nav aria-label="Language / Idioma"><a href="../{labels['other']}/index.html"
-lang="{LANGUAGES[labels['other']]['lang']}">{labels['other_label']}</a>
+<nav aria-label="Site navigation"><a href="#documentation">Guide</a>
 <a href="https://github.com/jpereira/softgre">GitHub ↗</a>
 <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"
 data-dark="{dark_label}" data-light="{light_label}" hidden>{dark_label}</button></nav></header>
@@ -189,7 +177,7 @@ data-dark="{dark_label}" data-light="{light_label}" hidden>{dark_label}</button>
 <a class="source" href="https://github.com/jpereira/softgre/blob/master/docs/{locale}/index.md">
 {labels['source']} ↗</a></div></aside><main id="documentation" tabindex="-1">
 <p class="empty" role="status" hidden>{labels['empty']}</p>{article}</main></div>
-<footer>{labels['footer']}<a href="../{labels['other']}/index.html">{labels['other_label']} →</a>
+<footer>{labels['footer']}<a href="https://github.com/jpereira/softgre">GitHub →</a>
 </footer></div></body></html>
 '''
 
@@ -206,32 +194,11 @@ def build(output=None):
         target.mkdir(exist_ok=True)
         markdown = (ROOT / "docs" / locale / "index.md").read_text()
         (target / "index.html").write_text(page(locale, markdown))
-    (output / "index.html").write_text('''<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SoftGRE Linux GRE documentation in English and Portuguese.">
-<title>SoftGRE · Documentation / Documentação</title>
-<link rel="icon" type="image/svg+xml" href="assets/softgre-logo.svg">
-<link rel="stylesheet" href="assets/site.css">
-<script src="assets/theme.js"></script></head>
-<body><header class="topbar"><a class="brand" href="index.html">
-<img class="brand-logo" src="assets/softgre-logo.svg" alt="" width="42" height="42">
-SoftGRE</a>
-<nav><a href="https://github.com/jpereira/softgre">GitHub ↗</a>
-<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"
-data-dark="Dark / Escuro" data-light="Light / Claro" hidden>Dark / Escuro</button></nav></header>
-<main class="shell language-home"><p class="eyebrow">LINUX / DYNAMIC GRE</p>
-<img class="hero-logo" src="assets/softgre-logo.svg" alt="SoftGRE tunnel logo"
-width="144" height="144"><h1>SoftGRE<span class="accent">.</span></h1>
-<p class="lead">IPv4 GRE discovery. Native Linux networking.</p>
-<p>Documentação completa · Complete documentation</p>
-<div class="language-cards"><a href="pt_BR/index.html" lang="pt-BR"><small>pt_BR</small>
-<strong>Português</strong><span>Instalação, arquitetura, API e operação →</span></a>
-<a href="en_US/index.html" lang="en-US"><small>en_US</small><strong>English</strong>
-<span>Installation, architecture, API and operations →</span></a></div>
-<p class="diagram-caption">AF_PACKET + BPF · NETLINK_ROUTE · GLib · LGPL-3.0-or-later</p>
-</main></body></html>
-''')
+    markdown = (ROOT / "docs/en_US/index.md").read_text()
+    (output / "index.html").write_text(page("en_US", markdown, prefix=""))
+    stale = output / "pt_BR"
+    if stale.is_dir():
+        shutil.rmtree(stale)
     (output / ".nojekyll").touch()
     print(f"Documentation built: {output}")
     return output

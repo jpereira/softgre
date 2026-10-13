@@ -66,6 +66,7 @@ tunnel-prefix = sgre
 bridge-map = 1000@br-radius, 10@br-hotspot, 11@br-radius
 bridge-force = true
 pid-file = /var/run/softgred.pid
+log-file = /var/log/softgred.log
 
 [service]
 bind-in = lo
@@ -83,12 +84,13 @@ print-time = true
 | `global.tunnel-prefix` | Interface prefix, default `sgre`, maximum six characters. |
 | `global.bridge-map` | Required comma-separated `VLAN@bridge` entries, up to ten. |
 | `global.bridge-force` | Create missing bridges, default `false`. |
+| `global.log-file` | Event log, default `/var/log/softgred.log`; absolute path required. |
 | `global.pid-file` | Locked PID file, default under the configured PID directory. |
 | `service.bind-in` | Bind to interface IPv4 address; `lo` by default, `any` binds all. |
 | `service.port` | TCP port, `1..65535`, default `8888`. |
 | `service.max-listen` | Simultaneous clients, `1..128`, default `10`. |
 | `debug.enable` | Enable level-one diagnostic logs, default `false`. |
-| `debug.print-time` | Timestamp logs, default `false`; `debug.time` is also accepted. |
+| `debug.print-time` | Timestamp stderr, default `false`; `debug.time` is also accepted. |
 
 VLAN IDs are `1..4094`, unique within the mapping. Interface names contain ASCII letters,
 digits, underscores, dots or hyphens and fit within 15 characters. The six-character
@@ -99,14 +101,14 @@ entries, malformed numbers and duplicate VLANs fail configuration loading. All o
 groups and keys can be omitted independently.
 
 Strings and booleans use their actual C types. Booleans accept `true`, `false`, `1` and
-`0`. Logs go to stderr. Debug levels are selected with repeated `-d`, up to four.
+`0`. Logs append to `/var/log/softgred.log` and are also sent to stderr. Debug levels are selected with repeated `-d`, up to four.
 Configuration is loaded at startup; apply changes by restarting the daemon. Unrecognized
 keys are ignored.
 
 ## CLI and lifecycle
 
 ```text
-softgred [-f] [-c FILE] [-p FILE] [-d...] [-t] [-h] [-v]
+softgred [-f] [-c FILE] [-p FILE] [-l FILE] [-d...] [-t] [-h] [-v]
 ```
 
 | Option | Behavior |
@@ -114,8 +116,9 @@ softgred [-f] [-c FILE] [-p FILE] [-d...] [-t] [-h] [-v]
 | `-f`, `--foreground` | Foreground execution, recommended with systemd or containers. |
 | `-c`, `--config-file` | Configuration path. |
 | `-p`, `--pid-file` | Override the configuration's PID path. |
+| `-l`, `--log-file` | Override the event log path. |
 | `-d`, `--debug` | Increase logging level, up to four. |
-| `-t`, `--debug-time` | Timestamp logs. |
+| `-t`, `--debug-time` | Timestamp stderr; file records always have timestamps. |
 | `-h`, `--help` | Help without root or configuration loading. |
 | `-v`, `--version` | Version without root or configuration loading. |
 
@@ -125,7 +128,8 @@ firewall are ready. The foreground process returns failure when startup or captu
 `SIGINT` and `SIGTERM` stop the daemon, remove owned tunnels and firewall chains, and
 remove the PID file. `SIGUSR1` removes all provisioned tunnels, MAC permissions and
 indexes; discovery remains active. `SIGUSR2` prints tunnel, MAC, packet, ignored-packet
-and provisioning-failure counters to stderr.
+and provisioning-failure counters to the event log and stderr. `SIGHUP` reopens the log
+file without reloading configuration or removing learned state.
 
 Existing unrelated interfaces and firewall rules remain in place. Dynamically created
 target bridges remain after exit. Tunnel slots are reused after successful cleanup; names
@@ -133,6 +137,52 @@ already present in the network namespace are skipped. There is no automatic idle
 implicit MAC mobility. A MAC can belong to only one remote, and its permission covers
 configured VLANs on that tunnel. Restarting or `SIGUSR1` clears the learned ownership
 before a MAC can be learned elsewhere.
+
+## Event logs and rotation
+
+The daemon appends to `/var/log/softgred.log` by default, in foreground and background
+execution. Each record has local date/time with timezone, PID and severity. New files
+have mode `0600`; messages are also mirrored to stderr for systemd and Docker.
+`global.log-file` or `-l FILE` selects another absolute path. The parent directory must
+exist. Startup fails if the log cannot be opened. Runtime write failures are reported on
+stderr while network processing continues. Symlinks, hard links, special files, files
+owned by another user and world-writable files are rejected.
+
+Events cover startup/shutdown, bridge preparation, remote/local IPv4 addresses, GRE
+interfaces, VLAN interfaces and their bridges, newly learned MACs, removals and failed
+provisioning. Known-client traffic does not create a record for every packet. MAC
+ownership remains with its original remote until learned state is cleared. GRE has no
+connection handshake; learning represents successful packet-based discovery.
+
+```sh
+sudo tail -f /var/log/softgred.log
+docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+```
+
+Event messages, after the timestamp/PID/severity prefix:
+
+```text
+Tunnel created remote=192.0.2.2 local=192.0.2.1 interface=sgre0 ingress=sg-test-in
+VLAN attached remote=192.0.2.2 interface=sgre0.1000 vlan=1000 bridge=br-radius
+VLAN attached remote=192.0.2.2 interface=sgre0.10 vlan=10 bridge=br-hotspot
+Client learned remote=192.0.2.2 mac=02:00:00:00:00:42 tunnel=sgre0 clients=1
+```
+
+The package installs a logrotate rule: daily rotation, seven retained files, compression
+with one-cycle delay and a fresh `0600 root:root` log. The post-rotation hook sends HUP to
+the PID in `/run/softgred.pid`. Source installs can copy `share/softgred.logrotate` to
+`/etc/logrotate.d/softgred`. Adjust the rule for custom log or PID paths. Rotation runs
+when the host's logrotate scheduler runs; containers need an external scheduler or
+manual rotation. After renaming the log, signal the daemon to open its pathname:
+
+```sh
+sudo kill -HUP "$(cat /run/softgred.pid)"
+docker --context homelab exec test-softgre sh -c 'kill -HUP "$(cat /run/softgre-lab/softgred.pid)"'
+```
+
+Failed reopening preserves the previous descriptor. Container logs are stored inside
+its filesystem; mount persistent storage if they must survive removal. The default
+systemd unit permits writes to `/run` and `/var/log`.
 
 ## Read-only TCP API
 
@@ -430,7 +480,7 @@ macOS client can target a remote Docker context.
 ## Releases and Debian/Ubuntu packages
 
 Version 2.0.1 is defined in `VERSION`. Autoconf reads that file; `bump.sh` also updates
-the Debian changelog and version references in the bilingual guides. Download
+the Debian changelog and version references in the English guide. Download
 distribution-specific amd64 packages from the GitHub release:
 
 [Download SoftGRE 2.0.1](https://github.com/jpereira/softgre/releases/tag/v2.0.1)
@@ -534,7 +584,7 @@ GRE encapsulation consumes underlay MTU. The kernel selects the tunnel MTU; insp
 with `ip -d link show` and configure the underlay and clients accordingly. SoftGRE does
 not change the host's routes, global IP forwarding policy or kernel module configuration.
 
-The documentation site is built from the pt_BR and en_US Markdown guides with Python's
+The documentation site is built from the en_US Markdown guide with Python's
 standard library. No Node, third-party assets, tracking, remote fonts or external
 JavaScript are required.
 

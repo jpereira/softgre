@@ -4,7 +4,6 @@ Dynamic IPv4 GRE Ethernet provisioning for Linux. SoftGRE discovers remote peers
 and VLAN interfaces, connects them to Linux bridges and exposes a read-only TCP status API.
 Capture uses AF_PACKET with a kernel BPF filter; interface control uses native NETLINK_ROUTE.
 
-- [Documentação em português](docs/pt_BR/index.md)
 - [Documentation in English](docs/en_US/index.md)
 - [Debian/Ubuntu packages](https://github.com/jpereira/softgre/releases/tag/v2.0.1)
 - [Documentation website](https://jpereira.github.io/softgre/)

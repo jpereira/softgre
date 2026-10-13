@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate bilingual site generation, escaping, local navigation and section parity."""
+"""Validate English site generation, escaping, local navigation and headings."""
 import importlib.util
 import tempfile
 import unittest
@@ -47,7 +47,7 @@ class DocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(directory)
             pages = {path: Page(path.read_text()) for path in output.rglob("*.html")}
-            self.assertEqual(len(pages), 3)
+            self.assertEqual(len(pages), 2)
             for path, page in pages.items():
                 self.assertFalse(page.duplicate_ids)
                 self.assertFalse(page.unbalanced)
@@ -61,6 +61,7 @@ class DocsTests(unittest.TestCase):
                     self.assertTrue(target.exists(), link)
                     if url.fragment:
                         self.assertIn(url.fragment, pages[target].ids)
+            self.assertEqual(set(builder.LANGUAGES), {"en_US"})
             counts = []
             for locale, labels in builder.LANGUAGES.items():
                 source = (ROOT / "docs" / locale / "index.md").read_text()
@@ -70,7 +71,9 @@ class DocsTests(unittest.TestCase):
                 self.assertEqual(pages[output / locale / "index.html"].lang, labels["lang"])
                 self.assertIn("AF_PACKET", article)
                 self.assertIn("NETLINK_ROUTE", article)
-            self.assertEqual(counts[0], counts[1])
+            self.assertEqual(len(counts), 1)
+            self.assertFalse((output / "pt_BR").exists())
+            self.assertEqual(pages[output / "index.html"].lang, "en-US")
 
     def test_escaping_and_invalid_markdown(self):
         labels = builder.LANGUAGES["en_US"]
