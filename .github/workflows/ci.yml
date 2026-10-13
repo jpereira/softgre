@@ -51,6 +51,8 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Ubuntu 24.04 lab image
+        if: hashFiles('Dockerfile.lab') != ''
         run: docker build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
       - name: Dashboard, GRE provisioning and container lifecycle
+        if: hashFiles('Dockerfile.lab') != ''
         run: scripts/check-lab.sh
