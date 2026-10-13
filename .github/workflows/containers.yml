@@ -1,0 +1,56 @@
+name: Container image
+on:
+  push:
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (vX.Y.Z)
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: container-publish
+  cancel-in-progress: false
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Build and verify the release image
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          test "$RELEASE_TAG" = "v$(./bump.sh --check)"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          version="${RELEASE_TAG#v}"
+          revision=$(git rev-parse HEAD)
+          docker build -f docker/Dockerfile \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.version=$version" \
+            --label "org.opencontainers.image.revision=$revision" \
+            --label "org.opencontainers.image.licenses=LGPL-3.0-or-later" \
+            --tag "$image:$version" --tag "$image:latest" .
+          docker run --rm "$image:$version" --version
+          docker run --rm --entrypoint dpkg-query "$image:$version" -W softgred
+      - name: Publish version and latest tags
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          docker push "$image:${RELEASE_TAG#v}"
+          docker push "$image:latest"
