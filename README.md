@@ -10,6 +10,24 @@ filter; interface management uses native NETLINK_ROUTE.
 - [Complete English guide](docs/en_US/index.md)
 - [Documentation website](https://jpereira.github.io/softgre/)
 - [Debian/Ubuntu releases](https://github.com/jpereira/softgre/releases)
+- [Container image](https://github.com/jpereira/softgre/pkgs/container/softgre)
+
+## Run the release image
+
+The amd64 production image is available as `ghcr.io/jpereira/softgre:2.0.1` and `:latest`.
+Authenticate with `docker login ghcr.io` if the package visibility requires it.
+Configure the capture interface and VLAN mappings in your local `softgred.conf`.
+Run on Linux with the required kernel networking support:
+
+```sh
+docker pull ghcr.io/jpereira/softgre:2.0.1
+docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW \
+  -v /absolute/path/softgred.conf:/etc/softgred/softgred.conf:ro ghcr.io/jpereira/softgre:2.0.1
+```
+
+The daemon and dashboard start together. The dashboard listens on port 8080.
+Host networking lets the daemon create interfaces on the Linux host.
+Use the isolated Ubuntu lab below for experiments.
 
 ## Run the Ubuntu 24.04 lab
 

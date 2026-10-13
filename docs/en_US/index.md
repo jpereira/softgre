@@ -482,6 +482,28 @@ the container cannot supply missing kernel modules. The production image contain
 daemon, GLib and ebtables and runs in the foreground. Build and run Docker on Linux; a
 macOS client can target a remote Docker context.
 
+### Published container image
+
+[GitHub Packages](https://github.com/jpereira/softgre/pkgs/container/softgre) contains the
+amd64 production image. Each release publishes a version tag and `latest` after Linux
+validation and installed-package checks. The image includes the daemon and Python
+status dashboard; both start automatically. The Ubuntu lab is built separately.
+
+```sh
+docker pull ghcr.io/jpereira/softgre:2.0.1
+docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW \
+  -v /absolute/path/softgred.conf:/etc/softgred/softgred.conf:ro ghcr.io/jpereira/softgre:2.0.1
+```
+
+Configure the capture interface and VLAN mappings before starting. The dashboard listens
+on port 8080. Host networking allows changes to the Linux host's interfaces and bridges.
+Use the isolated lab for test traffic. Authenticate with `docker login ghcr.io` when
+package visibility requires it; public GHCR images support anonymous pulls.
+
+The `Container image` workflow publishes release tags automatically. To publish an
+existing release, run it manually from `master` and provide its `vX.Y.Z` tag. The image
+records the source repository, commit, version and license in OCI labels.
+
 ### Restarting the daemon
 
 Install the main unit from `share/softgred.service` after a source build. Package builds
