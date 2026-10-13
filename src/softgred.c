@@ -211,7 +211,8 @@ end:
     softgred_config_remove_pid_file();
     if (notify_fd >= 0) {
         unsigned char status = EXIT_FAILURE;
-        (void)write(notify_fd, &status, 1);
+        if (write(notify_fd, &status, 1) != 1)
+            D_WARNING("Startup failure could not be reported to parent\n");
         close(notify_fd);
     }
     D_INFO("Daemon stopped exit=%d\n", result);

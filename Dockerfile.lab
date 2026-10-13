@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
-RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web \
+RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web CFLAGS="-O2 -g -Werror" \
     && make -j2 && make check && make install DESTDIR=/install
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
