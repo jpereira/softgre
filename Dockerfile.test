@@ -1,0 +1,10 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential autoconf automake pkg-config libglib2.0-dev clang libclang-rt-dev python3 \
+    iproute2 ebtables iptables php-cli php-sockets debhelper \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY . .
+RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+    CFLAGS="-O2 -g -Werror" && make -j2 && make check
+CMD ["python3", "tests/integration.py", "bin/softgred"]

@@ -1,0 +1,46 @@
+name: Linux validation
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+jobs:
+  compilers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Build test image
+        run: docker build -f Dockerfile.test -t softgre-test .
+      - name: GCC, Clang, sanitizers, installation and distribution
+        run: docker run --rm softgre-test scripts/check-linux.sh
+      - name: Real GRE, VLAN, firewall and API integration
+        run: >-
+          docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW
+          -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
+          python3 tests/integration.py bin/softgred
+      - name: PHP adapter
+        run: docker run --rm softgre-test python3 tests/test_web.py
+      - name: Debian package
+        run: docker run --rm softgre-test dpkg-buildpackage -us -uc -b
+      - name: Production container
+        run: docker build -t softgre .
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - run: python3 scripts/build-docs.py
+      - run: python3 tests/test_docs.py
+      - run: python3 tests/test_version.py
+      - run: ./bump.sh --check
