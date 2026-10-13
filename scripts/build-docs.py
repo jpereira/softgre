@@ -165,6 +165,7 @@ def page(locale, markdown):
 <title>SoftGRE · {labels['label']}</title>
 <link rel="icon" type="image/svg+xml" href="../assets/softgre-logo.svg">
 <link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/theme.js"></script>
 <script src="../assets/site.js" defer></script>
 </head>
 <body data-copy="{labels['copy']}" data-copied="{labels['copied']}">
@@ -175,7 +176,8 @@ SoftGRE</a>
 <nav aria-label="Language / Idioma"><a href="../{labels['other']}/index.html"
 lang="{LANGUAGES[labels['other']]['lang']}">{labels['other_label']}</a>
 <a href="https://github.com/jpereira/softgre">GitHub ↗</a>
-</nav></header>
+<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"
+data-dark="{dark_label}" data-light="{light_label}" hidden>{dark_label}</button></nav></header>
 <div class="shell"><section class="hero">
 <p class="eyebrow">{labels['eyebrow']}</p><h1>{title}</h1><p class="lead">{labels['intro']}</p>
 <div class="badges"><span>Linux</span><span>AF_PACKET + BPF</span><span>Native netlink</span></div>
@@ -211,12 +213,13 @@ def build(output=None):
 <title>SoftGRE · Documentation / Documentação</title>
 <link rel="icon" type="image/svg+xml" href="assets/softgre-logo.svg">
 <link rel="stylesheet" href="assets/site.css">
-</head>
+<script src="assets/theme.js"></script></head>
 <body><header class="topbar"><a class="brand" href="index.html">
 <img class="brand-logo" src="assets/softgre-logo.svg" alt="" width="42" height="42">
 SoftGRE</a>
 <nav><a href="https://github.com/jpereira/softgre">GitHub ↗</a>
-</nav></header>
+<button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"
+data-dark="Dark / Escuro" data-light="Light / Claro" hidden>Dark / Escuro</button></nav></header>
 <main class="shell language-home"><p class="eyebrow">LINUX / DYNAMIC GRE</p>
 <img class="hero-logo" src="assets/softgre-logo.svg" alt="SoftGRE tunnel logo"
 width="144" height="144"><h1>SoftGRE<span class="accent">.</span></h1>
