@@ -8,6 +8,6 @@ webinterfacedir = $(pkgdatadir)/webinterface
 webinterface_DATA = webinterface/index.html webinterface/dashboard.css \
     webinterface/dashboard.js webinterface/api.php
 endif
-EXTRA_DIST = etc/softgred/softgred.conf.in \
+EXTRA_DIST = etc/softgred/softgred.conf.in softgred.service \
     webinterface/index.html webinterface/dashboard.css webinterface/dashboard.js webinterface/api.php
 CLEANFILES = etc/softgred/softgred.conf

@@ -1,11 +1,9 @@
 #!/usr/bin/make -f
-
 %:
 	dh $@
 
-override_dh_clean:
-	dh_clean
+override_dh_auto_configure:
+	dh_auto_configure -- --sysconfdir=/etc --localstatedir=/var --with-piddir=/run
 
-override_dh_auto_build:
-	$(MAKE) clean all
-
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start

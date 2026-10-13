@@ -1,4 +1,0 @@
-if [ -x "/etc/init.d/softgred" ]; then
-	invoke-rc.d softgred stop || exit $?
-fi
-

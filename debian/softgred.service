@@ -1,0 +1,21 @@
+[Unit]
+Description=Dynamic GRE Ethernet provisioning
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/softgred -f -c /etc/softgred/softgred.conf
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/run
+RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK AF_PACKET
+
+[Install]
+WantedBy=multi-user.target
