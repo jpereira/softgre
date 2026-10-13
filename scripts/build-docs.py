@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Render the project's deliberately small Markdown subset with no third-party packages."""
+import html
+import re
+import shutil
+import unicodedata
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+LANGUAGES = {
+    "pt_BR": {
+        "lang": "pt-BR", "label": "Português", "other": "en_US", "other_label": "English",
+        "eyebrow": "REDES LINUX / GRE DINÂMICO",
+        "title": "Túneis sob demanda.\nControle no Linux.",
+        "intro": "Descubra remotos GRE, conecte VLANs a bridges e deixe o kernel encaminhar o tráfego.",
+        "search": "Buscar na documentação", "contents": "Neste guia", "copy": "Copiar",
+        "copied": "Copiado", "empty": "Nenhuma seção encontrada.", "guide": "Guia completo",
+        "source": "Código-fonte", "footer": "Documentação do projeto · LGPL-3.0-or-later",
+        "nodes": ["Remoto GRE", "SoftGRE", "Bridge Linux"],
+        "detail": "IPv4 + Ethernet + VLAN → descoberta → gretap + VLAN → encaminhamento no kernel",
+    },
+    "en_US": {
+        "lang": "en-US", "label": "English", "other": "pt_BR", "other_label": "Português",
+        "eyebrow": "LINUX NETWORKING / DYNAMIC GRE",
+        "title": "Tunnels on demand.\nLinux in control.",
+        "intro": "Discover GRE peers, connect VLANs to bridges and let the kernel forward traffic.",
+        "search": "Search documentation", "contents": "In this guide", "copy": "Copy",
+        "copied": "Copied", "empty": "No sections found.", "guide": "Complete guide",
+        "source": "Source code", "footer": "Project documentation · LGPL-3.0-or-later",
+        "nodes": ["GRE peer", "SoftGRE", "Linux bridge"],
+        "detail": "IPv4 + Ethernet + VLAN → discovery → gretap + VLAN → kernel forwarding",
+    },
+}
+
+
+def slug(text):
+    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "-", plain).strip("-")
+
+
+def inline(text):
+    # Tokenize code/links before escaping, so generated tags never become Markdown input.
+    pattern = r"`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)"
+    output, offset = [], 0
+    for match in re.finditer(pattern, text):
+        output.append(html.escape(text[offset:match.start()]))
+        if match.group(1) is not None:
+            output.append(f"<code>{html.escape(match.group(1))}</code>")
+        else:
+            label, url = match.group(2), match.group(3)
+            if not re.match(r"^(https?://|#|\.?\.?/)", url):
+                raise ValueError(f"Unsupported documentation link: {url}")
+            output.append(f'<a href="{html.escape(url, quote=True)}">{html.escape(label)}</a>')
+        offset = match.end()
+    output.append(html.escape(text[offset:]))
+    return "".join(output)
+
+
+def render(markdown, labels):
+    lines = markdown.splitlines()
+    sections, toc, current, paragraph = [], [], [], []
+    ids = set()
+    index = 0
+
+    def flush():
+        if paragraph:
+            current.append(f'<p>{inline(" ".join(paragraph))}</p>')
+            paragraph.clear()
+
+    while index < len(lines):
+        line = lines[index]
+        if line.startswith("# "):
+            index += 1
+            continue
+        if line.startswith("## "):
+            flush()
+            if current:
+                closing = "</section>" if current[0].startswith("<section") else ""
+                sections.append("\n".join(current) + closing)
+            title = line[3:]
+            anchor = slug(title)
+            if anchor in ids:
+                raise ValueError(f"Duplicate section: {title}")
+            ids.add(anchor)
+            toc.append((anchor, title))
+            current = [f'<section class="doc-section" id="{anchor}">',
+                       f'<h2><a href="#{anchor}">{html.escape(title)}</a></h2>']
+        elif line.startswith("```"):
+            flush()
+            language = line[3:]
+            code = []
+            index += 1
+            while index < len(lines) and not lines[index].startswith("```"):
+                code.append(lines[index])
+                index += 1
+            if index == len(lines):
+                raise ValueError("Unclosed code fence")
+            current.append('<div class="code-block">'
+                           f'<div class="code-bar"><span>{html.escape(language or "text")}</span>'
+                           f'<button type="button" class="copy">{labels["copy"]}</button></div>'
+                           f'<pre><code>{html.escape(chr(10).join(code))}</code></pre></div>')
+        elif line.startswith("| "):
+            flush()
+            rows = []
+            while index < len(lines) and lines[index].startswith("|"):
+                row = [cell.strip() for cell in lines[index].strip("|").split("|")]
+                if not all(re.fullmatch(r":?-+:?", cell) for cell in row):
+                    rows.append(row)
+                index += 1
+            if not rows:
+                raise ValueError("Empty table")
+            header = "".join(f'<th scope="col">{inline(cell)}</th>' for cell in rows[0])
+            body = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in row) + "</tr>"
+                           for row in rows[1:])
+            current.append(f'<div class="table-wrap"><table><thead><tr>{header}</tr></thead>'
+                           f'<tbody>{body}</tbody></table></div>')
+            continue
+        elif line.startswith("- "):
+            flush()
+            items = []
+            while index < len(lines) and lines[index].startswith("- "):
+                item = lines[index][2:]
+                index += 1
+                while index < len(lines) and lines[index].startswith("  "):
+                    item += " " + lines[index].strip()
+                    index += 1
+                items.append(f"<li>{inline(item)}</li>")
+            current.append("<ul>" + "".join(items) + "</ul>")
+            continue
+        elif not line.strip():
+            flush()
+        else:
+            paragraph.append(line.strip())
+        index += 1
+    flush()
+    if current:
+        # Intro paragraphs precede the first titled section.
+        closing = "</section>" if current[0].startswith("<section") else ""
+        sections.append("\n".join(current) + closing)
+    return "\n".join(sections), toc
+
+
+def page(locale, markdown):
+    labels = LANGUAGES[locale]
+    article, toc = render(markdown, labels)
+    nav = "".join(f'<a href="#{anchor}">{html.escape(title)}</a>' for anchor, title in toc)
+    nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
+        f'<span class="node">{name}</span>' for name in labels["nodes"])
+    title = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
+    return f'''<!doctype html>
+<html lang="{labels['lang']}">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{html.escape(labels['intro'])}">
+<title>SoftGRE · {labels['label']}</title>
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body data-copy="{labels['copy']}" data-copied="{labels['copied']}">
+<a class="skip" href="#documentation">{labels['guide']}</a>
+<header class="topbar"><a class="brand" href="../index.html"><span>◈</span> SoftGRE</a>
+<nav aria-label="Language / Idioma"><a href="../{labels['other']}/index.html"
+lang="{LANGUAGES[labels['other']]['lang']}">{labels['other_label']}</a>
+<a href="https://github.com/jpereira/softgre">GitHub ↗</a></nav></header>
+<div class="shell"><section class="hero">
+<p class="eyebrow">{labels['eyebrow']}</p><h1>{title}</h1><p class="lead">{labels['intro']}</p>
+<div class="badges"><span>Linux</span><span>AF_PACKET + BPF</span><span>Native netlink</span></div>
+<div class="network" aria-label="{html.escape(labels['detail'])}">{nodes}</div>
+<p class="diagram-caption">{labels['detail']}</p></section>
+<div class="docs-layout"><aside><div class="sidebar">
+<label for="search">{labels['search']}</label><input id="search" type="search" autocomplete="off">
+<p class="eyebrow">{labels['contents']}</p><nav aria-label="{labels['contents']}">{nav}</nav>
+<a class="source" href="https://github.com/jpereira/softgre/blob/master/docs/{locale}/index.md">
+{labels['source']} ↗</a></div></aside><main id="documentation" tabindex="-1">
+<p class="empty" role="status" hidden>{labels['empty']}</p>{article}</main></div>
+<footer>{labels['footer']}<a href="../{labels['other']}/index.html">{labels['other_label']} →</a>
+</footer></div></body></html>
+'''
+
+
+def build(output=None):
+    output = (Path(output) if output else ROOT / "_site").resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "assets").mkdir(exist_ok=True)
+    for asset in (ROOT / "docs/assets").iterdir():
+        if asset.is_file():
+            shutil.copyfile(asset, output / "assets" / asset.name)
+    for locale in LANGUAGES:
+        target = output / locale
+        target.mkdir(exist_ok=True)
+        markdown = (ROOT / "docs" / locale / "index.md").read_text()
+        (target / "index.html").write_text(page(locale, markdown))
+    (output / "index.html").write_text('''<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SoftGRE Linux GRE documentation in English and Portuguese.">
+<title>SoftGRE · Documentation / Documentação</title>
+<link rel="stylesheet" href="assets/site.css"></head>
+<body><header class="topbar"><a class="brand" href="index.html"><span>◈</span> SoftGRE</a>
+<nav><a href="https://github.com/jpereira/softgre">GitHub ↗</a></nav></header>
+<main class="shell language-home"><p class="eyebrow">LINUX / DYNAMIC GRE</p>
+<h1>SoftGRE<span class="accent">.</span></h1>
+<p class="lead">IPv4 GRE discovery. Native Linux networking.</p>
+<p>Documentação completa · Complete documentation</p>
+<div class="language-cards"><a href="pt_BR/index.html" lang="pt-BR"><small>pt_BR</small>
+<strong>Português</strong><span>Instalação, arquitetura, API e operação →</span></a>
+<a href="en_US/index.html" lang="en-US"><small>en_US</small><strong>English</strong>
+<span>Installation, architecture, API and operations →</span></a></div>
+<p class="diagram-caption">AF_PACKET + BPF · NETLINK_ROUTE · GLib · LGPL-3.0-or-later</p>
+</main></body></html>
+''')
+    (output / ".nojekyll").touch()
+    print(f"Documentation built: {output}")
+    return output
+
+
+if __name__ == "__main__":
+    build()

@@ -1,10 +1,6 @@
-Minor Issues
-===========
+# Development ideas
 
-
-
-Future Features
-===============
-
-   * Detect all VLANs dinamically, for this need to parser the GRE payload.
-   * Parser of GRE payload, and discover 
+- Measure AF_PACKET ring capture and batching under sustained GRE traffic.
+- Evaluate native nftables sets for large MAC populations and rapid provisioning.
+- Design explicit authorization and controlled MAC mobility policies.
+- Add configurable idle expiry with kernel and firewall ownership tracking.
