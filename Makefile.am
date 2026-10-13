@@ -24,5 +24,6 @@ EXTRA_DIST += .clang-format .prettierrc.json docker/Dockerfile.format scripts/fo
 .PHONY: deb
 deb:
 	+$(SHELL) $(abs_top_srcdir)/scripts/make-deb.sh
-EXTRA_DIST += scripts/make-deb.sh scripts/check-installed-package.sh
+EXTRA_DIST += scripts/make-deb.sh scripts/check-installed-package.sh scripts/run-services.py
 EXTRA_DIST += scripts/install-deb.sh
+EXTRA_DIST += scripts/lab/setup.sh scripts/lab/setup.service scripts/lab/daemon.conf

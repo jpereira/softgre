@@ -1,23 +1,32 @@
 FROM ubuntu:24.04 AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential autoconf automake pkg-config libglib2.0-dev \
+    build-essential autoconf automake pkg-config libglib2.0-dev debhelper python3 \
     bridge-utils net-tools htop vim strace lsof \
-    systemd systemd-sysv init-system-helpers logrotate \
+    systemd systemd-sysv init-system-helpers logrotate dbus \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
-RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web CFLAGS="-O2 -g -Werror" \
-    && make -j2 && make check && make install DESTDIR=/install
+RUN ./autogen.sh && make deb \
+    && scripts/install-deb.sh /softgred_*.deb && scripts/check-installed-package.sh
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0t64 ebtables iptables iproute2 python3 util-linux \
     bridge-utils net-tools htop vim strace lsof \
-    systemd systemd-sysv init-system-helpers logrotate \
+    systemd systemd-sysv init-system-helpers logrotate dbus \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=build /install/ /
+COPY --from=build /softgred_*.deb /tmp/packages/
+COPY scripts/install-deb.sh scripts/check-installed-package.sh /tmp/
+RUN /tmp/install-deb.sh /tmp/packages/*.deb && /tmp/check-installed-package.sh \
+    && rm -rf /tmp/packages /var/lib/apt/lists/*
 COPY scripts/lab/ /opt/softgre-lab/
-ENV SOFTGRE_LAB=isolated
+RUN chmod +x /opt/softgre-lab/setup.sh \
+    && mkdir -p /etc/systemd/system/softgred.service.d /var/log/journal \
+    && cp /opt/softgre-lab/setup.service /etc/systemd/system/softgre-lab-setup.service \
+    && cp /opt/softgre-lab/daemon.conf /etc/systemd/system/softgred.service.d/lab.conf \
+    && systemctl set-default multi-user.target
+ENV SOFTGRE_LAB=isolated container=docker
+STOPSIGNAL SIGRTMIN+3
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=7s --start-period=15s \
     CMD ["python3", "/opt/softgre-lab/health.py"]
-ENTRYPOINT ["/opt/softgre-lab/start.sh"]
+ENTRYPOINT ["/sbin/init"]

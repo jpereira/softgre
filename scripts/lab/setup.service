@@ -1,0 +1,9 @@
+[Unit]
+Description=Prepare the isolated SoftGRE test network
+Before=softgred.service
+
+[Service]
+Type=oneshot
+Environment=SOFTGRE_LAB=isolated
+ExecStart=/opt/softgre-lab/setup.sh
+RemainAfterExit=yes
