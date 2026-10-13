@@ -67,6 +67,7 @@ tunnel-prefix=sgre
 bridge-map=1000@br-radius,10@br-hotspot,11@br-radius
 bridge-force=true
 pid-file={pidfile}
+log-file={directory}/events.log
 [service]
 bind-in=lo
 port=18888
@@ -154,8 +155,20 @@ max-listen=4
                     assert b"RESULT: OK" in client.recv(1024)
                 assert "RESULT: INVALID" in query("VERSextra")
                 assert "192.0.2.2@sgre1" in query("GTMC 02:00:00:00:00:42")
+                events = Path(directory, "events.log")
+                recorded = events.read_text()
+                assert "Tunnel created remote=192.0.2.2" in recorded
+                assert "interface=sgre0.1000 vlan=1000 bridge=br-radius" in recorded
+                assert "Client learned remote=192.0.2.2 mac=02:00:00:00:00:42" in recorded
+                rotated = Path(directory, "events.log.1")
+                events.rename(rotated)
+                daemon.send_signal(signal.SIGHUP)
+                wait_for(lambda: events.exists() and "Log reopened" in events.read_text())
+                assert "Client learned remote=192.0.2.2" in rotated.read_text()
                 daemon.send_signal(signal.SIGTERM)
                 assert daemon.wait(timeout=10) == 0
+                assert "Tunnel removed remote=192.0.2.2 interface=sgre1" in events.read_text()
+                assert "Daemon stopped exit=0" in events.read_text()
                 assert not pidfile.exists()
                 assert not Path("/sys/class/net/sgre1").exists()
                 assert Path("/sys/class/net/sgre0").exists()

@@ -89,3 +89,4 @@ config.sub
 softgred-*.tar.gz
 test-firewall
 test-helper
+test-log

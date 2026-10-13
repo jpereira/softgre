@@ -14,7 +14,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/run
+ReadWritePaths=/run /var/log
 RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK AF_PACKET
 
 [Install]

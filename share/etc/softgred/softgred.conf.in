@@ -6,6 +6,8 @@ tunnel-prefix = sgre
 bridge-map = 10@br-gre, 11@br-gre
 # Create missing bridges. Existing target interfaces must be bridges.
 bridge-force = true
+# Append events here; SIGHUP reopens the file after rotation.
+log-file = /var/log/softgred.log
 pid-file = @SOFTGRED_PIDDIR@/softgred.pid
 
 [service]

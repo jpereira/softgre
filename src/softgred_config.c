@@ -116,6 +116,11 @@ bool softgred_config_load_conf(const char *path)
     if (!cfg->pid_file)
         cfg->pid_file = read_string(file, "global", "pid-file", SOFTGRED_DEFAULT_PIDFILE,
                                    &error);
+    if (!cfg->log_file)
+        cfg->log_file = read_string(file, "global", "log-file", SOFTGRED_DEFAULT_LOGFILE,
+                                   &error);
+    if (!cfg->log_file || !g_path_is_absolute(cfg->log_file) ||
+        strpbrk(cfg->log_file, "\r\n")) { ok = false; goto done; }
     g_free(cfg->srv_bind_in);
     cfg->srv_bind_in = read_string(file, "service", "bind-in", "lo", &error);
     ok = cfg->srv_bind_in && (config_valid_ifname(cfg->srv_bind_in) ||
@@ -134,7 +139,7 @@ bool softgred_config_load_conf(const char *path)
     ok = ok && !error;
 done:
     if (!ok) fprintf(stderr, "Configuration %s: %s\n", path,
-                     error ? error->message : "invalid interface, prefix or bridge map");
+                     error ? error->message : "invalid interface, prefix, bridge map or log path");
     g_clear_error(&error);
     g_key_file_free(file);
     return ok;
@@ -146,29 +151,32 @@ int softgred_config_load_cli(int argc, char **argv)
         {"config-file", required_argument, NULL, 'c'},
         {"foreground", no_argument, NULL, 'f'},
         {"pid-file", required_argument, NULL, 'p'},
+        {"log-file", required_argument, NULL, 'l'},
         {"debug", no_argument, NULL, 'd'}, {"debug-time", no_argument, NULL, 't'},
         {"help", no_argument, NULL, 'h'}, {"version", no_argument, NULL, 'v'},
         {NULL, 0, NULL, 0}
     };
     int opt;
-    while ((opt = getopt_long(argc, argv, "c:fp:dthv", opts, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:fp:l:dthv", opts, NULL)) != -1) {
         switch (opt) {
         case 'c': g_free(cfg->config_file); cfg->config_file = g_strdup(optarg); break;
         case 'p': g_free(cfg->pid_file); cfg->pid_file = g_strdup(optarg); break;
+        case 'l': g_free(cfg->log_file); cfg->log_file = g_strdup(optarg); break;
         case 'f': cfg->is_foreground = true; break;
         case 'd': cfg->dbg_mode = MIN(cfg->dbg_mode + 1, 4); break;
         case 't': cfg->dbg_time = true; break;
         case 'v': printf("%s\n", PACKAGE_STRING); return 0;
         case 'h':
-            printf("Usage: softgred [-f] [-c FILE] [-p FILE] [-d...] [-t] [-h] [-v]\n"
+            printf("Usage: softgred [-f] [-c FILE] [-p FILE] [-l FILE] [-d...] [-t] [-h] [-v]\n"
                    "  -c, --config-file  Configuration (default: %s)\n"
-                   "  -f, --foreground   Run in foreground; logs go to stderr\n"
+                   "  -f, --foreground   Run in foreground; also logs to stderr\n"
                    "  -p, --pid-file     Locked PID file (default: %s)\n"
+                   "  -l, --log-file     Append log file (default: %s)\n"
                    "  -d, --debug        Increase debug level (up to four)\n"
                    "  -t, --debug-time   Timestamp log messages\n"
                    "  -h, --help         Show help\n"
                    "  -v, --version      Show version\n",
-                   SOFTGRED_DEFAULT_CONFFILE, SOFTGRED_DEFAULT_PIDFILE);
+                   SOFTGRED_DEFAULT_CONFFILE, SOFTGRED_DEFAULT_PIDFILE, SOFTGRED_DEFAULT_LOGFILE);
             return 0;
         default: return -1;
         }

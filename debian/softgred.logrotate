@@ -1,0 +1,15 @@
+/var/log/softgred.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0600 root root
+    su root root
+    postrotate
+        if [ -r /run/softgred.pid ]; then
+            kill -HUP "$(cat /run/softgred.pid)" 2>/dev/null || true
+        fi
+    endscript
+}

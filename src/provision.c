@@ -71,20 +71,27 @@ struct tunnel_context *provision_add(const struct in_addr *remote)
     tun->ip_remote = *remote; tun->id = id;
     snprintf(tun->ifgre, sizeof(tun->ifgre), "%s%u", cfg->tunnel_prefix, id);
     tun->macs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    char ip[INET_ADDRSTRLEN], local[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, remote, ip, sizeof(ip));
+    inet_ntop(AF_INET, &cfg->local, local, sizeof(local));
     if (iface_gre_add(tun->ifgre, "gretap", cfg->ifname, &cfg->local, remote)) {
         tunnel_free(tun); return NULL;
     }
+    D_INFO("Tunnel created remote=%s local=%s interface=%s ingress=%s\n",
+           ip, local, tun->ifgre, cfg->ifname);
     /* Track immediately so a failed rollback remains visible and can be retried. */
     slots[id] = true;
     g_hash_table_insert(tunnels, GUINT_TO_POINTER(remote->s_addr), tun);
     if (iface_ebtables_add_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
         goto fail;
-    for (unsigned i = 0; i < cfg->bridge_slot; i++)
+    for (unsigned i = 0; i < cfg->bridge_slot; i++) {
         if (iface_bridge_attach(tun->ifgre, cfg->bridge[i].ifname, cfg->bridge[i].vlan_id))
             goto fail_firewall;
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, remote, ip, sizeof(ip));
-    D_INFO("Provisioned %s on %s\n", ip, tun->ifgre);
+        D_INFO("VLAN attached remote=%s interface=%s.%u vlan=%u bridge=%s\n",
+               ip, tun->ifgre, cfg->bridge[i].vlan_id, cfg->bridge[i].vlan_id,
+               cfg->bridge[i].ifname);
+    }
+    D_INFO("Tunnel ready remote=%s interface=%s\n", ip, tun->ifgre);
     tun->ready = true;
     return tun;
 fail_firewall:
@@ -103,6 +110,10 @@ bool provision_tunnel_allow_mac(struct tunnel_context *tun, const char *mac)
     if (iface_ebtables_allow(tun->ifgre, mac)) return false;
     g_hash_table_add(tun->macs, g_strdup(mac));
     g_hash_table_insert(mac_index, g_strdup(mac), tun);
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
+    D_INFO("Client learned remote=%s mac=%s tunnel=%s clients=%u\n",
+           ip, mac, tun->ifgre, g_hash_table_size(tun->macs));
     return true;
 }
 void provision_packet(const struct payload_packet *packet)
@@ -132,7 +143,10 @@ void provision_packet(const struct payload_packet *packet)
     if (!tun || !tun->ready) tun = provision_add(&packet->remote);
     if (!tun || !provision_tunnel_allow_mac(tun, mac)) {
         failures++; retry_after = now + G_USEC_PER_SEC;
-        D_WARNING("Provisioning failed; retrying new work after one second\n");
+        char ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &packet->remote, ip, sizeof(ip));
+        D_WARNING("Provisioning failed remote=%s mac=%s vlan=%u retry=1s\n",
+                  ip, mac, packet->vlan);
     }
 }
 int provision_del(const struct in_addr *remote)
@@ -149,6 +163,9 @@ int provision_del(const struct in_addr *remote)
     }
     if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
         return -1;
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, remote, ip, sizeof(ip));
+    D_INFO("Tunnel removed remote=%s interface=%s\n", ip, tun->ifgre);
     slots[tun->id] = false;
     g_hash_table_remove(tunnels, GUINT_TO_POINTER(remote->s_addr));
     return 0;
@@ -168,6 +185,12 @@ void provision_delall(void)
         }
         if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
             ok = false;
+        else {
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
+            D_INFO("Tunnel removed remote=%s interface=%s clients=%u\n",
+                   ip, tun->ifgre, g_hash_table_size(tun->macs));
+        }
     }
     /* Bulk flush avoids spawning two processes per learned MAC during full cleanup. */
     if (ok && !iface_ebtables_reset()) {

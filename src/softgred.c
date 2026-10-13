@@ -54,8 +54,12 @@ int main(int argc, char **argv)
     if (geteuid() != 0) {
         D_CRIT("Run as root (packet capture and network administration)\n"); goto end;
     }
-    if (local_address()) { D_CRIT("Capture interface: %s\n", strerror(errno)); goto end; }
     umask(0077);
+    if (log_open(cfg->log_file)) {
+        D_CRIT("Log file %s: %s\n", cfg->log_file, strerror(errno)); goto end;
+    }
+    D_INFO("Starting %s capture=%s log=%s\n", PACKAGE_STRING, cfg->ifname, cfg->log_file);
+    if (local_address()) { D_CRIT("Capture interface: %s\n", strerror(errno)); goto end; }
     signal(SIGPIPE, SIG_IGN);
     if (!cfg->is_foreground) {
         int pipefd[2];
@@ -67,7 +71,7 @@ int main(int argc, char **argv)
             unsigned char status = EXIT_FAILURE;
             ssize_t got;
             do { got = read(pipefd[0], &status, 1); } while (got < 0 && errno == EINTR);
-            close(pipefd[0]); softgred_config_release();
+            close(pipefd[0]); log_close(); softgred_config_release();
             return got == 1 ? status : EXIT_FAILURE;
         }
         close(pipefd[0]); notify_fd = pipefd[1];
@@ -83,6 +87,7 @@ int main(int argc, char **argv)
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT); sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGHUP);
     sigaddset(&mask, SIGUSR1); sigaddset(&mask, SIGUSR2);
     if (sigprocmask(SIG_BLOCK, &mask, NULL)) goto end;
     signal_fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
@@ -91,9 +96,12 @@ int main(int argc, char **argv)
     if (capture_fd < 0) { D_CRIT("Capture: %s\n", strerror(errno)); goto end; }
     if (service_init()) { D_CRIT("Status API: %s\n", strerror(errno)); goto end; }
     for (unsigned i = 0; i < cfg->bridge_slot; i++) {
+        bool existed = if_nametoindex(cfg->bridge[i].ifname) != 0;
         if (iface_bridge_prepare(cfg->bridge[i].ifname, cfg->bridge_force)) {
             D_CRIT("Bridge %s: %s\n", cfg->bridge[i].ifname, strerror(errno)); goto end;
         }
+        D_INFO("Bridge ready interface=%s created=%s\n", cfg->bridge[i].ifname,
+               existed ? "false" : "true");
     }
     if (iface_ebtables_init()) { D_CRIT("Cannot initialize owned firewall chains\n"); goto end; }
     firewall_ready = true;
@@ -116,9 +124,17 @@ int main(int argc, char **argv)
         if (fds[0].revents & POLLIN) {
             struct signalfd_siginfo info;
             while (read(signal_fd, &info, sizeof(info)) == sizeof(info)) {
-                if (info.ssi_signo == SIGUSR1) provision_delall();
+                if (info.ssi_signo == SIGHUP) {
+                    if (log_open(cfg->log_file))
+                        D_CRIT("Log reopen failed path=%s error=%s\n", cfg->log_file,
+                               strerror(errno));
+                    else D_INFO("Log reopened path=%s\n", cfg->log_file);
+                } else if (info.ssi_signo == SIGUSR1) provision_delall();
                 else if (info.ssi_signo == SIGUSR2) provision_stats();
-                else running = false;
+                else {
+                    D_INFO("Stopping signal=%u\n", info.ssi_signo);
+                    running = false;
+                }
             }
         }
         if (!running) break;
@@ -138,6 +154,8 @@ end:
         unsigned char status = EXIT_FAILURE;
         (void)write(notify_fd, &status, 1); close(notify_fd);
     }
+    D_INFO("Daemon stopped exit=%d\n", result);
+    log_close();
     softgred_config_release();
     return result;
 }

@@ -135,6 +135,7 @@ static void test_provision(void)
 {
     softgred_config_release();
     g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"));
+    g_assert_cmpstr(softgred_config_ref()->log_file, ==, SOFTGRED_DEFAULT_LOGFILE);
     struct softgred_config *cfg = softgred_config_ref();
     inet_pton(AF_INET, "192.0.2.1", &cfg->local);
     provision_init();

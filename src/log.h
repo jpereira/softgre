@@ -19,10 +19,12 @@
 #ifndef SOFTGRED_LOG_H
 #define SOFTGRED_LOG_H
 #include "general.h"
+int log_open(const char *path);
+void log_close(void);
 void log_message(int level, const char *format, ...) G_GNUC_PRINTF(2, 3);
 #define D_INFO(...) log_message(5, __VA_ARGS__)
-#define D_WARNING(...) log_message(5, __VA_ARGS__)
-#define D_CRIT(...) log_message(5, __VA_ARGS__)
+#define D_WARNING(...) log_message(6, __VA_ARGS__)
+#define D_CRIT(...) log_message(7, __VA_ARGS__)
 #define D_DEBUG0(...) log_message(1, __VA_ARGS__)
 #define D_DEBUG1(...) log_message(1, __VA_ARGS__)
 #define D_DEBUG2(...) log_message(2, __VA_ARGS__)

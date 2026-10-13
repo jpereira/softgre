@@ -9,7 +9,7 @@ AM_CPPFLAGS = -I$(top_builddir) -I$(top_srcdir)/src $(GLIB_CFLAGS) \
     -DSOFTGRED_CONFDIR=\"$(confdir)\" -DSOFTGRED_PIDDIR=\"$(piddir)\"
 AM_CFLAGS = -std=c11 -Wall -Wextra -Wformat=2 -Wshadow -Wstrict-prototypes
 softgred_LDADD = $(GLIB_LIBS)
-check_PROGRAMS = test-core test-netlink test-firewall test-helper
+check_PROGRAMS = test-core test-netlink test-firewall test-helper test-log
 test_core_SOURCES = ../tests/test_core.c ../src/payload.c ../src/provision.c \
     ../src/softgred_config.c ../src/service_cmd.c ../src/service.c ../src/log.c ../src/helper.c
 test_core_LDADD = $(GLIB_LIBS)
@@ -20,4 +20,6 @@ test_firewall_LDADD = $(GLIB_LIBS)
 test_helper_SOURCES = ../tests/test_helper.c ../src/helper.c ../src/log.c \
     ../src/softgred_config.c
 test_helper_LDADD = $(GLIB_LIBS)
-TESTS = test-core test-netlink test-firewall test-helper
+TESTS = test-core test-netlink test-firewall test-helper test-log
+test_log_SOURCES = ../tests/test_log.c ../src/log.c ../src/softgred_config.c
+test_log_LDADD = $(GLIB_LIBS)
