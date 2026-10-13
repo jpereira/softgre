@@ -16,238 +16,112 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-#include "general.h"
 #include "payload.h"
-#include "helper.h"
-#include "log.h"
 #include "provision.h"
 #include "softgred_config.h"
-
-inline struct payload_config *
-payload_config_ref()
+#include "log.h"
+static int capture_fd = -1;
+static uint16_t read16(const unsigned char *p) { return ((uint16_t)p[0] << 8) | p[1]; }
+bool payload_parse(const unsigned char *data, size_t len, struct payload_packet *out)
 {
-    static struct payload_config ref;
-    return &ref;
+    if (!data || !out || len < 14) return false;
+    size_t offset = 14;
+    uint16_t type = read16(data + 12);
+    /* Ethernet capture may include one or two outer VLAN tags. */
+    for (unsigned tags = 0; type == 0x8100 || type == 0x88a8; tags++) {
+        if (tags == 2 || len - offset < 4) return false;
+        type = read16(data + offset + 2);
+        offset += 4;
+    }
+    if (type != 0x0800 || len - offset < 20) return false;
+    const unsigned char *ip = data + offset;
+    size_t ihl = (ip[0] & 15) * 4, total = read16(ip + 2);
+    if ((ip[0] >> 4) != 4 || ihl < 20 || total < ihl + 4 || total > len - offset ||
+        ip[9] != 47 || (read16(ip + 6) & 0xbfff)) return false;
+    /* Only unkeyed GRE v0 Ethernet bridging (TEB), matching our gretap endpoints. */
+    const unsigned char *gre = ip + ihl;
+    if (read16(gre) != 0 || read16(gre + 2) != 0x6558) return false;
+    size_t remaining = total - ihl - 4;
+    const unsigned char *ether = gre + 4;
+    if (remaining < 14) return false;
+    type = read16(ether + 12);
+    if (type != 0x8100 || remaining < 18) return false;
+    uint16_t inner_type = read16(ether + 16);
+    if (inner_type == 0x8100 || inner_type == 0x88a8) return false;
+    uint16_t vlan = read16(ether + 14) & 0x0fff;
+    if (vlan < 1 || vlan > 4094 || (ether[6] & 1)) return false;
+    unsigned nonzero = 0;
+    for (unsigned i = 0; i < 6; i++) nonzero |= ether[6 + i];
+    if (!nonzero) return false;
+    memcpy(&out->remote.s_addr, ip + 12, 4);
+    memcpy(&out->local.s_addr, ip + 16, 4);
+    memcpy(out->mac, ether + 6, 6);
+    out->vlan = vlan;
+    return true;
 }
-
-int
-payload_loop_init ()
+int payload_loop_init(void)
 {
     struct softgred_config *cfg = softgred_config_ref();
-    struct payload_config *pl_cfg = payload_config_ref();
-
-    assert (cfg->ifname != NULL);
-
-    /* get network number and mask associated with capture device */
-    if (pcap_lookupnet(cfg->ifname, &pl_cfg->net, &pl_cfg->mask, pl_cfg->errbuf) != 0)
-    {
-        D_WARNING("pcap_lookupnet(): Couldn't get ip/netmask, %s\n", cfg->ifname, pl_cfg->errbuf);
-        return -1;
+    unsigned index = if_nametoindex(cfg->ifname);
+    if (!index) return -1;
+    capture_fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
+    if (capture_fd < 0) return -1;
+    struct sockaddr_ll addr = { .sll_family = AF_PACKET, .sll_protocol = htons(ETH_P_ALL),
+                               .sll_ifindex = (int)index };
+    /* Kernel filter: IPv4 GRE, including up to two outer VLAN tags. */
+    struct sock_filter code[] = {
+        BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 12),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0800, 0, 3),
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 23),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 47, 13, 14),
+        BPF_STMT(BPF_RET | BPF_K, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x8100, 1, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x88a8, 0, 11),
+        BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 16),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0800, 0, 2),
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 27),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 47, 6, 7),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x8100, 1, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x88a8, 0, 5),
+        BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 20),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0800, 0, 3),
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 31),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 47, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, 65535),
+        BPF_STMT(BPF_RET | BPF_K, 0)
+    };
+    struct sock_fprog filter = { .len = ARRAY_SIZE(code), .filter = code };
+    int size = 4 * 1024 * 1024, ignore = 1;
+    setsockopt(capture_fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
+#ifdef PACKET_IGNORE_OUTGOING
+    setsockopt(capture_fd, SOL_PACKET, PACKET_IGNORE_OUTGOING, &ignore, sizeof(ignore));
+#else
+    (void)ignore;
+#endif
+    if (bind(capture_fd, (struct sockaddr *)&addr, sizeof(addr)) ||
+        setsockopt(capture_fd, SOL_SOCKET, SO_ATTACH_FILTER, &filter, sizeof(filter))) {
+        payload_loop_end(); return -1;
     }
-
+    return capture_fd;
+}
+int payload_receive(void)
+{
+    unsigned char buffer[65536];
+    /* Bounded batches keep the status API and signal handling responsive. */
+    for (unsigned count = 0; count < 64; count++) {
+        struct sockaddr_ll peer;
+        socklen_t peer_len = sizeof(peer);
+        ssize_t len = recvfrom(capture_fd, buffer, sizeof(buffer), 0,
+                               (struct sockaddr *)&peer, &peer_len);
+        if (len < 0) return errno == EAGAIN || errno == EINTR ? 0 : -1;
+        if (peer.sll_pkttype == PACKET_OUTGOING) continue;
+        struct payload_packet packet;
+        if (payload_parse(buffer, (size_t)len, &packet)) provision_packet(&packet);
+    }
     return 0;
 }
-
-void
-payload_loop_end ()
+void payload_loop_end(void)
 {
-    struct payload_config *pl_cfg = payload_config_ref();
-
-    /* pcap */  
-    if (pl_cfg->handle)
-    {
-        pcap_breakloop(pl_cfg->handle);
-        pcap_close(pl_cfg->handle);
-    }
-
-    pcap_freecode(&pl_cfg->fp);
-}
-
-int
-payload_loop_run()
-{
-    struct softgred_config *cfg = softgred_config_ref();
-    struct payload_config *pl_cfg = payload_config_ref();
-    char filter_exp[] = "proto gre";
-
-    /* open capture device */
-    pl_cfg->handle = pcap_open_live (cfg->ifname, SNAP_LEN, 1, 1000, pl_cfg->errbuf);
-    if (pl_cfg->handle == NULL)
-    {
-        D_CRIT("Couldn't open device %s: %s\n", cfg->ifname, pl_cfg->errbuf);
-        return -1;
-    }
-
-    /* make sure we're capturing on an Ethernet device [2] */
-    if (pcap_datalink (pl_cfg->handle) != DLT_EN10MB)
-    {
-        D_CRIT("%s is not an Ethernet\n", cfg->ifname);
-        return -1;
-    }
-
-    /* compile the filter expression */
-    if (pcap_compile (pl_cfg->handle, &pl_cfg->fp, filter_exp, 0, pl_cfg->net) == -1)
-    {
-        D_CRIT("Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(pl_cfg->handle));
-        return -1;
-    }
-
-    /* apply the compiled filter */
-    if (pcap_setfilter (pl_cfg->handle, &pl_cfg->fp) == -1)
-    {
-        D_CRIT("Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(pl_cfg->handle));
-        return -1;
-    }
-
-    /* now we can set our callback function */
-    if (pcap_loop(pl_cfg->handle, 0 /* infinity */, payload_handler_packet_cb, NULL) != 0)
-    {
-       D_WARNING("Something happens with pcap_loop(), err='%s'\n", pcap_geterr(pl_cfg->handle));
-    }
-
-    return 0;
-}
-
-// TODO: please, refactor this as soon as possible!
-void
-payload_handler_packet_cb (u_char *UNUSED(args),
-                           const struct pcap_pkthdr *UNUSED(pkthdr),
-                           const u_char *packet)
-{
-    register const struct tunnel_context *tun;
-    register struct softgred_config *cfg = softgred_config_ref();
-    register struct in_addr *ip_local = &cfg->priv.ifname_saddr.sin_addr;
-
-    // only IPv4!
-    register struct ether_header *ether = (struct ether_header *)&packet[0];
-    register uint16_t ether_type = ntohs (ether->ether_type); 
-    if (ether_type != ETHERTYPE_IP)
-    {
-        D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
-        return;
-    }
-   
-    // packet tcp full
-    register const u_char *pkt = (packet + sizeof(struct ether_header));
-    register struct ip *ip = (struct ip *)pkt;
-    register size_t pkt_len = ntohs(ip->ip_len);
-    if (pkt_len < sizeof(struct ip)) // check to see we have a packet of valid length
-    {
-        D_CRIT("wrong lenght, may truncated ip %ld?\n", pkt_len);
-        return;
-    }
-
-    // at first, only "GRE" packets!!
-    if (ip->ip_p != IPPROTO_GRE)
-    {
-        D_CRIT("arrives non-gre packet '%#x', was ignored!", ip->ip_p);
-        return;
-    }
-
-    // self provision? no way!
-    if (ip->ip_src.s_addr == ip_local->s_addr)
-        return;
-
-    // dump/debug message
-    if (is_debug(payload))
-    {
-        printf("\n");
-        printf("####################################################\n");
-        printf("## Packet TCP (complete)\n");
-	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip->ip_src), ether_ntoa((const struct ether_addr *)ether->ether_shost));
-    	printf("   ->    To: %s (%s)\n", inet_ntoa(ip->ip_dst), ether_ntoa((const struct ether_addr *)ether->ether_dhost));
-        //helper_print_payload(pkt, pkt_len);
-    }
-
-    // gre packet
-    //const u_char* pktgre = (pkt + GRE_LENGHT + sizeof (struct ip));
-    register struct ether_header *ether_gre = (struct ether_header *)(pkt + GRE_LENGHT + sizeof (struct ip));
-    register size_t pad = 0;
-    register uint16_t vlan_id = 0;
-
-    ether_type = ntohs (ether_gre->ether_type); 
-    if (ether_type != ETHERTYPE_IP && ether_type != ETHERTYPE_VLAN)
-    {
-        //D_DEBUG4("The packet (%#04x) is unsupported!\n", ether_type);
-        return;
-    }
-
-    if (ether_type == ETHERTYPE_VLAN)
-    {
-        register uint16_t *pkt_vlan = (uint16_t *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header));
-        pad = 4;
-
-        vlan_id = htons(pkt_vlan[0] & 0xfff0);
-        ether_type = htons(pkt_vlan[1]); // update ether type
-    }
-
-    if (is_debug(payload))
-    {
-        printf(" @GRE ether_type(%#04x) pad=%ld vlan_id=%d\n", ether_type, pad, vlan_id);
-    }
-
-    if (ether_type != ETHERTYPE_VLAN && ether_type != ETHERTYPE_IP)
-    {
-        //D_WARNING("The packet (%#04x) is unsupported!\n", ether_type);
-        return;
-    }
-
-    register struct ip *ip_gre = (struct ip *)(pkt + GRE_LENGHT + sizeof (struct ip) + sizeof(struct ether_header) + pad);
-    //size_t pktgre_len = ntohs(ip_gre->ip_len);
-
-    if (is_debug(payload))
-    {
-	    printf("   <-  From: %s (%s)\n", inet_ntoa(ip_gre->ip_src), ether_ntoa((const struct ether_addr *)ether_gre->ether_shost));
-	    printf("   ->    To: %s (%s)\n", inet_ntoa(ip_gre->ip_dst), ether_ntoa((const struct ether_addr *)ether_gre->ether_dhost));
-        //printf(" @helper_print_payload(pktgre=%#08x, pktgre_len=%ld)\n", pktgre, pktgre_len);
-        //helper_print_payload(pktgre, pktgre_len);
-    }
-
-    register const struct ether_addr *ether_src = (const struct ether_addr *)ether_gre->ether_shost;
-    register const char *src_mac = ether_ntoa(ether_src);
-    if (!src_mac)
-    {
-        D_CRIT("invalid mac address!\n");
-        return;
-    }
-
-    tun = provision_get_tunnel_byip(&ip->ip_src, NULL);
-    if (tun)
-    {
-        if (provision_tunnel_has_mac(tun, src_mac))
-        {
-            //D_DEBUG3("the mac %s is already allowed over %s@%s\n", src_mac, inet_ntoa(tun->ip_remote), tun->ifgre);
-            return;
-        }
-
-        if (!provision_tunnel_allow_mac(tun, src_mac))
-        {
-            D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", src_mac);
-            return;
-        }
-
-        //D_DEBUG3("the mac address '%s' was allowed over %s\n", src_mac, tun->ifgre);
-
-        return;
-    }
-    
-    // ok! just do it!
-    tun = provision_add (&ip->ip_src);
-    if (!tun)
-    {
-        D_CRIT("Problems with provision_add()\n");
-        return;
-    }
-
-    if (provision_tunnel_allow_mac(tun, src_mac) != true)
-    {
-        D_DEBUG3("problems with provision_tunnel_allow_mac(%s)\n", src_mac);
-        return;
-    }
-
-    D_DEBUG1("[GRE:%s] the client %s was attached in %s\n", 
-                cfg->ifname, inet_ntoa(tun->ip_remote), tun->ifgre);
-
-    return;
+    if (capture_fd >= 0) close(capture_fd);
+    capture_fd = -1;
 }

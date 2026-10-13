@@ -1,0 +1,6 @@
+.git
+.agents
+.codex
+_site
+*.o
+*.log

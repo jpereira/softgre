@@ -16,123 +16,27 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef SOFTGRED_CONFIG_H_
-#define SOFTGRED_CONFIG_H_
-
+#ifndef SOFTGRED_CONFIG_H
+#define SOFTGRED_CONFIG_H
 #include "general.h"
-#include "config.h"
-
-#define SOFTGRED_MAX_ATTACH         10
-#define SOFTGRED_MAX_IFACE          IFNAMSIZ
-#define SOFTGRED_MAX_SLOTS          4096
-#define SOFTGRED_TUN_PREFIX         "sgre" 
-#define SOFTGRED_TUN_PREFIX_MAX     10
-#define SOFTGRED_TUN_MTU            1462
-
-struct tunnel_bridge {
-    char ifname[SOFTGRED_MAX_IFACE];
-    uint16_t vlan_id;
-};
-
-struct tunnel_context_priv {
-    char ifname_ip[SOFTGRED_MAX_IFACE+1];
-    struct sockaddr_in ifname_saddr;
-};
-
-struct softgred_config_debug_env {
-    const char *var;
-    bool *flag;
-};
-
-#define is_debug(__peace)             (softgred_config_ref()->debug_env.__peace == true)
-#define if_debug(__peace, __doit)     if(is_debug(__peace)) { __doit; }
-
-enum data_type {
-    T_STRING,
-    T_BOOL,
-    T_INTEGER,
-    T_CALLBACK
-};
-
-static const char *
-data_type_get_name (enum data_type type)
-{
-    switch (type)
-    {
-        case T_STRING: return "string";
-        case T_BOOL: return "boolean";
-        case T_INTEGER: return "integer";
-        case T_CALLBACK: return "callback";
-        default: return "unknown";
-    }
-}
-
+struct tunnel_bridge { char ifname[IFNAMSIZ]; uint16_t vlan_id; };
 struct softgred_config {
-    char *config_file;      /* --config-file */
-    bool is_foreground;     /* --foreground */
-
-    // [ global]
-    char *ifname;
-    char *tunnel_prefix;
-    char *pid_file;
-    char *log_file;
-    bool bridge_force;
+    char *config_file, *ifname, *tunnel_prefix, *pid_file;
+    char *log_file, *dbg_file, *srv_bind_in;
+    bool is_foreground, bridge_force, dbg_enable, dbg_time;
+    int dbg_mode;
+    unsigned srv_port, srv_max_listen;
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
-    uint8_t bridge_slot;
-
-    // [service]
-    char *srv_bind_in;
-    uint16_t srv_port;
-    uint32_t srv_max_listen;
-
-    // [debug]
-    bool dbg_enable;
-    char *dbg_file;
-    int32_t dbg_mode;      /* --debug */
-    bool dbg_time;         /* --debug-time */
-
-    // TODO: change this
-    struct tunnel_context_priv priv;
-    struct rtnl_handle rth;
-    hash_table_t *table;
+    unsigned bridge_slot;
+    struct in_addr local;
     time_t started_time;
     struct utsname uts;
-
-    // TODO: Remover isto breve
-    struct {
-        bool payload;        /* getenv("SOFTGRED_DEBUG_PAYLOAD") */
-        bool cmd;            /* getenv("SOFTGRED_DEBUG_CMD") */
-        bool provision;      /* getenv("SOFTGRED_DEBUG_PROVISION") */
-        bool service;        /* getenv("SOFTGRED_DEBUG_SERVICE") */
-    } debug_env; /* set by softgred_config_load_envs() */
 };
-
-struct softgred_config_map {
-    const char *group;       /* group name */
-    const char *key;         /* config key name */
-    bool is_necessary;       /* is necessary? */
-    enum data_type type;     /* expected type of value */
-    void **ptr;              /* where will save */
-};
-
-struct softgred_config *softgred_config_ref();
-
-void softgred_config_release();
-
-int softgred_config_init();
-
-int softgred_config_end();
-
-int softgred_config_load_conf(const char *config_file);
-
-int softgred_config_load_cli(int argc, 
-                             char *argv[]);
-
+struct softgred_config *softgred_config_ref(void);
+bool softgred_config_load_conf(const char *path);
+int softgred_config_load_cli(int argc, char **argv);
+void softgred_config_release(void);
 int softgred_config_create_pid_file(int pid);
-
-void softgred_print_version();
-
-void softgred_print_usage();
-
-#endif /*SOFTGRED_CONFIG_H_*/
-
+void softgred_config_remove_pid_file(void);
+bool config_valid_ifname(const char *name);
+#endif

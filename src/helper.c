@@ -16,206 +16,53 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-
 #include "helper.h"
 #include "log.h"
-#include "general.h"
-
-/*
- * print data in rows of 16 bytes: offset   hex   ascii
- */
-void
-helper_print_hex2ascii(const u_char *payload,
-					   size_t len,
-					   int offset)
+static void child_signals(void *unused)
 {
-    size_t i;
-    size_t gap;
-    const u_char *ch;
-
-    /* offset */
-    printf("%05d   ", offset);
-    
-    /* hex */
-    ch = payload;
-    for(i = 0; i < len; i++)
-	{
-        printf("%02x ", *ch);
-        ch++;
-        /* print extra space after 8th byte for visual aid */
-        if (i == 7)
-            printf(" ");
-    }
-    /* print space to handle line less than 8 bytes */
-    if (len < 8)
-        printf(" ");
-    
-    /* fill hex gap with spaces if not full line */
-    if (len < 16)
-	{
-        gap = 16 - len;
-        for (i = 0; i < gap; i++) {
-            printf("   ");
+    (void)unused;
+    sigset_t empty;
+    sigemptyset(&empty);
+    sigprocmask(SIG_SETMASK, &empty, NULL);
+}
+int helper_exec(const char *const argv[])
+{
+    GError *error = NULL;
+    int status = 0;
+    GPid child;
+    bool ok = g_spawn_async(NULL, (char **)argv, NULL,
+                           G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL |
+                           G_SPAWN_DO_NOT_REAP_CHILD,
+                           child_signals, NULL, &child, &error);
+    if (ok) {
+        gint64 deadline = g_get_monotonic_time() + 3 * G_USEC_PER_SEC;
+        for (;;) {
+            pid_t waited = waitpid(child, &status, WNOHANG);
+            if (waited == child) break;
+            if (waited < 0 && errno != EINTR) { ok = false; break; }
+            if (g_get_monotonic_time() >= deadline) {
+                kill(child, SIGKILL);
+                while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
+                g_set_error_literal(&error, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
+                                    "command exceeded three-second deadline");
+                ok = false; break;
+            }
+            g_usleep(1000);
         }
+        g_spawn_close_pid(child);
+        if (ok) ok = g_spawn_check_wait_status(status, &error);
     }
-    printf("   ");
-    
-    /* ascii (if printable) */
-    ch = payload;
-    for(i = 0; i < len; i++)
-	{
-        if (isprint(*ch))
-            printf("%c", *ch);
-        else
-            printf(".");
-        ch++;
+    if (!ok) {
+        D_WARNING("%s: %s\n", argv[0], error ? error->message : "execution failed");
+        g_clear_error(&error);
     }
-
-    printf("\n");
+    return ok ? 0 : -1;
 }
-
-/*
- * print packet payload data (avoid printing binary data)
- */
-void
-helper_print_payload (const u_char *payload,
-                      size_t len)
+void helper_print_payload(const unsigned char *data, size_t len)
 {
-    size_t len_rem = len;
-    size_t line_width = 16;            /* number of bytes per line */
-    size_t line_len;
-    size_t offset = 0;                 /* zero-based offset counter */
-    const u_char *ch = payload;
-
-    if (len <= 0)
-        return;
-
-    D_DEBUG3("<print log payload=%#08x len(%ld)>\n", payload, len);
-
-    /* data fits on one line */
-    if (len <= line_width)
-	{
-        helper_print_hex2ascii(ch, len, offset);
-        D_DEBUG3("</payload log>\n");
-        return;
+    for (size_t offset = 0; offset < len; offset += 16) {
+        printf("%05zu  ", offset);
+        for (size_t i = offset; i < MIN(offset + 16, len); i++) printf("%02x ", data[i]);
+        putchar('\n');
     }
-
-    /* data spans multiple lines */
-    for (;;)
-	{
-        /* compute current line length */
-        line_len = line_width % len_rem;
-        /* print line */
-        helper_print_hex2ascii(ch, line_len, offset);
-        /* compute total remaining */
-        len_rem = len_rem - line_len;
-        /* shift pointer to remaining bytes to print */
-        ch = ch + line_len;
-        /* add offset */
-        offset = offset + line_width;
-        /* check if we have line width chars or less */
-        if (len_rem <= line_width)
-		{
-            /* print last line and get out */
-            helper_print_hex2ascii(ch, len_rem, offset);
-            break;
-        }
-    }
-
-    D_DEBUG3("</payload log>\n");
 }
-
-int
-helper_system(bool verbose,
-              const char *format, 
-              ...)
-{
-    va_list vl;
-    char *buf = NULL;
-    char *cmd = NULL;
-    int ret;
-
-    va_start(vl, format);
-    vasprintf(&buf, format, vl);
-
-    if_debug(cmd, D_DEBUG3("call system() with '%s'\n", buf));
-
-    asprintf(&cmd, "%s %s", buf, !verbose ? "1> /dev/null 2>&1" : "");
-
-    if ((ret = system(cmd)) != 0)
-    {
-        if_debug(cmd, D_CRIT("Problems with system() runs '%s'\n", buf));
-    }
-
-    free(cmd);
-    free(buf);
-    va_end(vl);
-
-    return ret;
-}
-
-void
-helper_enable_high_priority()
-{
-    int which = PRIO_PROCESS;
-    id_t pid = getpid();
-    int ret = getpriority(which, pid);
-    int priority = -20;
-
-    D_DEBUG0("Current pid %d with priority is %d, change to %d\n", pid, ret, priority);
-
-    if (setpriority(which, pid, priority) < 0)
-    {
-        D_CRIT("Problems with setpriority(), errno=%d (%s)\n", errno, strerror(errno));
-    }
-
-}
-
-void
-helper_enable_coredump()
-{
-    struct rlimit core_limit = {
-        .rlim_cur = RLIM_INFINITY,
-        .rlim_max = RLIM_INFINITY
-    };
-
-    setrlimit(RLIMIT_CORE, &core_limit);
-}
-
-void
-helper_print_stacktrace()
-{
-    void *array[10];
-    size_t size;
-    char **strings;
-    size_t i;
-
-    D_DEBUG0("<begin>\n");
-
-    size = backtrace (array, 10);
-    strings = backtrace_symbols ((void *const *)array, size);
-
-    for (i = 0; i < size; i++)
-    {
-        fprintf(stderr, "  [%02ld] %s\n", i, strings[i]);
-    }
-
-    free (strings);
-    D_DEBUG0("<end>\n");
-}
-
-static pthread_mutex_t m;
-
-void
-helper_lock()
-{
-    pthread_mutex_lock(&m);
-}
-
-void
-helper_unlock()
-{
-    pthread_mutex_unlock(&m);
-}
-

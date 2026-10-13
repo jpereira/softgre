@@ -16,16 +16,7 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef SOFTGRED_H_
-#define SOFTGRED_H_
-
+#ifndef SOFTGRED_H
+#define SOFTGRED_H
 #include "general.h"
-
-void softgred_sig_handler(int signo);
-
-int softgred_init();
-
-void softgred_end();
-
-#endif /*SOFTGRED_H_*/
-
+#endif

@@ -16,82 +16,22 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-
-#include "general.h"
-#include "softgred_config.h"
 #include "log.h"
-
-struct log_sets {
-    const char *label;
-    int level;
-};
-
-static struct log_sets
-log_class[] = {
-    [L_DEBUG0]  = { "msg",        LOG_DEBUG   },    
-    [L_DEBUG1]  = { "dbg",        LOG_DEBUG   },
-    [L_DEBUG2]  = { "dbg-devel",  LOG_DEBUG   },
-    [L_DEBUG3]  = { "dbg-crazy",  LOG_DEBUG   },
-    [L_DEBUG4]  = { "dbg-insane", LOG_DEBUG   },
-    [L_CRIT]    = { "critical",   LOG_CRIT    },
-    [L_WARNING] = { "warning",    LOG_WARNING },
-    [L_NOTICE]  = { "notice",     LOG_NOTICE  },
-    [L_INFO]    = { "info",       LOG_INFO    }
-};
-
-void
-log_init()
+#include "softgred_config.h"
+void log_message(int level, const char *format, ...)
 {
-
-}
-
-void
-log_end()
-{
-
-}
-
-void
-log_message(int priority,
-            const char *funcname,
-            const char *filename,
-            int lineno,
-            const char *format, 
-            ...)
-{
-    va_list vl;
     struct softgred_config *cfg = softgred_config_ref();
-    const char *label = &log_class[priority].label[0];
-    const char *file = basename(filename);
-    char *buf = NULL;
-
-    va_start(vl, format);
-    vasprintf(&buf, format, vl);
-
-    if (cfg->dbg_time)
-    {
-        time_t t = time(NULL);
-        struct tm tm = *localtime(&t);
-
-        fprintf(stderr, "[%04d-%02d-%02d %02d:%02d:%02d] ", tm.tm_year + 1900, tm.tm_mon + 1,
-                    tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    if (level < 5 && level > cfg->dbg_mode) return;
+    if (cfg->dbg_time) {
+        char stamp[32];
+        time_t now = time(NULL);
+        struct tm tm;
+        localtime_r(&now, &tm);
+        strftime(stamp, sizeof(stamp), "%Y-%m-%d %H:%M:%S", &tm);
+        fprintf(stderr, "[%s] ", stamp);
     }
-
-    switch(cfg->dbg_mode)
-    {
-        case L_DEBUG2:
-            fprintf(stderr, "** %s: %s", label, buf);
-            break;
-        case L_DEBUG3:
-        case L_DEBUG4:
-            fprintf(stderr, "** %s %s:%d %s(): %s", label, file, lineno, funcname, buf);
-            break;
-        default:
-            fprintf(stderr, "%s", buf);
-    }
-
-    free(buf);
-    va_end(vl);
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
 }
-

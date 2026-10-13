@@ -16,306 +16,100 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-
-#include "general.h"
 #include "service_cmd.h"
-#include "log.h"
 #include "provision.h"
-#include "version.h"
-
-static struct service_cmd service_cmd_list[] = {
-    { "HELP", cmd_cb_HELP, 0, NULL,              "show list of commands" },
-    { "VERS", cmd_cb_VERS, 0, NULL,              "show version of softgred" },
-    { "QUIT", cmd_cb_QUIT, 0, NULL,              "quit connection"},
-    { "LMIP", cmd_cb_LMIP, 1, "<ip of cpe>",     "list macs by IP of CPE"},
-    { "GTMC", cmd_cb_GTMC, 1, "<mac of client>", "get tunnel infos by MAC of client, result: $iface, $ip_remote"},
-    { "STUN", cmd_cb_STUN, 0, NULL,              "show list with all provisioning, result: $ip_remote1@$iface1;$ip_remoteN@$ifaceN;... "},
-    { "STAT", cmd_cb_STAT, 0, NULL,              "show status of SoftGREd, result: $os_name;$os_version;$os_arch;$sys_uptime;$sgre_version;$sgre_started"},
-};
-
-int
-cmd_cb_HELP(struct request *req)
+#include "softgred_config.h"
+static bool valid_mac(const char *text, char normalized[18])
 {
-    size_t i;
-
-    request_appendf(req, "Usage: <command> [args1] [args2] ... \n\n");
-
-    for (i=0; i < ARRAY_SIZE(service_cmd_list); i++)
-    {
-        struct service_cmd *q = &service_cmd_list[i];
-
-        if (!strncmp(req->argv[0], q->cmd, strlen(q->cmd)))
-            continue;
-
-        if (q->syntax)
-        {
-            request_appendf(req, "%s - %s, syntax: %s %s\n", q->cmd, q->desc, q->cmd, q->syntax);
+    if (strlen(text) != 17) return false;
+    for (unsigned i = 0; i < 17; i++) {
+        if (i % 3 == 2 ? text[i] != ':' : !g_ascii_isxdigit(text[i])) return false;
+        normalized[i] = g_ascii_tolower(text[i]);
+    }
+    normalized[17] = '\0';
+    return true;
+}
+GString *service_command(const char *command)
+{
+    GString *out = g_string_new(NULL);
+    if (strlen(command) >= SERVICE_MAX_REQUEST) goto invalid;
+    char **tokens = g_strsplit_set(command, " \t\r\n", -1);
+    const char *argv[3] = {0};
+    unsigned argc = 0;
+    for (char **p = tokens; *p; p++) {
+        if (!**p) continue;
+        if (argc == ARRAY_SIZE(argv)) { argc++; break; }
+        argv[argc++] = *p;
+    }
+    if (!argc || argc > 2) goto invalid_tokens;
+    const char *cmd = argv[0];
+    if (!strcmp(cmd, "LMIP") || !strcmp(cmd, "GTMC")) {
+        if (argc != 2) goto invalid_tokens;
+        struct tunnel_context *tun;
+        if (!strcmp(cmd, "LMIP")) {
+            struct in_addr addr;
+            if (inet_pton(AF_INET, argv[1], &addr) != 1) goto invalid_tokens;
+            tun = provision_get_tunnel_byip(&addr);
+            if (tun) {
+                g_string_append(out, "RESULT: OK\nBODY: ");
+                GList *macs = g_hash_table_get_keys(tun->macs);
+                macs = g_list_sort(macs, (GCompareFunc)strcmp);
+                for (GList *p = macs; p; p = p->next)
+                    g_string_append_printf(out, "%s%s", (char *)p->data, p->next ? ";" : "\n");
+                if (!macs) g_string_append_c(out, '\n');
+                g_list_free(macs);
+            }
+        } else {
+            char mac[18];
+            if (!valid_mac(argv[1], mac)) goto invalid_tokens;
+            tun = provision_get_tunnel_by_mac(mac);
+            if (tun) {
+                char ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
+                g_string_append_printf(out, "RESULT: OK\nBODY: %s@%s\n", ip, tun->ifgre);
+            }
         }
-        else
-        {
-            request_appendf(req, "%s - %s\n", q->cmd, q->desc);
-        }
-    }
-
-    request_appendf(req, "\n");
-    return 0;
-}
-
-int
-cmd_cb_VERS(struct request *req)
-{
-    assert(req != NULL);
-
-    request_appendf(req, "RESULT: OK\nBODY: %s;%s\n", PACKAGE_VERSION,
-                                                      CURRENT_COMMIT);
-
-    return 0;
-}
-
-int
-cmd_cb_QUIT(struct request *req)
-{
-    assert(req != NULL);
-
-    shutdown(req->fd, SHUT_RDWR);
-    close(req->fd);
-
-    return 0;
-}
-
-int
-cmd_cb_LMIP(struct request *req)
-{
-    struct tunnel_context *tun;
-    size_t i = 0;
-    struct in_addr addr;
-
-    assert (req != NULL);
-
-    if_debug(service, D_DEBUG2("Checking macs from cpe '%s'\n", req->argv[1]));
-
-    addr.s_addr = inet_addr(req->argv[1]);
-
-    tun = provision_get_tunnel_byip(&addr, NULL);
-    if (!tun)
-    {
-        request_appendf(req, "RESULT: NOTFOUND\n");
-        return 0;
-    }
-
-    helper_lock();
-    request_appendf(req, "RESULT: OK\nBODY: ");
-    for (; i < PROVISION_MAX_CLIENTS; i++)
-    {
-        const char *cur = tun->filter[i].src_mac;
-        char com = tun->filter[i+1].src_mac[0] != '\0' ? ';' : 0x00;
-
-        if (cur[0] != '\0')
-            request_appendf(req, "%s%c", cur, com);
-    }
-    helper_unlock();
-
-    return 0;
-}
-
-int
-cmd_cb_GTMC(struct request *req)
-{
-    struct tunnel_context *tun;
-
-    assert (req != NULL);
-
-    if_debug(service, D_DEBUG2("Checking CPE by MAC '%s'\n", req->argv[1]));
-
-    tun = provision_get_tunnel_by_mac(req->argv[1]);
-    if (!tun)
-    {
-        request_appendf(req, "RESULT: NOTFOUND\n");
-        return 0;
-    }
-
-    const char *ip_remote = inet_ntoa(tun->ip_remote);
-    request_appendf(req, "RESULT: OK\nBODY: %s@%s\n", ip_remote, tun->ifgre);
-
-    return 0;
-}
-
-int
-cmd_cb_STAT(struct request *req)
-{
-    struct softgred_config *cfg = softgred_config_ref();
-    struct sysinfo info;
-    char time_started[22];
-    const char *sgre_version = VERSION;
-
-    assert(req != NULL);
-
-    sysinfo(&info);
-
-    /* $os_name;$os_version;$os_arch;$sys_uptime;$sgre_version;$sgre_started; */
-
-    request_appendf(req, "RESULT: OK\nBODY: %s %s;%s;%s;%ld;%s;%ld\n", cfg->uts.sysname, cfg->uts.release,
-                    cfg->uts.version, cfg->uts.machine, info.uptime, sgre_version, cfg->started_time
-    );
-
-    return 0;
-}
-
-int
-cmd_cb_STUN(struct request *req)
-{
-    struct tunnel_context **tuns = NULL;
-    uint64_t tuns_len = 0;
-
-    assert (req != NULL);
-
-    if_debug(service, D_DEBUG2("Return list with all GRE tunnels.\n"));
-
-    if (tunnel_context_get_all(&tuns, &tuns_len) != 0)
-    {
-        D_CRIT("Problems with tunnel_context_get_all()\n");
-    }
-
-    if (tuns_len < 1)
-    {
-        request_appendf(req, "RESULT: NULL\n");
-        return 0;
-    }
-
-    request_appendf(req, "RESULT: OK\nBODY: ");
-    while(tuns_len--)
-    {
-        struct tunnel_context *tun = tuns[tuns_len];
-        const char *ip_remote = inet_ntoa(tun->ip_remote);
-
-        request_appendf(req, "%s@%s;", ip_remote, tun->ifgre);
-    }
-
-    request_appendf(req, "\n");
-
-    free (tuns);
-
-    return 0;
-}
-
-bool
-service_cmd_handler(struct request *req)
-{
-    size_t i;
-
-    for (i=0; i < ARRAY_SIZE(service_cmd_list); i++)
-    {
-        struct service_cmd *q = &service_cmd_list[i];
-        const char *str = (req->argc-1 != q->max_args) ? "bad args" : "ok";
-
-        if (strncmp(req->argv[0], q->cmd, strlen(q->cmd)))
-            continue;
-
-        if_debug(service, D_DEBUG3("Calling command '%s' with %d arguments, expected is %d (%s)\n",
-                        q->cmd, req->argc - 1, q->max_args, str));
-
-        if ((req->argc-1) != q->max_args)
-        {
-            request_appendf(req, "RESULT: INVALID\nBODY: syntax of \"%s\" is \"%s\"\n", q->cmd, q->syntax);
-            return true;
-        }
-
-        q->callback(req);
-        return true;
-    }
-
-    return false;
-}
-
-struct request *
-request_new (int sock,
-             struct sockaddr_in *saddr)
-{
-    struct request *ref = calloc(1, sizeof(struct request));
-    char *arg;
-
-    ref->fd = sock;
-    ref->saddr = *saddr; 
-
-    if_debug(service, D_DEBUG3("request accepted from %s\n", inet_ntoa(ref->saddr.sin_addr)));
-
-    /* read the data */
-    if ((ref->data_len = read(ref->fd, ref->data, sizeof(ref->data))) < 1)
-    {
-        free (ref);
-        return NULL;
-    }
-
-    /* parser the commands */
-    for(arg = strtok(ref->data, " ");
-        arg != NULL && ref->argc < SOFTGRED_REQUEST_MAX_PARAMS;
-        arg = strtok(NULL, " "))
-    {
-        if (arg[0] != '\0')
-            ref->argv[ref->argc++] = arg;
-    }
-
-    /* strip */
-    if (ref->argc > 0)
-    {
-        char *str = ref->argv[ref->argc-1];
-
-        for (; *str; str++)
-        {
-            if (!isgraph(*str))
-                *str = '\0';
-        }
-    }
-
-    return ref;
-}
-
-int
-request_appendf(struct request *req,
-                const char *format,
-                 ...)
-{
-    va_list args;
-    char *buf = NULL;
-    size_t len;
-
-    assert (req != NULL);
-    assert (format != NULL);
-
-    va_start (args, format);
-    len = vasprintf (&buf, format, args);
-    va_end (args);
-
-    if ((len + req->len) > SOFTGRED_REQUEST_BUF) {
-        D_CRIT("The response overflow! ([len + req->len]=%ld > [max]=%ld).\n", (len + req->len), SOFTGRED_REQUEST_BUF);
+        if (!tun) g_string_append(out, "RESULT: NOTFOUND\n");
     } else {
-        strncat(req->buf, buf, len);
-        req->len += len;
+        if (argc != 1) goto invalid_tokens;
+        if (!strcmp(cmd, "VERS")) {
+            g_string_append_printf(out, "RESULT: OK\nBODY: %s\n", PACKAGE_VERSION);
+        } else if (!strcmp(cmd, "QUIT")) {
+            /* Connection closes after each response. */
+        } else if (!strcmp(cmd, "HELP")) {
+            g_string_append(out, "HELP - command list\nVERS - version\nQUIT - close\n"
+                            "LMIP <IPv4> - list MACs\nGTMC <MAC> - find tunnel\n"
+                            "STUN - list tunnels\nSTAT - system status\n");
+        } else if (!strcmp(cmd, "STAT")) {
+            struct softgred_config *cfg = softgred_config_ref();
+            struct sysinfo info = {0};
+            sysinfo(&info);
+            g_string_append_printf(out, "RESULT: OK\nBODY: %s %s;%s;%s;%ld;%s;%ld\n",
+                                   cfg->uts.sysname, cfg->uts.release, cfg->uts.version,
+                                   cfg->uts.machine, info.uptime, PACKAGE_VERSION,
+                                   (long)cfg->started_time);
+        } else if (!strcmp(cmd, "STUN")) {
+            GHashTable *table = provision_table();
+            if (!table || !g_hash_table_size(table)) g_string_append(out, "RESULT: NULL\n");
+            else {
+                g_string_append(out, "RESULT: OK\nBODY: ");
+                GHashTableIter iter; void *value;
+                g_hash_table_iter_init(&iter, table);
+                while (g_hash_table_iter_next(&iter, NULL, &value)) {
+                    struct tunnel_context *tun = value;
+                    char ip[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
+                    g_string_append_printf(out, "%s@%s;", ip, tun->ifgre);
+                }
+                g_string_append_c(out, '\n');
+            }
+        } else goto invalid_tokens;
     }
-
-    free (buf);
-
-    return ((len + req->len) > SOFTGRED_REQUEST_BUF) ? -1 : 1;
+    g_strfreev(tokens);
+    return out;
+invalid_tokens:
+    g_strfreev(tokens);
+invalid:
+    g_string_assign(out, "RESULT: INVALID\nBODY: Use HELP for command syntax\n");
+    return out;
 }
-
-void
-request_free(struct request *req)
-{
-    assert(req != NULL);
-
-    if (req->len > 0) {
-        ssize_t wrote;
-
-        wrote = write(req->fd, req->buf, req->len);
-        if (wrote != (ssize_t)req->len)
-            D_CRIT("Problems with write(), wrote is %ld but req->len=%ld\n", wrote, req->len);
-    }
-
-    shutdown(req->fd, SHUT_RDWR);
-    close(req->fd);
-
-    free (req);
-    req = NULL;
-}
-

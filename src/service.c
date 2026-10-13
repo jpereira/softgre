@@ -16,198 +16,141 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-
-#include "general.h"
 #include "service.h"
 #include "service_cmd.h"
+#include "softgred_config.h"
 #include "log.h"
-
-struct service *
-service_ref() 
+#ifdef SOFTGRED_ENABLE_SERVICE
+static int listener = -1;
+struct client {
+    int fd;
+    char input[SERVICE_MAX_REQUEST];
+    size_t used, sent;
+    GString *response;
+    gint64 deadline;
+};
+static struct client clients[SERVICE_MAX_CLIENTS];
+static unsigned poll_slots[SERVICE_MAX_CLIENTS];
+static unsigned limit;
+static void close_client(struct client *client)
 {
-    static struct service ref;
-    return &ref;
+    if (client->fd >= 0) close(client->fd);
+    if (client->response) g_string_free(client->response, true);
+    memset(client, 0, sizeof(*client));
+    client->fd = -1;
 }
-
-/**
- * here is the heart of SoftGREd/service
- */
-static void *
-thread_handler(void *arg)
+int service_init(void)
 {
-    struct request *req = arg;
-
-#if 0
-    const char *host = inet_ntoa(req->saddr.sin_addr);
-
-    D_DEBUG0("[fd=%d] handling request from %s\n", req->fd, host);
-
-    int i = 0;
-    for (i=0; i < req->argc; i++)
-        D_DEBUG2("argv[%d]='%s'\n", i, req->argv[i]);
+    struct softgred_config *cfg = softgred_config_ref();
+    limit = cfg->srv_max_listen;
+    for (unsigned i = 0; i < ARRAY_SIZE(clients); i++) clients[i].fd = -1;
+    listener = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    if (listener < 0) return -1;
+    int on = 1;
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(cfg->srv_port) };
+    if (!strcmp(cfg->srv_bind_in, "lo")) addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    else if (strcmp(cfg->srv_bind_in, "any")) {
+        if (!if_nametoindex(cfg->srv_bind_in) ||
+            setsockopt(listener, SOL_SOCKET, SO_BINDTODEVICE, cfg->srv_bind_in,
+                       strlen(cfg->srv_bind_in) + 1)) goto fail;
+        struct ifaddrs *addresses;
+        if (getifaddrs(&addresses)) goto fail;
+        bool found = false;
+        for (struct ifaddrs *p = addresses; p; p = p->ifa_next)
+            if (p->ifa_addr && p->ifa_addr->sa_family == AF_INET &&
+                !strcmp(p->ifa_name, cfg->srv_bind_in)) {
+                addr.sin_addr = ((struct sockaddr_in *)p->ifa_addr)->sin_addr;
+                found = true; break;
+            }
+        freeifaddrs(addresses);
+        if (!found) { errno = EADDRNOTAVAIL; goto fail; }
+    }
+    if (bind(listener, (struct sockaddr *)&addr, sizeof(addr)) || listen(listener, limit))
+        goto fail;
+    D_INFO("Status API on %s:%u (limit %u)\n", cfg->srv_bind_in, cfg->srv_port, limit);
+    return 0;
+fail:
+    { int saved = errno; close(listener); listener = -1; errno = saved; }
+    return -1;
+}
+unsigned service_pollfds(struct pollfd *fds)
+{
+    if (listener < 0) return 0;
+    unsigned count = 1;
+    fds[0] = (struct pollfd){ .fd = listener, .events = POLLIN };
+    for (unsigned i = 0; i < limit; i++) {
+        if (clients[i].fd < 0) continue;
+        poll_slots[count - 1] = i;
+        fds[count++] = (struct pollfd){ .fd = clients[i].fd,
+                                      .events = clients[i].response ? POLLOUT : POLLIN };
+    }
+    return count;
+}
+void service_dispatch(struct pollfd *fds, unsigned count)
+{
+    if (!count) return;
+    /* Handle only clients represented in this poll, before accepting new ones. */
+    gint64 now = g_get_monotonic_time();
+    for (unsigned n = 1; n < count; n++) {
+        struct client *client = &clients[poll_slots[n - 1]];
+        short events = fds[n].revents;
+        if (now >= client->deadline || (events & (POLLERR | POLLNVAL))) {
+            close_client(client); continue;
+        }
+        if (!client->response && (events & (POLLIN | POLLHUP))) {
+            ssize_t got = recv(client->fd, client->input + client->used,
+                               sizeof(client->input) - 1 - client->used, 0);
+            if (got < 0 && (errno == EAGAIN || errno == EINTR)) continue;
+            if (got < 0) { close_client(client); continue; }
+            if (got > 0) client->used += got;
+            client->input[client->used] = '\0';
+            if (memchr(client->input, '\0', client->used)) {
+                close_client(client); continue;
+            }
+            char *end = memchr(client->input, '\n', client->used);
+            if (end || got == 0 || client->used == sizeof(client->input) - 1) {
+                if (end) *end = '\0';
+                if (!end && client->used == sizeof(client->input) - 1)
+                    client->response = g_string_new("RESULT: INVALID\nBODY: Request too large\n");
+                else client->response = service_command(client->input);
+                if (client->response->len > SERVICE_MAX_RESPONSE) {
+                    g_string_assign(client->response,
+                                    "RESULT: INVALID\nBODY: Response too large\n");
+                }
+            }
+        }
+        if (client->response && (events & (POLLOUT | POLLHUP))) {
+            ssize_t sent = send(client->fd, client->response->str + client->sent,
+                                client->response->len - client->sent, MSG_NOSIGNAL);
+            if (sent < 0 && (errno == EAGAIN || errno == EINTR)) continue;
+            if (sent <= 0) { close_client(client); continue; }
+            client->sent += sent;
+            if (client->sent == client->response->len) close_client(client);
+        }
+        if (client->response && !client->response->len) close_client(client);
+    }
+    if (fds[0].revents & POLLIN) {
+        for (unsigned batch = 0; batch < 16; batch++) {
+            int fd = accept4(listener, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
+            if (fd < 0) break;
+            unsigned slot;
+            for (slot = 0; slot < limit && clients[slot].fd >= 0; slot++) {}
+            if (slot == limit) { close(fd); continue; }
+            clients[slot].fd = fd;
+            clients[slot].deadline = now + 5 * G_USEC_PER_SEC;
+        }
+    }
+}
+void service_end(void)
+{
+    if (listener < 0) return;
+    for (unsigned i = 0; i < limit; i++) close_client(&clients[i]);
+    close(listener); listener = -1;
+}
+#else
+int service_init(void) { return 0; }
+unsigned service_pollfds(struct pollfd *fds) { (void)fds; return 0; }
+void service_dispatch(struct pollfd *fds, unsigned count) { (void)fds; (void)count; }
+void service_end(void) {}
 #endif
-
-    if (!service_cmd_handler(req))
-        request_appendf(req, "The command '%s' is invalid, try 'HELP'\n", req->argv[0]);
-
-    // end request
-    if (req)
-        request_free(req);
-
-    // bye
-    pthread_exit(0);
-    return NULL;
-}
-
-static void *
-thread_service(void *UNUSED(arg))
-{
-    int sock_client = -1, sock_desc = -1, on = 1;
-    struct sockaddr_in s_server = { 0, };
-    struct sockaddr_in s_client = { 0, };
-    struct softgred_config *cfg = softgred_config_ref();
-    struct ifreq ifr;
-
-    D_INFO("Starting Service!\n");
-
-    // Create socket
-    if ((sock_desc = socket(AF_INET, SOCK_STREAM , 0)) < 0)
-    {
-        D_CRIT("Could not create socket\n");
-        return NULL;
-    }
-
-    setsockopt(sock_desc, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-    // Prepare the sockaddr_in structure
-    if (!strcmp(cfg->srv_bind_in, "any"))
-    {
-        s_server.sin_addr.s_addr = INADDR_ANY;
-    }
-    else
-    {
-        memset(&ifr, 0, sizeof(ifr));
-        snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", cfg->srv_bind_in);
-        if (setsockopt(sock_desc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0)
-        {
-            D_CRIT("Could not create socket\n");
-            return NULL;
-        }
-    }
-     
-    // Bind
-    s_server.sin_family = AF_INET;
-    s_server.sin_port = htons(cfg->srv_port);
-    if (bind(sock_desc, (struct sockaddr *)&s_server , sizeof(s_server)) < 0)
-    {
-        D_CRIT("Problems with bind(), errno=%d (%s)\n", errno, strerror(errno));
-        return NULL;
-    }
-     
-    // Listen
-    if (listen(sock_desc, 10) < 0)
-    {
-        D_CRIT("Problems with listen(), errno=%d (%s)\n", errno, strerror(errno));
-        return NULL;
-    }
-     
-    D_INFO("Waiting for incoming requests.\n");
-    
-    socklen_t len = sizeof(struct sockaddr_in);
-    while ((sock_client = accept (sock_desc, (struct sockaddr *)&s_client, &len)) )
-    {
-        struct request *req;
-        pthread_t tid;
-
-        req = request_new (sock_client, &s_client);
-
-        if (!req)
-            continue;
-
-        if (pthread_create(&tid, NULL, thread_handler, req) < 0)
-        {
-            D_CRIT("Problems with pthread_create(), leaving.\n");
-            return NULL;
-        }
-     
-        //D_DEBUG3("handler assigned for thread %#x\n", tid);
-
-        if (pthread_detach(tid) < 0)
-        {
-            D_CRIT("Problems with pthread_detach()\n");
-        }
-    }
-    
-    shutdown(sock_desc, SHUT_RDWR);
-    close (sock_desc);
-
-    if (sock_client < 0)
-    {
-        D_CRIT("accept() failed\n");
-        return NULL;
-    }
-
-    D_INFO("exiting...\n");
-
-    pthread_exit(NULL);
-    return NULL;
-}
-
-int
-service_init()
-{
-    struct service *srv = service_ref();
-    struct softgred_config *cfg = softgred_config_ref();
-
-    // if empty, set default values!
-    if (!cfg->srv_bind_in)
-        cfg->srv_bind_in = strdup(SOFTGRED_DEFAULT_SERVICE_IFACE);
-
-    if (cfg->srv_port == 0)
-        cfg->srv_port = SOFTGRED_DEFAULT_SERVICE_PORT;
-
-    if (cfg->srv_max_listen == 0)
-        cfg->srv_max_listen = SOFTGRED_DEFAULT_SERVICE_MAX;
-
-    D_DEBUG0("Listening \"SoftGREd Service\", listening in %s:%d with max %d accepts\n",
-                    cfg->srv_bind_in, cfg->srv_port, cfg->srv_max_listen
-    );
-
-    if (pthread_create(&srv->tid, NULL, thread_service, NULL) < 0)
-    {
-        D_CRIT("Problems with pthread_create(), leaving.\n");
-        return -1;
-    }
-    
-    return 0;
-}
-
-int
-service_end()
-{
-    struct service *srv = service_ref();
-
-    D_DEBUG0("Unitializing SoftGREd Service\n");
-
-    pthread_cancel(srv->tid);
-
-    if (pthread_detach(srv->tid) < 0)
-    {
-        D_CRIT("Problems with pthread_detach(), leaving.\n");
-        return -1;
-    }
- 
-    return 0;
-}
-
-void
-service_stats()
-{
-    struct softgred_config *cfg = softgred_config_ref();
-
-    D_INFO("Show stats of SoftGREd/Service interface=%s port=%d max_listen=%d\n",
-            cfg->srv_bind_in, cfg->srv_port, cfg->srv_max_listen
-    );
-}
-

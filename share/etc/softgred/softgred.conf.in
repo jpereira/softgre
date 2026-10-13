@@ -1,36 +1,20 @@
-####################################
-# SoftGREd Config File
-####################################
-
+# SoftGREd: IPv4, unkeyed GRE v0 carrying VLAN-tagged Ethernet frames.
 [global]
-# Network interface to listen GRE packets.
 interface = eth0
-
-# Prefix name to be used in gre-network-interfaces, default e.g: sgreN (N num. of instance)
+# Maximum six characters; generated VLAN interface names must fit Linux IFNAMSIZ.
 tunnel-prefix = sgre
-
-# mapping
 bridge-map = 10@br-gre, 11@br-gre
-
-# if don't exist the target bridge, will be created!
+# Create missing bridges. Existing target interfaces must be bridges.
 bridge-force = true
-
-# Path of pid-file, default in @SOFTGRED_PIDDIR@/softgred.pid
 pid-file = @SOFTGRED_PIDDIR@/softgred.pid
 
-# log file
-log-file = @SOFTGRED_LOGDIR@/softgred.log
-
 [service]
-# only listening in localhost
+# Read-only TCP API, no authentication. Prefer loopback.
 bind-in = lo
 port = 8888
+# Maximum simultaneous clients (1..128), each with a five-second deadline.
 max-listen = 10
 
 [debug]
-enable = true
-mode = all
-# mode = payload, command, provision, service
+enable = false
 print-time = true
-dbg-file = @SOFTGRED_LOGDIR@/softgred_debug.log
-

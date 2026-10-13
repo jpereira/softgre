@@ -16,34 +16,9 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef HELPER_H_
-#define HELPER_H_
-
+#ifndef HELPER_H
+#define HELPER_H
 #include "general.h"
-#include "softgred_config.h"
-
-void
-helper_print_payload (const u_char *payload,
-                      size_t len);
-
-void
-helper_print_hex2ascii (const u_char *payload,
-                        size_t len,
-                        int offset);
-
-int helper_system(bool verbose,
-                  const char *format, 
-                  ...);
-
-void helper_enable_high_priority();
-
-void helper_enable_coredump();
-
-void helper_print_stacktrace();
-
-void helper_lock();
-
-void helper_unlock();
-
-#endif /*HELPER_H_*/
-
+int helper_exec(const char *const argv[]);
+void helper_print_payload(const unsigned char *data, size_t len);
+#endif

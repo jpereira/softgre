@@ -72,3 +72,20 @@ debian/softgred*.debhelper
 debian/changelog
 debian/*.log
 
+
+# Validation and generated documentation
+_site/
+__pycache__/
+*.pyc
+.deps/
+.dirstamp
+*.trs
+test-core
+test-netlink
+test-suite.log
+test-driver
+config.guess
+config.sub
+softgred-*.tar.gz
+test-firewall
+test-helper

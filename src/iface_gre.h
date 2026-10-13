@@ -16,20 +16,20 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef IFACE_GRE_H_
-#define IFACE_GRE_H_
-
+#ifndef IFACE_GRE_H
+#define IFACE_GRE_H
 #include "general.h"
-
-int
-iface_gre_add(const char *gre_iface,
-              const char *kind,
-              const char *link_iface,
-              const struct in_addr *in_local,
-              const struct in_addr *in_remote);
-
-int
-iface_gre_del(const char *gre_iface);
-
-#endif /*IFACE_GRE_H_*/
-
+struct link_request {
+    struct nlmsghdr header;
+    struct ifinfomsg info;
+    unsigned char attrs[1024];
+};
+void link_request_init(struct link_request *req, int type, unsigned flags, unsigned index);
+int link_attr(struct link_request *req, unsigned type, const void *data, size_t len);
+struct rtattr *link_nest(struct link_request *req, unsigned type);
+void link_nest_end(struct link_request *req, struct rtattr *attr);
+int link_send(struct link_request *req);
+int iface_gre_add(const char *name, const char *kind, const char *dev,
+                  const struct in_addr *local, const struct in_addr *remote);
+int iface_gre_del(const char *name);
+#endif

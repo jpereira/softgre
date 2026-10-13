@@ -16,22 +16,12 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef SERVICE_H_
-#define SERVICE_H_
-
+#ifndef SERVICE_H
+#define SERVICE_H
 #include "general.h"
-
-struct service {
-    pthread_t tid;
-};
-
-struct service *service_ref();
-
-int service_init();
-
-int service_end();
-
-void service_stats();
-
-#endif /*SERVICE_H_*/
-
+#define SERVICE_MAX_CLIENTS 128
+int service_init(void);
+unsigned service_pollfds(struct pollfd *fds);
+void service_dispatch(struct pollfd *fds, unsigned count);
+void service_end(void);
+#endif

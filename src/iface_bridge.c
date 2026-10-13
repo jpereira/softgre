@@ -16,33 +16,62 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-
-#include "general.h"
 #include "iface_bridge.h"
-#include "log.h"
-
-// TODO: rewrite this for use rnetlink API, system is NOT SAFE!
-int
-iface_bridge_attach(const char *gre_iface,
-                    const char *br_ifname,
-                    uint16_t vlan_id)
+#include "iface_gre.h"
+#include "softgred_config.h"
+static int set_master(unsigned index, unsigned master)
 {
-    D_DEBUG1("Add vlan '%d' in GRE '%s.%d' and attaching with bridge '%s'\n",
-                vlan_id, gre_iface, vlan_id, br_ifname
-    );
-
-    // cria bridge
-    helper_system(false, "%s addbr \"%s\"", SOFTGRED_CMD_BRCTL, br_ifname);
-
-    // cria vlan
-    helper_system(false, "%s link add link \"%s\" name \"%s.%d\" up type vlan id \"%d\"",
-            SOFTGRED_CMD_IP, gre_iface, gre_iface, vlan_id, vlan_id);
-
-    // attacha bridge
-    helper_system(false, "%s link set dev \"%s.%d\" up master \"%s\"",
-            SOFTGRED_CMD_IP, gre_iface, vlan_id, br_ifname);
-
-    return 1;
+    struct link_request req;
+    link_request_init(&req, RTM_NEWLINK, 0, index);
+    req.info.ifi_flags = IFF_UP;
+    req.info.ifi_change = IFF_UP;
+    if (link_attr(&req, IFLA_MASTER, &master, sizeof(master))) return -1;
+    return link_send(&req);
 }
-
+int iface_bridge_prepare(const char *name, bool create)
+{
+    unsigned index = if_nametoindex(name);
+    if (index) {
+        char path[128];
+        snprintf(path, sizeof(path), "/sys/class/net/%s/bridge", name);
+        if (access(path, F_OK)) { errno = EINVAL; return -1; }
+    } else {
+        if (!create) { errno = ENODEV; return -1; }
+        struct link_request req;
+        link_request_init(&req, RTM_NEWLINK, NLM_F_CREATE | NLM_F_EXCL, 0);
+        req.info.ifi_flags = IFF_UP;
+        req.info.ifi_change = IFF_UP;
+        if (link_attr(&req, IFLA_IFNAME, name, strlen(name) + 1)) return -1;
+        struct rtattr *info = link_nest(&req, IFLA_LINKINFO);
+        if (!info || link_attr(&req, IFLA_INFO_KIND, "bridge", 7)) return -1;
+        link_nest_end(&req, info);
+        return link_send(&req);
+    }
+    struct link_request req;
+    link_request_init(&req, RTM_NEWLINK, 0, index);
+    req.info.ifi_flags = IFF_UP;
+    req.info.ifi_change = IFF_UP;
+    return link_send(&req);
+}
+int iface_bridge_attach(const char *gre, const char *bridge, uint16_t vlan)
+{
+    char name[IFNAMSIZ];
+    int len = snprintf(name, sizeof(name), "%s.%u", gre, vlan);
+    uint32_t parent = if_nametoindex(gre), master = if_nametoindex(bridge);
+    if (len < 0 || len >= (int)sizeof(name) || !parent || !master) {
+        errno = EINVAL; return -1;
+    }
+    struct link_request req;
+    link_request_init(&req, RTM_NEWLINK, NLM_F_CREATE | NLM_F_EXCL, 0);
+    req.info.ifi_flags = IFF_UP;
+    req.info.ifi_change = IFF_UP;
+    if (link_attr(&req, IFLA_IFNAME, name, len + 1) ||
+        link_attr(&req, IFLA_LINK, &parent, sizeof(parent))) return -1;
+    struct rtattr *info = link_nest(&req, IFLA_LINKINFO);
+    if (!info || link_attr(&req, IFLA_INFO_KIND, "vlan", 5)) return -1;
+    struct rtattr *data = link_nest(&req, IFLA_INFO_DATA);
+    if (!data || link_attr(&req, IFLA_VLAN_ID, &vlan, sizeof(vlan))) return -1;
+    link_nest_end(&req, data); link_nest_end(&req, info);
+    if (link_send(&req)) return -1;
+    return set_master(if_nametoindex(name), master);
+}

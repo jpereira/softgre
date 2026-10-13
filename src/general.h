@@ -16,116 +16,44 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#ifndef GENERAL_H_
-#define GENERAL_H_
-
+#ifndef GENERAL_H
+#define GENERAL_H
 #ifndef _GNU_SOURCE
-#   define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif
-
-// Project config
 #include "config.h"
-
-// standards
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <glib.h>
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <linux/filter.h>
+#include <linux/if_packet.h>
+#include <linux/if_tunnel.h>
+#include <linux/rtnetlink.h>
+#include <netinet/if_ether.h>
+#include <poll.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
-
-#include <unistd.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-
-#include <execinfo.h>
-
-#include <errno.h>
-#include <assert.h>
-
-#include <locale.h>
-#include <signal.h>
-#include <getopt.h>
-#include <fcntl.h>
-
-// sys*
+#include <sys/signalfd.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/resource.h>
+#include <sys/sysinfo.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
-
-// pthreads
-#include <pthread.h>
-
-// Network && Interfaces
-#include <net/if.h>
-#include <netinet/ether.h>
-#include <netinet/ip.h>
-#include <netinet/if_ether.h>
-#include <arpa/inet.h>
-#include <libnetlink.h>
-
-#include <linux/rtnetlink.h>
-#include <linux/if_tunnel.h>
-#include <linux/kernel.h>
-
-// libdhash
-#include <dhash.h>
-
-// libpcap
-#ifndef HAVE_PCAP_PCAP_H
-    #error "Oops! Impossible to continue without pcap.h, exiting..."
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define SOFTGRED_MAX_ATTACH 10
+#define SOFTGRED_MAX_SLOTS 4096
+#define PROVISION_MAX_CLIENTS 1024
+#define SOFTGRED_DEFAULT_CONFFILE SOFTGRED_CONFDIR "/softgred.conf"
+#define SOFTGRED_DEFAULT_PIDFILE SOFTGRED_PIDDIR "/softgred.pid"
 #endif
-#include <pcap.h>
-
-// syslog
-#include <syslog.h>
-
-// get/setifaddrs
-#include <ifaddrs.h>
-
-// glib
-#include <glib.h>        // GKeyFile
-
-#ifndef ARRAY_SIZE
-#   define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#   define ARRAY_AND_SIZE(x) (x), ARRAY_SIZE(x)
-#endif
-
-#ifdef __GNUC__
-#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
-#else
-#  define UNUSED(x) UNUSED_ ## x
-#endif
-
-#ifdef __GNUC__
-#  define UNUSED_FUNCTION(x) __attribute__((__unused__)) UNUSED_ ## x
-#else
-#  define UNUSED_FUNCTION(x) UNUSED_ ## x
-#endif
-
-#ifndef FREE
-#   define FREE(x) do { free(x); x = NULL; } while (0);
-#endif 
-
-#define print_bool(x)   ((x == true) ? "true" : "false")
-
-// default options
-// [geral]
-#define SOFTGRED_DEFAULT_CONFFILE           SOFTGRED_CONFDIR"/softgred.conf"
-#define SOFTGRED_DEFAULT_LOGFILE            SOFTGRED_LOGDIR"/softgred.log"
-#define SOFTGRED_DEFAULT_DBGLOGFILE         SOFTGRED_LOGDIR"/softgred_debug.log"
-#define SOFTGRED_DEFAULT_PIDFILE            SOFTGRED_PIDDIR"/"PACKAGE".pid"
-
-// [service]
-#define SOFTGRED_DEFAULT_SERVICE_MAX        10
-#define SOFTGRED_DEFAULT_SERVICE_PORT       8888
-#define SOFTGRED_DEFAULT_SERVICE_IFACE      "lo"
-
-// commands
-#define SOFTGRED_CMD_BRCTL  "/sbin/brctl"
-#define SOFTGRED_CMD_IP     "/bin/ip"
-
-#endif /*GENERAL_H_*/
-

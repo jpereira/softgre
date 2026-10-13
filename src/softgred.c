@@ -16,221 +16,128 @@
  *  Copyright (C) 2014, Jorge Pereira <jpereiran@gmail.com>
  */
 
-#define _GNU_SOURCE
-#include "general.h"
 #include "softgred.h"
-#include "iface_ebtables.h"
 #include "softgred_config.h"
-#include "service.h"
-
-#include "log.h"
 #include "payload.h"
-#include "helper.h"
 #include "provision.h"
-
-void
-softgred_show_stats()
-{
-    D_INFO("SoftGREd Status\n");
-    D_INFO("<begin status>\n");
-
-    // hash table
-    provision_stats();
-
-    // about service
-    service_stats();
-
-    D_INFO("<end status>\n");
-}
-
-void
-softgred_sig_handler(int signo)
-{
-    switch(signo)
-    {
-        case SIGSEGV: {
-            D_INFO("Ooops! received SIGSEGV, show the stactrace!\n");
-
-            helper_print_stacktrace();
-            exit(EXIT_FAILURE);
-        }
-        break;
-
-        case SIGINT:
-        case SIGTERM: {
-            D_INFO("Ooops! received %s, cleaning & leaving...\n", strsignal(signo));
-
-            softgred_end();
-            exit(EXIT_FAILURE);
-        }
-        break;
-
-        case SIGUSR1: {
-            D_INFO("Received SIGUSR1, unprovision all!\n");
-
-            /* unprovisione all interfaces */
-            provision_delall();
-        }
-        break;
-
-        case SIGUSR2: {
-            D_INFO("Received SIGUSR2, show statistics!\n");
-            
-            softgred_show_stats();
-        }
-        break;
-    }
-}
-
-int
-softgred_init()
-{
-    D_DEBUG1("Initializing...\n");
-
-    helper_enable_coredump();
-
-    helper_enable_high_priority();
-
-    /* registering signals */
-    signal(SIGINT, softgred_sig_handler);
-    signal(SIGTERM, softgred_sig_handler);
-    signal(SIGUSR1, softgred_sig_handler);
-    signal(SIGUSR2, softgred_sig_handler);
-    signal(SIGSEGV, softgred_sig_handler);
-
-    if (softgred_config_init() < 0)
-        return false;
-
-    if (service_init() < 0)
-        return false;
-   
-    if (iface_ebtables_init() < 0)
-        return false;
-
-    if (payload_loop_init() != 0)
-    {
-        D_CRIT("Problems with payload_loop_init()\n");
-        softgred_end ();
-        return false;
-    }
-  
-    return true;
-}
-
-void
-softgred_end()
-{
-    D_DEBUG1("Finalizing...\n");
-
-    payload_loop_end ();
-
-    /* unprovisione all interfaces */
-    provision_delall();
-
-    /* reset firewall rules */
-    iface_ebtables_end();
-
-    /* shutdown clients, finalize sockets */
-    service_end();
-
-    /* release config */
-    softgred_config_end();
-
-    /* syslog */
-    log_end();
-}
-
-int
-main (int argc,
-      char *argv[])
+#include "iface_bridge.h"
+#include "iface_ebtables.h"
+#include "service.h"
+#include "log.h"
+static int local_address(void)
 {
     struct softgred_config *cfg = softgred_config_ref();
-    const char *config_file;
-
-    if (argc > 0)
-    {
-        if (!softgred_config_load_cli(argc, argv))
-            exit(EXIT_SUCCESS);
-    }
-
-    config_file = cfg->config_file != NULL ? cfg->config_file : SOFTGRED_DEFAULT_CONFFILE;
-    if (!softgred_config_load_conf(config_file))
-    {
-        fprintf(stderr, "Problems with configuration file '%s'\n", config_file);
-        exit(EXIT_FAILURE);
-    }
-
-    /* sorry, only root is welcome ... */
-    if (getuid() != 0)
-    {
-        fprintf(stderr, "%s: Sorry, Can't run with different user of root!\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    /* prepare.. */
-    setlocale(LC_CTYPE, "");
-    umask(0122);
-
-    /* starting log */
-    log_init();
-
-    /* foreground || background */
-    if (!cfg->is_foreground)
-    {
-        pid_t child;
-
-        if ((child = fork()) < 0)
-        {
-            fprintf(stderr, "fork(): error, failed fork! [%s]\n", strerror(errno));
-            exit(EXIT_FAILURE);
+    struct ifaddrs *addresses;
+    if (getifaddrs(&addresses)) return -1;
+    bool found = false;
+    for (struct ifaddrs *p = addresses; p; p = p->ifa_next)
+        if (p->ifa_addr && p->ifa_addr->sa_family == AF_INET &&
+            !strcmp(p->ifa_name, cfg->ifname)) {
+            cfg->local = ((struct sockaddr_in *)p->ifa_addr)->sin_addr;
+            found = true; break;
         }
-
-        if (child > 0)
-        {
-            D_INFO("[pid=%d] Daemon SoftGREd was launched in background with success!\n", child);
-
-            if (softgred_config_create_pid_file(child) != 0)
-            {
-                fprintf(stderr, "helper_create_pid_file():  failed! errno=%d[%s]\n", errno, strerror(errno));
-                exit(EXIT_FAILURE);
-            }
-
-            exit(EXIT_SUCCESS);
-        }
-
-        if (setsid() < 0)
-        {
-            D_CRIT("setsid(): returned error [%s]\n", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-
-        signal(SIGCHLD, SIG_IGN);
-        signal(SIGHUP, SIG_IGN);
-    }
-
-    if (chdir("/") < 0)
-    {
-        D_CRIT("chdir() returned error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    D_INFO("Listening GRE packets in '%s/%s' [args is foreground=%d tunnel_prefix=%s]\n",
-        cfg->ifname, cfg->priv.ifname_ip, cfg->is_foreground, cfg->tunnel_prefix
-    );
-
-    /* pre-run */
-    if (!softgred_init())
-        exit(EXIT_FAILURE);
-
-    /* busyloop */
-    D_INFO("Entering main loop\n");
-    payload_loop_run ();
-
-    /* cleanup */
-    softgred_end ();
-
-    D_INFO("Capture complete, exiting.\n");
-
-    return EXIT_SUCCESS;
+    freeifaddrs(addresses);
+    if (!found) errno = EADDRNOTAVAIL;
+    return found ? 0 : -1;
 }
-
+int main(int argc, char **argv)
+{
+    struct softgred_config *cfg = softgred_config_ref();
+    int cli = softgred_config_load_cli(argc, argv);
+    if (cli <= 0) { softgred_config_release(); return cli ? EXIT_FAILURE : EXIT_SUCCESS; }
+    if (!softgred_config_load_conf(cfg->config_file ? cfg->config_file :
+                                   SOFTGRED_DEFAULT_CONFFILE)) {
+        softgred_config_release(); return EXIT_FAILURE;
+    }
+    int result = EXIT_FAILURE, signal_fd = -1, notify_fd = -1;
+    bool provision_ready = false, firewall_ready = false;
+    if (geteuid() != 0) {
+        D_CRIT("Run as root (packet capture and network administration)\n"); goto end;
+    }
+    if (local_address()) { D_CRIT("Capture interface: %s\n", strerror(errno)); goto end; }
+    umask(0077);
+    signal(SIGPIPE, SIG_IGN);
+    if (!cfg->is_foreground) {
+        int pipefd[2];
+        if (pipe2(pipefd, O_CLOEXEC)) goto end;
+        pid_t child = fork();
+        if (child < 0) { close(pipefd[0]); close(pipefd[1]); goto end; }
+        if (child > 0) {
+            close(pipefd[1]);
+            unsigned char status = EXIT_FAILURE;
+            ssize_t got;
+            do { got = read(pipefd[0], &status, 1); } while (got < 0 && errno == EINTR);
+            close(pipefd[0]); softgred_config_release();
+            return got == 1 ? status : EXIT_FAILURE;
+        }
+        close(pipefd[0]); notify_fd = pipefd[1];
+        if (setsid() < 0) goto end;
+        int nullfd = open("/dev/null", O_RDONLY);
+        if (nullfd < 0 || dup2(nullfd, STDIN_FILENO) < 0) goto end;
+        if (nullfd != STDIN_FILENO) close(nullfd);
+    }
+    /* Resolve relative configuration/PID paths before changing directory. */
+    if (softgred_config_create_pid_file(getpid())) {
+        D_CRIT("PID file: %s\n", strerror(errno)); goto end;
+    }
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT); sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGUSR1); sigaddset(&mask, SIGUSR2);
+    if (sigprocmask(SIG_BLOCK, &mask, NULL)) goto end;
+    signal_fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (signal_fd < 0) goto end;
+    int capture_fd = payload_loop_init();
+    if (capture_fd < 0) { D_CRIT("Capture: %s\n", strerror(errno)); goto end; }
+    if (service_init()) { D_CRIT("Status API: %s\n", strerror(errno)); goto end; }
+    for (unsigned i = 0; i < cfg->bridge_slot; i++) {
+        if (iface_bridge_prepare(cfg->bridge[i].ifname, cfg->bridge_force)) {
+            D_CRIT("Bridge %s: %s\n", cfg->bridge[i].ifname, strerror(errno)); goto end;
+        }
+    }
+    if (iface_ebtables_init()) { D_CRIT("Cannot initialize owned firewall chains\n"); goto end; }
+    firewall_ready = true;
+    provision_init(); provision_ready = true;
+    if (notify_fd >= 0) {
+        unsigned char status = EXIT_SUCCESS;
+        if (write(notify_fd, &status, 1) != 1) goto end;
+        close(notify_fd); notify_fd = -1;
+    }
+    D_INFO("%s listening on %s\n", PACKAGE_STRING, cfg->ifname);
+    bool running = true;
+    result = EXIT_SUCCESS;
+    while (running) {
+        struct pollfd fds[3 + SERVICE_MAX_CLIENTS] = {
+            { .fd = signal_fd, .events = POLLIN }, { .fd = capture_fd, .events = POLLIN }
+        };
+        unsigned count = service_pollfds(fds + 2);
+        int ready = poll(fds, count + 2, 250);
+        if (ready < 0) { if (errno == EINTR) continue; result = EXIT_FAILURE; break; }
+        if (fds[0].revents & POLLIN) {
+            struct signalfd_siginfo info;
+            while (read(signal_fd, &info, sizeof(info)) == sizeof(info)) {
+                if (info.ssi_signo == SIGUSR1) provision_delall();
+                else if (info.ssi_signo == SIGUSR2) provision_stats();
+                else running = false;
+            }
+        }
+        if (!running) break;
+        if ((fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) ||
+            ((fds[1].revents & POLLIN) && payload_receive())) {
+            D_CRIT("Capture stopped: %s\n", strerror(errno)); result = EXIT_FAILURE; break;
+        }
+        service_dispatch(fds + 2, count);
+    }
+end:
+    service_end(); payload_loop_end();
+    if (provision_ready) provision_end();
+    if (firewall_ready && iface_ebtables_end()) result = EXIT_FAILURE;
+    if (signal_fd >= 0) close(signal_fd);
+    softgred_config_remove_pid_file();
+    if (notify_fd >= 0) {
+        unsigned char status = EXIT_FAILURE;
+        (void)write(notify_fd, &status, 1); close(notify_fd);
+    }
+    softgred_config_release();
+    return result;
+}
