@@ -1,5 +1,5 @@
 SUBDIRS = bin share
-EXTRA_DIST = README.md COPYING LICENSE.md autogen.sh Dockerfile .dockerignore \
+EXTRA_DIST = README.md LICENSE.md autogen.sh Dockerfile .dockerignore \
     tests/test_core.c tests/test_netlink.c tests/integration.py \
     scripts/check-linux.sh
 EXTRA_DIST += docs/en_US/index.md docs/assets/site.css docs/assets/site.js \

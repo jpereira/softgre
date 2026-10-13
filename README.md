@@ -220,4 +220,4 @@ The full compiler matrix needs GCC, Clang, sanitizer runtimes and Python. The CI
 packet parsing, configuration, firewall ownership, signals, rollback, real GRE/VLAN
 forwarding, log rotation, both web adapters, packages and the lab's restart lifecycle.
 
-Licensed under LGPL-3.0-or-later; see [LICENSE.md](LICENSE.md) and [COPYING](COPYING).
+Licensed under LGPL-3.0-or-later; see [LICENSE.md](LICENSE.md).
