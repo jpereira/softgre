@@ -3,7 +3,8 @@
 	dh $@
 
 override_dh_auto_configure:
-	dh_auto_configure -- --sysconfdir=/etc --localstatedir=/var --with-piddir=/run
+	dh_auto_configure -- --sysconfdir=/etc --localstatedir=/var --with-piddir=/run --enable-web
 
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
+	dh_installsystemd --name=softgred-web --no-enable --no-start

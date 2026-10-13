@@ -16,6 +16,7 @@ Build-Depends: debhelper-compat (= 13),
 Package: softgred
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ebtables, iptables
+Recommends: python3 (>= 3.9)
 Description: Dynamic GRE Ethernet tunnel provisioning for Linux
  Discovers IPv4 GRE Ethernet peers, provisions gretap and VLAN interfaces,
  and connects them to configured Linux bridges. Includes a read-only TCP

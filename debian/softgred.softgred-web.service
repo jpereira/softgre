@@ -1,0 +1,27 @@
+[Unit]
+Description=SoftGRE Python status dashboard
+BindsTo=softgred.service
+PartOf=softgred.service
+After=softgred.service
+
+[Service]
+Type=simple
+Environment=SOFTGRE_WEB_BIND=0.0.0.0
+EnvironmentFile=-/etc/default/softgred-web
+ExecStart=/usr/bin/python3 /usr/share/softgred/webinterface/server.py
+Restart=on-failure
+RestartSec=5
+DynamicUser=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=softgred.service

@@ -12,3 +12,4 @@ EXTRA_DIST += debian/copyright debian/docs debian/README.Debian debian/README.so
 EXTRA_DIST += VERSION bump.sh scripts/version.py scripts/build-deb.sh tests/test_version.py \
     Dockerfile.release .github/workflows/release.yml
 EXTRA_DIST += tests/test_helper.c
+EXTRA_DIST += share/softgred-web.service debian/softgred.softgred-web.service
