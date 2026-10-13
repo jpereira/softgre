@@ -2,6 +2,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential autoconf automake pkg-config libglib2.0-dev clang libclang-rt-dev python3 \
     iproute2 ebtables iptables php-cli php-sockets debhelper \
+    bridge-utils net-tools htop vim strace lsof \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
