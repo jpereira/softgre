@@ -13,16 +13,15 @@ filter; interface management uses native NETLINK_ROUTE.
 
 ## Run the Ubuntu 24.04 lab
 
-Use Docker on a Linux host. The examples use the `homelab` Docker context; omit that
-option for a local Linux Docker engine. Replace `192.168.1.253` with the Docker host's
-main IPv4 address. The lab creates its interfaces inside the container's network
-namespace and requires only `NET_ADMIN` and `NET_RAW`.
+Use Docker on a Linux host. Replace `192.168.1.253` with the Docker host's main IPv4
+address. The lab uses systemd, privileged mode and a private cgroup namespace. Its test
+interfaces live inside the container's network namespace.
 
 ```sh
 git clone https://github.com/jpereira/softgre.git
 cd softgre
-docker --context homelab build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
-docker --context homelab run -d --name test-softgre --restart unless-stopped --cap-add NET_ADMIN --cap-add NET_RAW -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
+docker build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+docker run -d --name test-softgre --restart unless-stopped --privileged --cgroupns=private --tmpfs /run --tmpfs /run/lock -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
 ```
 
 Choose an unused container name and port. Open `http://192.168.1.253:8080/index.html`.
@@ -35,7 +34,7 @@ interface `sg-test-in` at `192.0.2.1/24`, injection peer `sg-test-peer`, and bri
 Send GRE Ethernet/VLAN frames from three synthetic clients:
 
 ```sh
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 The script sends five packets for each client, waits for MAC learning and verifies
@@ -58,23 +57,23 @@ Each new remote receives every configured VLAN interface, not only the VLAN from
 first packet. Interface slot names depend on which names are free. Confirm the result:
 
 ```sh
-docker --context homelab exec test-softgre ip -d link show type gretap
-docker --context homelab exec test-softgre bridge link show
-docker --context homelab exec test-softgre brctl show
-docker --context homelab exec test-softgre /opt/softgre-lab/status.sh
+docker exec test-softgre ip -d link show type gretap
+docker exec test-softgre bridge link show
+docker exec test-softgre brctl show
+docker exec test-softgre /opt/softgre-lab/status.sh
 ```
 
 The dashboard refreshes every five seconds and shows two tunnels, three learned MACs,
 VLAN membership and RX/TX counters. Add another remote with a unique source MAC:
 
 ```sh
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.2.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
+docker exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.2.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
 ```
 
 Follow the event log, which includes IPv4 addresses, created interfaces, bridges and MACs:
 
 ```sh
-docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+docker exec test-softgre tail -f /var/log/softgred.log
 ```
 
 Example event messages, excluding their timestamp/PID/severity prefix:
@@ -88,20 +87,20 @@ Client learned remote=192.0.2.2 mac=02:00:00:00:00:42 tunnel=sgre0 clients=1
 Clear learned state with `SIGUSR1`, then inject again to watch reprovisioning:
 
 ```sh
-docker --context homelab exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+docker exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
+docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 This lab tests real GRE decoding, kernel provisioning and bridge attachment with
 synthetic peers. It does not provide a separate remote router or a complete subscriber
 LAN. Interface packet counters include all their traffic. Stop the persistent lab with
-`docker --context homelab stop test-softgre`.
+`docker stop test-softgre`.
 
 ## Build and run on Linux
 
 ```sh
 sudo apt-get install build-essential autoconf automake pkg-config libglib2.0-dev ebtables iptables iproute2 python3
-./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --with-piddir=/run --enable-web
+./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --with-piddir=/run
 make -j2
 make check
 sudo make install
@@ -124,17 +123,33 @@ port = 8888
 max-listen = 32
 ```
 
-Start the daemon and the Python backend in separate terminals:
+Start the daemon and its unprivileged dashboard together:
 
 ```sh
-sudo /usr/sbin/softgred -f
-python3 /usr/share/softgred/webinterface/server.py --bind 0.0.0.0 --port 8080
+sudo python3 /usr/share/softgred/run-services.py
 ```
 
-Open `http://SERVER_IP:8080/index.html`. The TCP API remains on loopback. The dashboard
-has no authentication; expose it on a trusted management network or through an
-access-controlled reverse proxy. See the guide for automatic startup with the optional
-`softgred-web.service`, log rotation, package downloads and persistent container storage.
+Open `http://SERVER_IP:8080/index.html`. The TCP API remains on loopback. Systemd starts
+both services by default, and the production Docker image uses the supervisor. Python is a
+package dependency; the dashboard is included by default in source builds. Use
+`--disable-web` for a source build without the frontend. The dashboard has no
+authentication; use a trusted management network or an access-controlled reverse proxy.
+
+## Build a Debian or Ubuntu package
+
+On Linux, install the build dependencies, configure the source and run:
+
+```sh
+sudo apt-get install build-essential autoconf automake pkg-config libglib2.0-dev debhelper
+./autogen.sh
+make deb
+```
+
+The target runs the Debian build and regression tests. Packages are written to the
+parent directory as `softgred_VERSION_ARCH.deb`; it does not install on the host.
+Every Debian Docker image builds a deb, installs it with apt and validates the installed
+files. Runtime integration uses `/usr/sbin/softgred` and the packaged web backend.
+Distribution-specific release builds also install and validate their package.
 
 ## Restart and inspect services
 
@@ -156,19 +171,20 @@ The enabled companion starts with the daemon; daemon restarts propagate to the d
 `service softgred restart` delegates to the service manager on supported Linux hosts.
 `journalctl` reads the journal and does not start, stop or restart services.
 
-The lab container uses its supervisor as PID 1. Restart it from the Docker host/client:
+The Ubuntu lab runs systemd as PID 1 and starts both installed package services:
 
 ```sh
-docker --context homelab restart test-softgre
-docker --context homelab logs -f test-softgre
-docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+docker exec test-softgre systemctl status softgred softgred-web
+docker exec test-softgre service softgred restart
+docker exec test-softgre journalctl -u softgred -u softgred-web -f
+docker exec test-softgre tail -f /var/log/softgred.log
 ```
 
-A restart clears learned state. Run `/opt/softgre-lab/send.py` again to recreate the
-example tunnels. Containers include `systemctl`, `journalctl`, `service`, `logrotate`,
-`brctl`, `ifconfig`, `netstat`, `htop`, `vim`, `strace` and `lsof`. Installing systemd
-commands does not make it PID 1 or run journald. Use Docker logs and the event file in
-these supervised containers.
+A daemon restart clears learned state. Run `/opt/softgre-lab/send.py` again to populate
+both bridges and the dashboard. This disposable lab uses privileged mode with a private
+cgroup namespace; it does not use host networking or mount the host cgroup tree.
+Containers include `systemctl`, `journalctl`, `service`, `logrotate`, `brctl`, `ifconfig`,
+`netstat`, `htop`, `vim`, `strace` and `lsof`.
 
 ## Protocol scope
 
@@ -211,7 +227,7 @@ and ten VLAN-to-bridge mappings; free interface names and host resources affect 
 ```sh
 scripts/check-linux.sh
 python3 tests/test_web.py
-DOCKER_CONTEXT=homelab scripts/check-lab.sh
+scripts/check-lab.sh
 python3 scripts/build-docs.py
 python3 tests/test_docs.py
 ```

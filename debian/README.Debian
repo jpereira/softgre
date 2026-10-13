@@ -2,7 +2,7 @@ SoftGRE on Debian and Ubuntu
 ============================
 
 The package provides dynamic IPv4 GRE Ethernet provisioning, VLAN-to-bridge
-mapping, MAC permissions, a read-only TCP API and an optional status dashboard.
+mapping, MAC permissions, a read-only TCP API and a status dashboard.
 The daemon uses native Linux interfaces and requires root network privileges.
 
 Configure /etc/softgred/softgred.conf for the capture interface, its local IPv4
@@ -13,11 +13,11 @@ VLAN and bridge support is required. The TCP API binds loopback by default.
     sudo systemctl restart softgred.service
     sudo systemctl status softgred.service
 
-The daemon and dashboard are not enabled or started during package installation.
-Python and logrotate are recommended dependencies. Enable the companion to start
-the unprivileged dashboard with softgred and propagate daemon stops and restarts:
+Both units are enabled and startup is requested on systemd hosts during installation.
+Python is required and logrotate is recommended. The daemon starts the unprivileged
+dashboard; stops and restarts propagate to the companion:
 
-    sudo apt-get install python3 logrotate
+    sudo apt-get install logrotate
     sudo systemctl enable --now softgred-web.service
 
 The dashboard listens on port 8080. Its settings can be defined in
@@ -43,5 +43,5 @@ The README, complete English guide, logo and license are installed under
 folder. The web assets and Python/PHP adapters are under
 /usr/share/softgred/webinterface.
 
-Build with dpkg-buildpackage -us -uc -b. The distribution-specific release
+Configure with ./autogen.sh and build with make deb. The distribution-specific release
 builder is scripts/build-deb.sh, run inside a matching disposable Linux image.

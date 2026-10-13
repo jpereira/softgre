@@ -156,7 +156,7 @@ connection handshake; learning represents successful packet-based discovery.
 
 ```sh
 sudo tail -f /var/log/softgred.log
-docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+docker exec test-softgre tail -f /var/log/softgred.log
 ```
 
 Event messages, after the timestamp/PID/severity prefix:
@@ -177,7 +177,7 @@ manual rotation. After renaming the log, signal the daemon to open its pathname:
 
 ```sh
 sudo kill -HUP "$(cat /run/softgred.pid)"
-docker --context homelab exec test-softgre sh -c 'kill -HUP "$(cat /run/softgre-lab/softgred.pid)"'
+docker exec test-softgre sh -c 'kill -HUP "$(cat /run/softgre-lab/softgred.pid)"'
 ```
 
 Failed reopening preserves the previous descriptor. Container logs are stored inside
@@ -217,7 +217,7 @@ Successful responses contain `RESULT: OK` and a `BODY:` line. Invalid commands o
 arguments produce `RESULT: INVALID`. MAC queries accept exactly six colon-separated
 hexadecimal octets, including uppercase. LMIP returns MACs in lexical order; STUN ordering
 is unspecified. Uptime is in seconds; `started` is the Unix timestamp when configuration
-was loaded. The optional web interface forwards these read-only commands and provides a
+was loaded. The web interface forwards these read-only commands and provides a
 small dependency-free dashboard.
 
 ## Python and PHP dashboard
@@ -255,29 +255,36 @@ access-controlled reverse proxy for remote access.
 
 ### Install and start with softgred
 
-Debian/Ubuntu package builds include both adapters and recommends Python. Source installs
-need `--enable-web`; the daemon's default source/container build omits the dashboard:
+The dashboard is included by default in source and package builds. Python is required
+by the package. Use `--disable-web` to omit the frontend in a custom source build; the
+web backend requires the TCP API. For a source installation with systemd:
 
 ```sh
-./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web
+./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
 make -j2
 sudo make install
 sudo install -m 644 share/softgred.service /etc/systemd/system/softgred.service
 sudo install -m 644 share/softgred-web.service /etc/systemd/system/softgred-web.service
 sudo systemctl daemon-reload
+sudo systemctl enable --now softgred.service
 ```
 
-For a package install, install Python and enable the optional companion:
+Packages enable the daemon and companion and request startup on systemd hosts. Configure
+the capture interface for your host; startup errors are reported in the event log.
+The daemon wants the web unit, which follows its stops and restarts. To disable the
+companion on a systemd host, mask `softgred-web.service`; unmask it to restore startup.
+The web service uses an unprivileged dynamic user and listens on `0.0.0.0:8080`.
+
+Without systemd, start both processes through the installed supervisor:
 
 ```sh
-sudo apt-get install python3
-sudo systemctl enable --now softgred-web.service
+sudo python3 /usr/share/softgred/run-services.py
 ```
 
-Configure `softgred` first. Enabling the companion also starts the daemon. Subsequent
-starts of `softgred` start the dashboard; stops and restarts propagate to it. Disabling
-the companion removes automatic startup. The web service uses an unprivileged dynamic
-user and listens on `0.0.0.0:8080`. Select a main address or another API port with:
+The production Docker image uses this supervisor and expose port 8080. It drops web privileges,
+stops both children when one exits and propagates shutdown. Customize the HTTP address
+or backend connection with the documented environment variables. Select a main address
+or another API port for systemd with:
 
 ```sh
 sudo tee /etc/default/softgred-web <<'CONF'
@@ -317,21 +324,19 @@ limits and the Python overview. PHP compatibility tests run when PHP is installe
 ## How-to: Ubuntu 24.04 lab and live dashboard
 
 The lab runs inside a Docker network namespace. It creates test veth interfaces and
-bridges without changing the homelab host's network. It requires `NET_ADMIN` and `NET_RAW`,
-without privileged mode or host networking. Use Docker on a Linux host. With the `homelab`
-context configured, run from the source directory:
+bridges without changing the Docker host's network. Systemd runs as PID 1 with journald.
+The disposable lab uses privileged mode and a private cgroup namespace for systemd
+service isolation. It does not use host networking or mount the host cgroup tree. Use Docker on a Linux host. Run from the source directory:
 
 ```sh
-docker --context homelab build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
-docker --context homelab run -d --name test-softgre --restart unless-stopped --cap-add NET_ADMIN --cap-add NET_RAW -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
+docker build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+docker run -d --name test-softgre --restart unless-stopped --privileged --cgroupns=private --tmpfs /run --tmpfs /run/lock -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
 ```
 
 Replace `192.168.1.253` with your Docker host's main IPv4 address. Port 8080 must be free.
 Do not reuse a container name belonging to another application. A remote Docker context
-transfers the build files; no workspace bind mount is needed. For a local Linux Docker
-engine, omit `--context homelab`. The Ubuntu 24.04 image builds the daemon, includes both
-web adapters and runs Python without root privileges. Its entrypoint starts the daemon
-and dashboard together, waits for either to exit and terminates the remaining process.
+transfers the build files; no workspace bind mount is needed.  The Ubuntu 24.04 image generates and installs the `.deb` package. Systemd starts
+the test network setup, daemon and Python dashboard; the dashboard uses a dynamic user.
 Restarting the container recreates an empty learning state.
 
 The capture veth is `sg-test-in` with local IPv4 `192.0.2.1/24`. Frames enter through
@@ -346,8 +351,8 @@ Open `http://192.168.1.253:8080/index.html` and leave it open.
 ### 2. Inspect the initial state and follow logs
 
 ```sh
-docker --context homelab exec test-softgre /opt/softgre-lab/status.sh
-docker --context homelab logs -f test-softgre
+docker exec test-softgre /opt/softgre-lab/status.sh
+docker exec test-softgre journalctl -u softgred -u softgred-web -f
 ```
 
 ### 3. Inject GRE packets
@@ -355,7 +360,7 @@ docker --context homelab logs -f test-softgre
 In another terminal, send real GRE Ethernet frames into the capture interface:
 
 ```sh
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 The script sends five packets for each of three clients: two MACs on remote
@@ -370,15 +375,15 @@ The dashboard shows two tunnels, three MACs, `sgre0.1000` attached to `br-radius
 interfaces. Names depend on free tunnel slots. Check the kernel state directly:
 
 ```sh
-docker --context homelab exec test-softgre ip -d link show type gretap
-docker --context homelab exec test-softgre bridge link show
-docker --context homelab exec test-softgre /opt/softgre-lab/status.sh
+docker exec test-softgre ip -d link show type gretap
+docker exec test-softgre bridge link show
+docker exec test-softgre /opt/softgre-lab/status.sh
 ```
 
 ### 5. Add another remote
 
 ```sh
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.2.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
+docker exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.2.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
 ```
 
 ### 6. Clear learned state and test again
@@ -386,25 +391,25 @@ docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py --re
 Use the daemon's supported signal, then send again:
 
 ```sh
-docker --context homelab exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+docker exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
+docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 All project containers include `brctl`, `ifconfig`, `netstat`, `htop`, `vim`, `strace`,
 `lsof`, `systemctl`, `journalctl`, `service` and `logrotate`. Inspect the live lab with:
 
 ```sh
-docker --context homelab exec test-softgre brctl show
-docker --context homelab exec test-softgre ifconfig -a
-docker --context homelab exec test-softgre netstat -lntp
-docker --context homelab exec test-softgre lsof -i
-docker --context homelab exec -it test-softgre htop
+docker exec test-softgre brctl show
+docker exec test-softgre ifconfig -a
+docker exec test-softgre netstat -lntp
+docker exec test-softgre lsof -i
+docker exec -it test-softgre htop
 ```
 
 For automated provisioning, dashboard and restart checks, use a separate temporary lab:
 
 ```sh
-DOCKER_CONTEXT=homelab scripts/check-lab.sh
+scripts/check-lab.sh
 ```
 
 The examples test real provisioning and bridge attachment. The injected peers are
@@ -413,7 +418,7 @@ Use the integration suite for the additional bridge-to-GRE broadcast path checks
 is intentionally persistent so the dashboard remains available. Stop it when finished:
 
 ```sh
-docker --context homelab stop test-softgre
+docker stop test-softgre
 ```
 
 ## Firewall and trust model
@@ -497,15 +502,15 @@ lock prevents duplicates. `service softgred restart` can delegate to systemd on 
 hosts. `journalctl` is a log reader, without a restart operation. The enabled web
 companion follows daemon starts, stops and restarts.
 
-The Docker images run the daemon directly or through the lab supervisor. Systemd and
-journald commands are installed, but systemd is not their PID 1. Manage the container
-with Docker instead:
+The Ubuntu lab runs systemd and journald. Manage each service inside the container:
 
 ```sh
-docker --context homelab restart test-softgre
-docker --context homelab logs -f test-softgre
-docker --context homelab exec test-softgre tail -f /var/log/softgred.log
-docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+docker exec test-softgre systemctl status softgred softgred-web
+docker exec test-softgre systemctl restart softgred
+docker exec test-softgre service softgred-web restart
+docker exec test-softgre journalctl -u softgred -u softgred-web -f
+docker exec test-softgre tail -f /var/log/softgred.log
+docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 Restarting rebuilds the lab interfaces and clears learned tunnels and MACs; inject again
@@ -528,9 +533,9 @@ distribution-specific amd64 packages from the GitHub release:
 
 Download the package matching your distribution and `SHA256SUMS`, verify its hash and
 install with `sudo apt install ./softgred_2.0.1-1+debian12_amd64.deb` (adjust the filename
-for your system). The package installs the daemon, configuration, guides and systemd unit,
-with no automatic service start. Configure the daemon, then enable it with `sudo systemctl
-enable --now softgred`.
+for your system). The package installs the daemon, dashboard, configuration, guides and
+systemd units. Both units are enabled and startup is requested on systemd hosts. Set the
+capture interface for your host and inspect `/var/log/softgred.log` if startup fails.
 
 ```sh
 ./bump.sh --check
@@ -550,9 +555,17 @@ website deploys from the default branch.
 release_version=$(cat VERSION)
 git tag "v$release_version"
 git push origin master "v$release_version"
-# Local package build inside a matching disposable Linux container:
+# Binary build on a Linux host with build dependencies:
+./autogen.sh
+make deb
+# Distribution-specific build and installed-package check inside a matching container:
 scripts/build-deb.sh debian12 /out
 ```
+
+The `make deb` target runs `dpkg-buildpackage -us -uc -b`, including the C tests. Output
+is in the parent directory. It does not install the package on the host. Debian Docker
+images generate, apt-install and validate their deb; installed-binary integration and
+packaged web tests exercise the deployed artifact. Minimal images retain SoftGRE docs.
 
 Package filenames include the target distribution to prevent collisions. Package
 architecture is the build host architecture; the supplied release workflow builds amd64.
@@ -604,7 +617,7 @@ scripts/check-linux.sh
 ```
 
 The validation script builds out of tree with GCC and Clang and `-Werror`, runs
-ASan/UBSan, checks `--disable-service`, CLI exit codes and staged installation, then runs
+ASan/UBSan, checks `--disable-service --disable-web`, CLI exit codes and staged installation, then runs
 `make distcheck`. Integration tests require a disposable Linux network namespace and root
 networking privileges:
 
