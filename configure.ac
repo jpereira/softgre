@@ -17,7 +17,7 @@ AC_ARG_ENABLE([service], AS_HELP_STRING([--disable-service], [Disable TCP status
               [], [enable_service=yes])
 AS_CASE([$enable_service], [yes], [AC_DEFINE([SOFTGRED_ENABLE_SERVICE], [1], [TCP status API])],
         [no], [], [AC_MSG_ERROR([Invalid service option])])
-AC_ARG_ENABLE([web], AS_HELP_STRING([--enable-web], [Install optional PHP 8.1+ dashboard]),
+AC_ARG_ENABLE([web], AS_HELP_STRING([--enable-web], [Install optional Python/PHP dashboard]),
               [], [enable_web=no])
 AS_CASE([$enable_web], [yes|no], [], [AC_MSG_ERROR([Invalid web option])])
 AS_IF([test "x$enable_web" = xyes && test "x$enable_service" != xyes],

@@ -30,6 +30,7 @@ for mode in gcc clang sanitize minimal; do
         make -j2
         make install DESTDIR="$work/install-web"
         test -s "$work/install-web/usr/local/share/softgred/webinterface/api.php"
+        test -s "$work/install-web/usr/local/share/softgred/webinterface/server.py"
     fi
 done
 cd "$work/gcc"

@@ -6,6 +6,15 @@
 <body><main><header><h1>SoftGRE <span>status</span></h1>
 <a href="https://jpereira.github.io/softgre/">Documentation ↗</a></header>
 <p>Read-only GRE tunnel and client information.</p>
+<section aria-label="Live overview"><h2>Live overview</h2>
+<p id="overview-state" role="status">Connecting…</p><p id="system"></p>
+<h3>Tunnels and learned MACs</h3>
+<div class="table"><table><thead><tr><th>Remote IPv4</th><th>GRE interface</th><th>MACs</th>
+</tr></thead><tbody id="tunnels"></tbody></table></div>
+<h3>Interfaces and bridges</h3>
+<div class="table"><table><thead><tr><th>Interface</th><th>Bridge</th><th>State</th>
+<th>RX packets</th><th>TX packets</th></tr></thead><tbody id="interfaces"></tbody></table></div>
+</section><h2>Command query</h2>
 <form id="query"><label for="action">Query</label><select id="action">
 <option value="status">System status</option><option value="tunnels">Tunnels</option>
 <option value="ues">MACs by remote IPv4</option><option value="cpe">Tunnel by MAC</option>

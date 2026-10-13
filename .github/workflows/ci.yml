@@ -28,7 +28,7 @@ jobs:
           docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW
           -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
           python3 tests/integration.py bin/softgred
-      - name: PHP adapter
+      - name: Python and PHP adapters
         run: docker run --rm softgre-test python3 tests/test_web.py
       - name: Debian package
         run: docker run --rm softgre-test dpkg-buildpackage -us -uc -b

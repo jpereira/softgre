@@ -6,8 +6,9 @@ etc/softgred/softgred.conf: $(srcdir)/etc/softgred/softgred.conf.in
 if WEB
 webinterfacedir = $(pkgdatadir)/webinterface
 webinterface_DATA = webinterface/index.html webinterface/dashboard.css \
-    webinterface/dashboard.js webinterface/api.php
+    webinterface/dashboard.js webinterface/api.php webinterface/server.py
 endif
 EXTRA_DIST = etc/softgred/softgred.conf.in softgred.service \
-    webinterface/index.html webinterface/dashboard.css webinterface/dashboard.js webinterface/api.php
+    webinterface/index.html webinterface/dashboard.css webinterface/dashboard.js \
+    webinterface/api.php webinterface/server.py
 CLEANFILES = etc/softgred/softgred.conf
