@@ -64,7 +64,9 @@ def check(root):
     current = (root / "VERSION").read_text().strip()
     parse(current)
     first = (root / "debian/changelog").read_text().splitlines()[0]
-    if not first.startswith(f"softgred ({current}-1)"):
+    distro = r"(?:debian12|debian13|ubuntu22\.04|ubuntu24\.04)"
+    package = rf"softgred \({re.escape(current)}-1(?:\+{distro})?\) "
+    if not re.match(package, first):
         raise ValueError("VERSION and Debian changelog do not match")
     return current
 

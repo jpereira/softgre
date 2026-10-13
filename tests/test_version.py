@@ -11,6 +11,20 @@ spec.loader.exec_module(version)
 
 
 class VersionTests(unittest.TestCase):
+    def test_distribution_package_versions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "debian").mkdir()
+            (root / "VERSION").write_text("2.0.1\n")
+            changelog = root / "debian/changelog"
+            for suffix in ("", "+debian12", "+debian13", "+ubuntu22.04", "+ubuntu24.04"):
+                changelog.write_text(f"softgred (2.0.1-1{suffix}) unstable; urgency=medium\n")
+                self.assertEqual(version.check(root), "2.0.1")
+            for invalid in ("2.0.2-1+debian12", "2.0.1-1+unknown", "2.0.1-1+ubuntu24x04"):
+                changelog.write_text(f"softgred ({invalid}) unstable; urgency=medium\n")
+                with self.assertRaises(ValueError):
+                    version.check(root)
+
     def test_bumps_and_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
