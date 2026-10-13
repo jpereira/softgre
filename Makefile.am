@@ -13,3 +13,6 @@ EXTRA_DIST += VERSION bump.sh scripts/version.py scripts/build-deb.sh tests/test
     Dockerfile.release .github/workflows/release.yml
 EXTRA_DIST += tests/test_helper.c
 EXTRA_DIST += share/softgred-web.service debian/softgred.softgred-web.service
+EXTRA_DIST += Dockerfile.lab scripts/lab/start.sh scripts/lab/status.sh \
+    scripts/lab/send.py scripts/lab/packets.py scripts/lab/health.py
+EXTRA_DIST += scripts/check-lab.sh

@@ -1,0 +1,19 @@
+FROM ubuntu:24.04 AS build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential autoconf automake pkg-config libglib2.0-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY . .
+RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web \
+    && make -j2 && make check && make install DESTDIR=/install
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0t64 ebtables iptables iproute2 python3 util-linux \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /install/ /
+COPY scripts/lab/ /opt/softgre-lab/
+ENV SOFTGRE_LAB=isolated
+EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=7s --start-period=15s \
+    CMD ["python3", "/opt/softgre-lab/health.py"]
+ENTRYPOINT ["/opt/softgre-lab/start.sh"]

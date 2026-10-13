@@ -44,3 +44,13 @@ jobs:
       - run: python3 tests/test_docs.py
       - run: python3 tests/test_version.py
       - run: ./bump.sh --check
+  lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Ubuntu 24.04 lab image
+        run: docker build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+      - name: Dashboard, GRE provisioning and container lifecycle
+        run: scripts/check-lab.sh
