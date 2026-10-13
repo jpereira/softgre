@@ -17,7 +17,20 @@ Package: softgred
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ebtables, iptables
 Recommends: python3 (>= 3.9), logrotate
-Description: Dynamic GRE Ethernet tunnel provisioning for Linux
- Discovers IPv4 GRE Ethernet peers, provisions gretap and VLAN interfaces,
- and connects them to configured Linux bridges. Includes a read-only TCP
- status API and isolated firewall rules for learned source MAC addresses.
+Suggests: iproute2, bridge-utils
+Description: dynamic GRE Ethernet provisioning with a status dashboard
+ Discovers remote IPv4 GRE Ethernet peers and provisions Linux gretap and
+ VLAN interfaces on demand. Connects each VLAN to its configured bridge
+ and maintains isolated firewall permissions for learned source MACs.
+ .
+ Includes a read-only TCP status API and an optional Python dashboard
+ showing tunnels, clients, interfaces, bridge membership and packet
+ counters. A PHP adapter is also provided for the same static frontend.
+ .
+ Records peer addresses, interface creation, bridge attachment and MAC
+ learning in /var/log/softgred.log. Includes systemd units, logrotate
+ configuration and an English guide with a complete test-lab example.
+ .
+ Requires Linux GRE, VLAN and bridge support and root network privileges.
+ Accepts unkeyed IPv4 GRE carrying Ethernet with one mapped inner VLAN.
+ Intended for trusted ingress and management networks.

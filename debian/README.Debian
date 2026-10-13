@@ -1,11 +1,47 @@
-SoftGRE on Debian
-=================
+SoftGRE on Debian and Ubuntu
+============================
 
-Configure /etc/softgred/softgred.conf before starting softgred.service.
-Use journalctl -u softgred for logs. The TCP API binds loopback by default.
+The package provides dynamic IPv4 GRE Ethernet provisioning, VLAN-to-bridge
+mapping, MAC permissions, a read-only TCP API and an optional status dashboard.
+The daemon uses native Linux interfaces and requires root network privileges.
 
-Build with dpkg-buildpackage -us -uc -b. Build dependencies are declared in
-control; runtime networking requires root, bridge/GRE/VLAN kernel support,
-and ebtables. The package installs the daemon, configuration and systemd unit.
+Configure /etc/softgred/softgred.conf for the capture interface, its local IPv4
+address and VLAN-to-bridge mappings before starting the service. Kernel GRE,
+VLAN and bridge support is required. The TCP API binds loopback by default.
 
-The full guide is available in docs/en_US/index.md.
+    sudo systemctl enable --now softgred.service
+    sudo systemctl restart softgred.service
+    sudo systemctl status softgred.service
+
+The daemon and dashboard are not enabled or started during package installation.
+Python and logrotate are recommended dependencies. Enable the companion to start
+the unprivileged dashboard with softgred and propagate daemon stops and restarts:
+
+    sudo apt-get install python3 logrotate
+    sudo systemctl enable --now softgred-web.service
+
+The dashboard listens on port 8080. Its settings can be defined in
+/etc/default/softgred-web using SOFTGRE_WEB_BIND, SOFTGRE_WEB_PORT,
+SOFTGRE_API_HOST and SOFTGRE_API_PORT. Access the dashboard at
+http://SERVER_IP:8080/index.html on a trusted management network.
+Neither the dashboard nor the TCP API provides authentication.
+
+Events append to /var/log/softgred.log and are mirrored to stderr/the journal.
+Records identify remote IPs, tunnels, VLAN interfaces, bridges and learned MACs.
+The package installs /etc/logrotate.d/softgred; SIGHUP reopens the log after
+rotation. Adjust the rule if you change the log or PID path.
+
+    sudo tail -f /var/log/softgred.log
+    sudo journalctl -u softgred -u softgred-web -f
+
+GRE learning does not provide subscriber authentication, automatic MAC roaming
+or a DHCP server. Accepted frames use unkeyed GRE v0, Ethernet protocol 0x6558
+and a single mapped inner VLAN. Use the guide for protocol and resource limits.
+
+The README, complete English guide, logo and license are installed under
+/usr/share/doc/softgred. The guide is docs/en_US/index.md relative to that
+folder. The web assets and Python/PHP adapters are under
+/usr/share/softgred/webinterface.
+
+Build with dpkg-buildpackage -us -uc -b. The distribution-specific release
+builder is scripts/build-deb.sh, run inside a matching disposable Linux image.

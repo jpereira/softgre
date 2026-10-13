@@ -1,3 +1,22 @@
-SoftGRE uses Autotools with debhelper compatibility level 13.
-Debhelper invokes autoreconf and performs the configured build and tests.
-The source package uses format 3.0 (quilt).
+SoftGRE source packaging
+========================
+
+The source package uses format 3.0 (quilt), Autotools and debhelper level 13.
+Build dependencies are declared in debian/control. Debhelper runs autoreconf,
+compiles the daemon and executes the C regression suite before packaging.
+
+    dpkg-buildpackage -us -uc -b
+
+The build installs configuration under /etc/softgred, uses /run for the PID
+and includes the Python/PHP frontend with --enable-web. Both systemd units
+remain disabled and stopped during installation. Documentation retains its
+relative paths and Markdown/assets remain uncompressed for local navigation.
+
+Dockerfiles are in docker/ and use the repository root as build context.
+For distribution-specific packages, select a matching BASE with
+docker/Dockerfile.release, then run scripts/build-deb.sh for debian12,
+debian13, ubuntu22.04 or ubuntu24.04. The script adds the distribution suffix
+to the Debian version and copies the resulting deb package to its output path.
+
+The upstream version is in VERSION. Use ./bump.sh --check to validate it and
+./bump.sh patch, minor, major or X.Y.Z to update it with the Debian changelog.

@@ -8,3 +8,6 @@ override_dh_auto_configure:
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
 	dh_installsystemd --name=softgred-web --no-enable --no-start
+
+override_dh_compress:
+	dh_compress -X.md -X.svg -X.css -X.js

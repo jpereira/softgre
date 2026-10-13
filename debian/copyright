@@ -16,3 +16,9 @@ License: LGPL-3+
  .
  On Debian systems the complete license is available in
  /usr/share/common-licenses/LGPL-3 and /usr/share/common-licenses/GPL-3.
+
+Files: LICENSE.md
+Copyright: 2007 Free Software Foundation, Inc.
+License: license-document
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
