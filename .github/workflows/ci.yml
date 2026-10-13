@@ -20,7 +20,10 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Build test image
-        run: docker build -f Dockerfile.test -t softgre-test .
+        run: |
+          dockerfile=docker/Dockerfile.test
+          test -f "$dockerfile" || dockerfile=Dockerfile.test
+          docker build -f "$dockerfile" -t softgre-test .
       - name: GCC, Clang, sanitizers, installation and distribution
         run: docker run --rm softgre-test scripts/check-linux.sh
       - name: Real GRE, VLAN, firewall and API integration
@@ -33,7 +36,10 @@ jobs:
       - name: Debian package
         run: docker run --rm softgre-test dpkg-buildpackage -us -uc -b
       - name: Production container
-        run: docker build -t softgre .
+        run: |
+          dockerfile=docker/Dockerfile
+          test -f "$dockerfile" || dockerfile=Dockerfile
+          docker build -f "$dockerfile" -t softgre .
   documentation:
     runs-on: ubuntu-latest
     steps:
@@ -51,10 +57,10 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Ubuntu 24.04 lab image
-        if: hashFiles('Dockerfile.lab') != ''
-        run: docker build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+        if: hashFiles('docker/Dockerfile.lab') != ''
+        run: docker build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
       - name: Dashboard, GRE provisioning and container lifecycle
-        if: hashFiles('Dockerfile.lab') != ''
+        if: hashFiles('docker/Dockerfile.lab') != ''
         run: scripts/check-lab.sh
   formatting:
     runs-on: ubuntu-latest
@@ -63,8 +69,8 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Build formatter image
-        if: hashFiles('Dockerfile.format') != ''
-        run: docker build -f Dockerfile.format -t softgre-format .
+        if: hashFiles('docker/Dockerfile.format') != ''
+        run: docker build -f docker/Dockerfile.format -t softgre-format .
       - name: Check consistent source formatting
-        if: hashFiles('Dockerfile.format') != ''
+        if: hashFiles('docker/Dockerfile.format') != ''
         run: docker run --rm softgre-format scripts/format-code.sh --check

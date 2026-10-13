@@ -21,7 +21,7 @@ namespace and requires only `NET_ADMIN` and `NET_RAW`.
 ```sh
 git clone https://github.com/jpereira/softgre.git
 cd softgre
-docker --context homelab build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+docker --context homelab build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
 docker --context homelab run -d --name test-softgre --restart unless-stopped --cap-add NET_ADMIN --cap-add NET_RAW -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
 ```
 

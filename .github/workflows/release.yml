@@ -38,9 +38,10 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: test "$RELEASE_TAG" = "v$(./bump.sh --check)"
       - name: Build distribution image
-        run: >-
-          docker build -f Dockerfile.release --build-arg BASE=${{ matrix.base }}
-          -t softgre-release .
+        run: |
+          dockerfile=docker/Dockerfile.release
+          test -f "$dockerfile" || dockerfile=Dockerfile.release
+          docker build -f "$dockerfile" --build-arg BASE=${{ matrix.base }} -t softgre-release .
       - name: Build .deb and run package tests
         run: >-
           docker run --rm -v "$PWD/packages:/out" softgre-release ${{ matrix.distro }} /out

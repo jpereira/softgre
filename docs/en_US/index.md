@@ -322,7 +322,7 @@ without privileged mode or host networking. Use Docker on a Linux host. With the
 context configured, run from the source directory:
 
 ```sh
-docker --context homelab build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+docker --context homelab build -f docker/Dockerfile.lab -t softgre-lab:ubuntu24.04 .
 docker --context homelab run -d --name test-softgre --restart unless-stopped --cap-add NET_ADMIN --cap-add NET_RAW -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
 ```
 
@@ -466,7 +466,7 @@ does not guarantee the selected interface is ready. Only one instance should own
 network namespace.
 
 ```sh
-docker build -t softgre .
+docker build -f docker/Dockerfile -t softgre .
 docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW \
   -v /absolute/path/softgred.conf:/etc/softgred/softgred.conf:ro softgre
 ```
@@ -609,7 +609,7 @@ ASan/UBSan, checks `--disable-service`, CLI exit codes and staged installation, 
 networking privileges:
 
 ```sh
-docker build -f Dockerfile.test -t softgre-test .
+docker build -f docker/Dockerfile.test -t softgre-test .
 docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW \
   -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
   python3 tests/integration.py bin/softgred
@@ -629,6 +629,10 @@ measure setup latency and ebtables rule traversal as well as packet drops before
 a deployment size. AF_PACKET still copies captured packets into user space; the daemon
 does not use PACKET_MMAP or claim zero-copy capture.
 
+All Dockerfiles are in `docker/`. Run build commands from the project root and keep
+`.` as the build context; the root `.dockerignore` excludes Git metadata and generated
+artifacts. The `-f docker/Dockerfile...` option selects the image definition.
+
 ### Source formatting
 
 Use four spaces for C, Python and shell, and two spaces for frontend assets and YAML.
@@ -639,7 +643,7 @@ The formatter image provides clang-format 14, Black, shfmt, PHP_CodeSniffer and 
 3.6.2 from the declared Debian bookworm tooling environment:
 
 ```sh
-docker build -f Dockerfile.format -t softgre-format .
+docker build -f docker/Dockerfile.format -t softgre-format .
 docker run --rm softgre-format scripts/format-code.sh --check
 ```
 
