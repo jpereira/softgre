@@ -526,6 +526,35 @@ Build another architecture natively if needed. The workflow does not upload debu
 packages. Release downloads and checksums are public GitHub assets and do not require a
 package repository.
 
+## Relationship to Alcatel-Lucent/Nokia 7750 SR
+
+SoftGRE implements packet-driven GRE discovery and Linux bridging. The corresponding
+7750 SR feature is WLAN-GW soft-GRE. Nokia describes learning AP encapsulation without
+configuring every AP endpoint. Its WLAN-GW design uses ISA/ESA resources; available
+features depend on the platform and SR OS release. See the official
+[Wi-Fi aggregation and offload guide](https://documentation.nokia.com/sr/26-3/7750-sr/books/tpsda/wi-fi-aggregation-offload.html).
+
+| Area | 7750 SR WLAN-GW soft-GRE | This project |
+| --- | --- | --- |
+| Peer discovery | Learns AP encapsulation without a configured IP per AP. | Learns remote IPv4 and MACs from accepted packets. |
+| Encapsulation | Ethernet and MPLS-over-GRE access variants. | IPv4, GRE v0, flags zero, Ethernet `0x6558`, one inner VLAN. |
+| VLAN mapping | Inner VLAN selects a retail service context. | Static `VLAN@bridge` mappings create Linux VLAN interfaces. |
+| Forwarding | WLAN-GW processing on ISA/ESA resources. | Native `gretap`, VLANs and bridges forward in the Linux kernel. |
+| Subscriber management | ESM and RADIUS integration. | MAC permissions; no built-in RADIUS, DHCP server or subscriber billing. |
+| Mobility | Inter-AP mobility anchoring. | A MAC stays with one remote until learned state is cleared. |
+| QoS | Per-tunnel/per-SSID shaping. | No built-in bandwidth shaping. |
+| Availability | WLAN-GW standby/redundancy functions. | One daemon; no state replication or automatic failover. |
+
+The subscriber-management example is documented in Nokia's
+[Basic Open SSID configuration guide](https://documentation.nokia.com/acg/25-3-2/books/tpsda-classic/c091-wifi-aggoffbasicssid.html).
+For residential bridging, Nokia documents soft-GRE access in its
+[Virtual Residential Gateway guide](https://documentation.nokia.com/sr/25-10/7750-sr/books/tpsda/virtual-residential-gateway-triple-play.html).
+This project's service boundary is the Linux bridge; external routing, DHCP and subscriber
+services must be designed separately. No interoperability or throughput comparison with
+a physical 7750 SR has been measured. Matching the encapsulation subset alone does not
+establish feature parity. Compile-time ceilings are 4096 tunnel slots, 1024 MACs per tunnel
+and ten VLAN-to-bridge mappings; free interface names and host resources affect capacity.
+
 ## Testing and performance
 
 `make check` exercises the bounded parser, every truncation of valid packet fixtures, IPv4
