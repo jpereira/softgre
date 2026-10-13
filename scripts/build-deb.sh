@@ -23,7 +23,10 @@ lines = path.read_text().splitlines(keepends=True)
 lines[0] = f'softgred ({sys.argv[1]}-1+{sys.argv[2]}) unstable; urgency=medium\n'
 path.write_text(''.join(lines))
 PY
-dpkg-buildpackage -us -uc -b
+if test ! -f Makefile; then ./autogen.sh; fi
+make deb
+scripts/install-deb.sh ../softgred_"$version"-1+"$distro"_*.deb
+scripts/check-installed-package.sh
 mkdir -p "$output"
 for package in ../softgred_"$version"-1+"$distro"_*.deb; do
     test -f "$package"

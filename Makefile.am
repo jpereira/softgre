@@ -20,4 +20,9 @@ EXTRA_DIST += docs/assets/softgre-logo.svg docs/assets/theme.js
 EXTRA_DIST += tests/test_log.c share/softgred.logrotate debian/softgred.logrotate
 EXTRA_DIST += .clang-format .prettierrc.json docker/Dockerfile.format scripts/format-code.sh \
     scripts/format-includes.py
-EXTRA_DIST += scripts/run-services.py
+
+.PHONY: deb
+deb:
+	+$(SHELL) $(abs_top_srcdir)/scripts/make-deb.sh
+EXTRA_DIST += scripts/make-deb.sh scripts/check-installed-package.sh
+EXTRA_DIST += scripts/install-deb.sh

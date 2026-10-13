@@ -16,6 +16,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
+WEB_ROOT = Path(os.environ.get("SOFTGRE_WEB_ROOT", ROOT / "share/webinterface"))
 
 
 class WebTestCases:
@@ -124,7 +125,7 @@ class WebTestCases:
 class PHPWebTests(WebTestCases, unittest.TestCase):
     @classmethod
     def server_command(cls):
-        return ["php", "-S", f"127.0.0.1:{cls.http_port}", "-t", str(ROOT / "share/webinterface")]
+        return ["php", "-S", f"127.0.0.1:{cls.http_port}", "-t", str(WEB_ROOT)]
 
 
 class PythonWebTests(WebTestCases, unittest.TestCase):
@@ -132,7 +133,7 @@ class PythonWebTests(WebTestCases, unittest.TestCase):
     def server_command(cls):
         return [
             sys.executable,
-            str(ROOT / "share/webinterface/server.py"),
+            str(WEB_ROOT / "server.py"),
             "--port",
             str(cls.http_port),
         ]
@@ -205,7 +206,7 @@ class PythonWebTests(WebTestCases, unittest.TestCase):
         self.assertEqual(self.request("action=status")[0], 200)
 
 
-spec = importlib.util.spec_from_file_location("web_server", ROOT / "share/webinterface/server.py")
+spec = importlib.util.spec_from_file_location("web_server", WEB_ROOT / "server.py")
 web = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(web)
 
@@ -292,7 +293,7 @@ class BackendTests(unittest.TestCase):
             ["--bind", "::1"],
         ):
             result = subprocess.run(
-                [sys.executable, str(ROOT / "share/webinterface/server.py"), *arguments],
+                [sys.executable, str(WEB_ROOT / "server.py"), *arguments],
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 2)

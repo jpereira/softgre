@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
-RUN ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-    CFLAGS="-O2 -g -Werror" && make -j2 && make check
-CMD ["python3", "tests/integration.py", "bin/softgred"]
+RUN ./autogen.sh && make deb \
+    && scripts/install-deb.sh ../softgred_*.deb \
+    && scripts/check-installed-package.sh && rm -rf /var/lib/apt/lists/*
+ENV SOFTGRE_WEB_ROOT=/usr/share/softgred/webinterface
+CMD ["python3", "tests/integration.py", "/usr/sbin/softgred"]
