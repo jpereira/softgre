@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([SoftGRE], [1.0rc1], [https://github.com/jpereira/softgre/issues], [softgred],
+AC_INIT([SoftGRE], m4_esyscmd_s([cat VERSION]), [https://github.com/jpereira/softgre/issues], [softgred],
         [https://github.com/jpereira/softgre/])
 AC_CONFIG_SRCDIR([src/softgred.c])
 AC_CONFIG_HEADERS([config.h])

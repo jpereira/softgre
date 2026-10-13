@@ -1,0 +1,13 @@
+softgred (2.0.1-1) unstable; urgency=medium
+
+  * Release 2.0.1.
+
+ -- Jorge Pereira <jpereiran@gmail.com>  Tue, 13 Oct 2026 20:12:49 +0000
+
+softgred (1.0~rc1-1) unstable; urgency=medium
+
+  * Use native Linux packet capture and netlink with bounded parsing,
+    typed configuration, isolated firewall rules and a read-only status API.
+  * Provide reproducible builds, regression tests and bilingual documentation.
+
+ -- Jorge Pereira <jpereiran@gmail.com>  Tue, 13 Oct 2026 16:00:00 -0300

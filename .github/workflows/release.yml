@@ -1,0 +1,77 @@
+name: Release packages
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (vX.Y.Z)
+        required: true
+permissions:
+  contents: read
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ inputs.tag || github.ref }}
+  packages:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian12
+            base: debian:bookworm-slim
+          - distro: debian13
+            base: debian:trixie-slim
+          - distro: ubuntu22.04
+            base: ubuntu:22.04
+          - distro: ubuntu24.04
+            base: ubuntu:24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Verify tag matches source version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: test "$RELEASE_TAG" = "v$(./bump.sh --check)"
+      - name: Build distribution image
+        run: >-
+          docker build -f Dockerfile.release --build-arg BASE=${{ matrix.base }}
+          -t softgre-release .
+      - name: Build .deb and run package tests
+        run: >-
+          docker run --rm -v "$PWD/packages:/out" softgre-release ${{ matrix.distro }} /out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.distro }}
+          path: packages/*.deb
+          if-no-files-found: error
+  publish:
+    needs: packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Publish packages and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          cd packages
+          sha256sum *.deb > SHA256SUMS
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes --title "SoftGRE $RELEASE_TAG"
+          fi
+          gh release upload "$RELEASE_TAG" *.deb SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" --clobber
