@@ -19,6 +19,7 @@
 #ifndef SERVICE_CMD_H
 #define SERVICE_CMD_H
 #include "general.h"
+
 #define SERVICE_MAX_REQUEST 256
 #define SERVICE_MAX_RESPONSE (1024 * 1024)
 GString *service_command(const char *command);

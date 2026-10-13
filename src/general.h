@@ -22,16 +22,13 @@
 #define _GNU_SOURCE
 #endif
 #include "config.h"
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <ifaddrs.h>
 #include <net/if.h>
-#include <linux/filter.h>
-#include <linux/if_packet.h>
-#include <linux/if_tunnel.h>
-#include <linux/rtnetlink.h>
 #include <netinet/if_ether.h>
 #include <poll.h>
 #include <signal.h>
@@ -50,6 +47,12 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <linux/filter.h>
+#include <linux/if_packet.h>
+#include <linux/if_tunnel.h>
+#include <linux/rtnetlink.h>
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define SOFTGRED_MAX_ATTACH 10
 #define SOFTGRED_MAX_SLOTS 4096

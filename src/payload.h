@@ -19,11 +19,13 @@
 #ifndef PAYLOAD_H
 #define PAYLOAD_H
 #include "general.h"
+
 struct payload_packet {
     struct in_addr remote, local;
     unsigned char mac[6];
     uint16_t vlan;
 };
+
 bool payload_parse(const unsigned char *data, size_t len, struct payload_packet *out);
 int payload_loop_init(void);
 int payload_receive(void);

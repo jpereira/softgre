@@ -5,7 +5,7 @@ root=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 cd "$root"
 distro=${1:?Usage: build-deb.sh debian12|debian13|ubuntu22.04|ubuntu24.04 [OUTPUT]}
 output=${2:-/out}
-case "$distro" in debian12|debian13|ubuntu22.04|ubuntu24.04) ;; *) exit 2 ;; esac
+case "$distro" in debian12 | debian13 | ubuntu22.04 | ubuntu24.04) ;; *) exit 2 ;; esac
 . /etc/os-release
 if test "$distro" != "$ID$VERSION_ID"; then
     echo "Build image mismatch: requested $distro, running $ID$VERSION_ID" >&2

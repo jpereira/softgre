@@ -14,11 +14,21 @@ from pathlib import Path
 from socketserver import ThreadingMixIn
 from urllib.parse import parse_qs, urlsplit
 
-ASSETS = {"/": ("index.html", "text/html"), "/index.html": ("index.html", "text/html"),
-          "/dashboard.js": ("dashboard.js", "text/javascript"),
-          "/dashboard.css": ("dashboard.css", "text/css")}
-COMMANDS = {"status": "STAT", "tunnels": "STUN", "ues": "LMIP", "cpe": "GTMC",
-            "version": "VERS", "help": "HELP", "overview": "OVERVIEW"}
+ASSETS = {
+    "/": ("index.html", "text/html"),
+    "/index.html": ("index.html", "text/html"),
+    "/dashboard.js": ("dashboard.js", "text/javascript"),
+    "/dashboard.css": ("dashboard.css", "text/css"),
+}
+COMMANDS = {
+    "status": "STAT",
+    "tunnels": "STUN",
+    "ues": "LMIP",
+    "cpe": "GTMC",
+    "version": "VERS",
+    "help": "HELP",
+    "overview": "OVERVIEW",
+}
 MAX_RESPONSE = 1024 * 1024
 BACKEND_TIMEOUT = 5
 
@@ -47,10 +57,10 @@ def port(value):
 
 def command_for(query):
     try:
-        params = parse_qs(query, keep_blank_values=True, max_num_fields=2,
-                          encoding="utf-8", errors="strict")
-        if any(key not in {"action", "arg"} or len(value) != 1
-               for key, value in params.items()):
+        params = parse_qs(
+            query, keep_blank_values=True, max_num_fields=2, encoding="utf-8", errors="strict"
+        )
+        if any(key not in {"action", "arg"} or len(value) != 1 for key, value in params.items()):
             raise ValueError
         action = params.get("action", ["status"])[0]
         arg = params.get("arg", [""])[0]
@@ -126,23 +136,36 @@ def overview(address):
         if not separator or not re.fullmatch(r"[a-zA-Z0-9_.-]{1,15}", name):
             raise AdapterError(502, "ERROR", "Invalid tunnel response")
         macs = backend_query(address, "ues", f"LMIP {remote}\n".encode(), deadline)
-        tunnels.append({"remote": remote, "interface": name,
-                        "macs": [mac for mac in macs["body"].split(";") if mac]})
+        tunnels.append(
+            {
+                "remote": remote,
+                "interface": name,
+                "macs": [mac for mac in macs["body"].split(";") if mac],
+            }
+        )
     interfaces = []
     for path in sorted(Path("/sys/class/net").iterdir())[:128]:
         try:
             master = path / "master"
-            interfaces.append({"name": path.name,
-                               "state": (path / "operstate").read_text().strip(),
-                               "bridge": (master.resolve().name
-                                          if (master / "bridge").exists() else ""),
-                               "rx_packets": int((path / "statistics/rx_packets").read_text()),
-                               "tx_packets": int((path / "statistics/tx_packets").read_text())})
+            interfaces.append(
+                {
+                    "name": path.name,
+                    "state": (path / "operstate").read_text().strip(),
+                    "bridge": (master.resolve().name if (master / "bridge").exists() else ""),
+                    "rx_packets": int((path / "statistics/rx_packets").read_text()),
+                    "tx_packets": int((path / "statistics/tx_packets").read_text()),
+                }
+            )
         except (OSError, ValueError):
             continue  # Interfaces can disappear while the snapshot is collected.
-    return {"status": "OK", "body": status["body"], "tunnels": tunnels,
-            "tunnel_count": len(entries), "truncated": len(entries) > 64,
-            "interfaces": interfaces}
+    return {
+        "status": "OK",
+        "body": status["body"],
+        "tunnels": tunnels,
+        "tunnel_count": len(entries),
+        "truncated": len(entries) > 64,
+        "interfaces": interfaces,
+    }
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -212,8 +235,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if head:
                     raise AdapterError(405, "INVALID", "Use GET")
                 action, command = command_for(target.query)
-                result = (overview(self.server.backend) if action == "overview" else
-                          backend_query(self.server.backend, action, command))
+                result = (
+                    overview(self.server.backend)
+                    if action == "overview"
+                    else backend_query(self.server.backend, action, command)
+                )
                 self.json_reply(200, result)
             elif target.path in ASSETS:
                 filename, content_type = ASSETS[target.path]
@@ -222,8 +248,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 raise AdapterError(404, "NOTFOUND", "Not found")
         except AdapterError as error:
             try:
-                self.json_reply(error.code, {"status": error.status, "body": error.body},
-                                head=head, allow=error.code == 405)
+                self.json_reply(
+                    error.code,
+                    {"status": error.status, "body": error.body},
+                    head=head,
+                    allow=error.code == 405,
+                )
             except OSError:
                 self.close_connection = True
         except (BrokenPipeError, ConnectionResetError, socket.timeout):
@@ -253,8 +283,10 @@ class DashboardServer(ThreadingMixIn, HTTPServer):
         if not self.slots.acquire(blocking=False):
             try:
                 request.settimeout(0.1)
-                request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n"
-                                b"Connection: close\r\n\r\n")
+                request.sendall(
+                    b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n"
+                    b"Connection: close\r\n\r\n"
+                )
             except OSError:
                 pass
             self.shutdown_request(request)
@@ -274,19 +306,27 @@ class DashboardServer(ThreadingMixIn, HTTPServer):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bind", type=ipv4,
-                        default=os.environ.get("SOFTGRE_WEB_BIND", "127.0.0.1"),
-                        help="HTTP IPv4 address (default: 127.0.0.1)")
-    parser.add_argument("--port", type=port, default=os.environ.get("SOFTGRE_WEB_PORT", "8080"),
-                        help="HTTP port (default: 8080)")
-    parser.add_argument("--api-host", type=ipv4,
-                        default=os.environ.get("SOFTGRE_API_HOST", "127.0.0.1"))
-    parser.add_argument("--api-port", type=port,
-                        default=os.environ.get("SOFTGRE_API_PORT", "8888"))
+    parser.add_argument(
+        "--bind",
+        type=ipv4,
+        default=os.environ.get("SOFTGRE_WEB_BIND", "127.0.0.1"),
+        help="HTTP IPv4 address (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=port,
+        default=os.environ.get("SOFTGRE_WEB_PORT", "8080"),
+        help="HTTP port (default: 8080)",
+    )
+    parser.add_argument(
+        "--api-host", type=ipv4, default=os.environ.get("SOFTGRE_API_HOST", "127.0.0.1")
+    )
+    parser.add_argument("--api-port", type=port, default=os.environ.get("SOFTGRE_API_PORT", "8888"))
     args = parser.parse_args()
     try:
-        server = DashboardServer((args.bind, args.port), (args.api_host, args.api_port),
-                                 Path(__file__).resolve().parent)
+        server = DashboardServer(
+            (args.bind, args.port), (args.api_host, args.api_port), Path(__file__).resolve().parent
+        )
     except OSError as error:
         parser.exit(1, f"Cannot start dashboard: {error}\n")
 

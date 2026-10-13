@@ -595,6 +595,32 @@ measure setup latency and ebtables rule traversal as well as packet drops before
 a deployment size. AF_PACKET still copies captured packets into user space; the daemon
 does not use PACKET_MMAP or claim zero-copy capture.
 
+### Source formatting
+
+Use four spaces for C, Python and shell, and two spaces for frontend assets and YAML.
+C includes are grouped with a blank line after the block; function definitions have a
+blank line between them. Code wraps at 100 columns where possible. Keep long URLs,
+commands, output examples and user-facing strings intact when wrapping changes meaning.
+The formatter image provides clang-format 14, Black, shfmt, PHP_CodeSniffer and Prettier
+3.6.2 from the declared Debian bookworm tooling environment:
+
+```sh
+docker build -f Dockerfile.format -t softgre-format .
+docker run --rm softgre-format scripts/format-code.sh --check
+```
+
+On a local Linux Docker engine, apply formatting to the mounted workspace:
+
+```sh
+docker run --rm -v "$PWD:/src" softgre-format scripts/format-code.sh
+```
+
+For remote contexts, run the formatter in its copied source tree and copy the results
+back; a remote daemon cannot mount your local workspace. Run `scripts/format-code.sh`
+directly when its tools are installed. `--check` reports differences without writing.
+CI checks formatting using the same container. PHP entrypoint warnings about mixed
+function declarations and request handling are excluded from the formatting check.
+
 ## Troubleshooting and documentation site
 
 | Symptom | Check |

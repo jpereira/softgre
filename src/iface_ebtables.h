@@ -19,6 +19,7 @@
 #ifndef IFACE_EBTABLES_H
 #define IFACE_EBTABLES_H
 #include "general.h"
+
 int iface_ebtables_init(void);
 int iface_ebtables_add_tunnel(const char *name, bool *in, bool *out);
 int iface_ebtables_del_tunnel(const char *name, bool *in, bool *out);

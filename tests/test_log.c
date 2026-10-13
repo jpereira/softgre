@@ -1,6 +1,7 @@
 /* File logging must preserve events across rotation and reject unsafe destinations. */
 #include "log.h"
 #include "softgred_config.h"
+
 #include <glib/gstdio.h>
 
 static char *contents(const char *path)
@@ -66,8 +67,13 @@ static void test_logging(void)
     g_assert_nonnull(strstr(text, "After reopen"));
     g_assert_nonnull(strstr(text, "level=DEBUG Visible debug"));
     g_free(text);
-    unlink(path); unlink(old); rmdir(directory);
-    g_free(path); g_free(old); g_free(unsafe); g_free(directory);
+    unlink(path);
+    unlink(old);
+    rmdir(directory);
+    g_free(path);
+    g_free(old);
+    g_free(unsafe);
+    g_free(directory);
     softgred_config_release();
 }
 

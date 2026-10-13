@@ -61,7 +61,8 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         config = Path(directory, "softgred.conf")
         pidfile = Path(directory, "softgred.pid")
-        config.write_text(f"""[global]
+        config.write_text(
+            f"""[global]
 interface=sg-test-in
 tunnel-prefix=sgre
 bridge-map=1000@br-radius,10@br-hotspot,11@br-radius
@@ -72,7 +73,8 @@ log-file={directory}/events.log
 bind-in=lo
 port=18888
 max-listen=4
-""")
+"""
+        )
         logfile = Path(directory, "daemon.log")
         with logfile.open("w+") as log:
             daemon = subprocess.Popen([binary, "-f", "-c", str(config)], stdout=log, stderr=log)
@@ -96,14 +98,33 @@ max-listen=4
                     assert links[0]["master"] == "br-radius", "first bridge mapping corrupted (#5)"
                     assert links[0]["linkinfo"]["info_data"]["id"] == 1000
                     # Test the data path: LAN broadcast ARP must cross the VLAN and gretap.
-                    run("ip", "link", "add", "sg-test-lan", "type", "veth",
-                        "peer", "name", "sg-test-server")
+                    run(
+                        "ip",
+                        "link",
+                        "add",
+                        "sg-test-lan",
+                        "type",
+                        "veth",
+                        "peer",
+                        "name",
+                        "sg-test-server",
+                    )
                     run("ip", "link", "set", "sg-test-lan", "master", "br-radius")
                     run("ip", "link", "set", "sg-test-lan", "up")
                     run("ip", "link", "set", "sg-test-server", "up")
                     peer_mac = Path("/sys/class/net/sg-test-peer/address").read_text().strip()
-                    run("ip", "neigh", "replace", "192.0.2.2", "lladdr", peer_mac,
-                        "nud", "permanent", "dev", "sg-test-in")
+                    run(
+                        "ip",
+                        "neigh",
+                        "replace",
+                        "192.0.2.2",
+                        "lladdr",
+                        peer_mac,
+                        "nud",
+                        "permanent",
+                        "dev",
+                        "sg-test-in",
+                    )
                     gateway_mac = bytes.fromhex("02aabbccddee")
                     arp = b"\xff" * 6 + gateway_mac + struct.pack("!H", 0x0806)
                     arp += struct.pack("!HHBBH", 1, 0x0800, 6, 4, 1)
@@ -122,7 +143,7 @@ max-listen=4
                         if received[23] != 47 or received[26:30] != socket.inet_aton("192.0.2.1"):
                             continue
                         inner_offset = 14 + (received[14] & 15) * 4 + 4
-                        if received[inner_offset + 6:inner_offset + 12] == gateway_mac:
+                        if received[inner_offset + 6 : inner_offset + 12] == gateway_mac:
                             forwarded = True
                             break
                     assert forwarded, "bridge broadcast was blocked before GRE encapsulation"
@@ -151,7 +172,9 @@ max-listen=4
                     wait_for(lambda: "192.0.2.2@sgre1" in query("STUN"))
                 # Fragmented TCP commands, invalid names and abrupt disconnects.
                 with socket.create_connection(("127.0.0.1", 18888), timeout=2) as client:
-                    client.sendall(b"VE"); time.sleep(0.05); client.sendall(b"RS\r\n")
+                    client.sendall(b"VE")
+                    time.sleep(0.05)
+                    client.sendall(b"RS\r\n")
                     assert b"RESULT: OK" in client.recv(1024)
                 assert "RESULT: INVALID" in query("VERSextra")
                 assert "192.0.2.2@sgre1" in query("GTMC 02:00:00:00:00:42")
@@ -179,8 +202,9 @@ max-listen=4
                 bad = config.read_text().replace("bridge-force=true", "bridge-force=false")
                 bad = bad.replace("br-radius", "br-missing")
                 config.write_text(bad)
-                failed = subprocess.run([binary, "-c", str(config)], timeout=10,
-                                        capture_output=True)
+                failed = subprocess.run(
+                    [binary, "-c", str(config)], timeout=10, capture_output=True
+                )
                 assert failed.returncode != 0
                 assert not pidfile.exists()
                 print("Linux integration: GRE/VLAN/firewall/API/signals/rollback passed")

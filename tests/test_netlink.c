@@ -1,5 +1,6 @@
 #include "iface_gre.h"
 #include "softgred_config.h"
+
 static void test_attributes(void)
 {
     struct link_request req;
@@ -13,7 +14,8 @@ static void test_attributes(void)
     struct rtattr *data = link_nest(&req, IFLA_INFO_DATA);
     uint32_t address = htonl(0xc0000201);
     g_assert_cmpint(link_attr(&req, IFLA_GRE_LOCAL, &address, 4), ==, 0);
-    link_nest_end(&req, data); link_nest_end(&req, info);
+    link_nest_end(&req, data);
+    link_nest_end(&req, info);
     int len = req.header.nlmsg_len - NLMSG_LENGTH(sizeof(req.info));
     struct rtattr *attr = IFLA_RTA(&req.info);
     g_assert_true(RTA_OK(attr, len));
@@ -27,11 +29,13 @@ static void test_attributes(void)
     g_assert_cmpint(errno, ==, EMSGSIZE);
     g_assert_cmpuint(req.header.nlmsg_len, ==, before);
 }
+
 static void test_no_interface(void)
 {
     g_assert_cmpint(iface_gre_del("sg-test-absent"), ==, -1);
     g_assert_cmpint(errno, ==, ENODEV);
 }
+
 int main(int argc, char **argv)
 {
     g_test_init(&argc, &argv, NULL);

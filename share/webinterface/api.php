@@ -1,6 +1,8 @@
 <?php
+
 /* Read-only SoftGRE TCP adapter; serve only on a trusted management network. */
 declare(strict_types=1);
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
@@ -30,15 +32,21 @@ if ($action === 'cpe' && !preg_match('/^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$/D', 
 }
 $host = getenv('SOFTGRE_API_HOST') ?: '127.0.0.1';
 $port = getenv('SOFTGRE_API_PORT') ?: '8888';
-if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false ||
-    !ctype_digit($port) || (int)$port < 1 || (int)$port > 65535) {
+if (
+    filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false ||
+    !ctype_digit($port) || (int)$port < 1 || (int)$port > 65535
+) {
     respond(500, 'ERROR', 'Invalid backend configuration');
 }
 $socket = @stream_socket_client("tcp://$host:$port", $errno, $error, 2);
-if ($socket === false) respond(502, 'ERROR', 'Backend unavailable');
+if ($socket === false) {
+    respond(502, 'ERROR', 'Backend unavailable');
+}
 stream_set_timeout($socket, 5);
 $command = $commands[$action];
-if ($action === 'ues' || $action === 'cpe') $command .= ' ' . $arg;
+if ($action === 'ues' || $action === 'cpe') {
+    $command .= ' ' . $arg;
+}
 $command .= "\n";
 $sent = 0;
 while ($sent < strlen($command)) {
@@ -70,7 +78,9 @@ while (!feof($socket)) {
     }
 }
 fclose($socket);
-if ($action === 'help') respond(200, 'OK', $reply);
+if ($action === 'help') {
+    respond(200, 'OK', $reply);
+}
 if (!preg_match('/^RESULT: (OK|NULL|NOTFOUND|INVALID)\n(?:BODY: ([\s\S]*))?$/D', $reply, $match)) {
     respond(502, 'ERROR', 'Invalid backend response');
 }

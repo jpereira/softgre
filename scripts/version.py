@@ -43,9 +43,11 @@ def bump(root, requested):
     path = root / "debian/changelog"
     previous = path.read_text()
     date = format_datetime(datetime.now(timezone.utc))
-    stanza = (f"softgred ({requested}-1) unstable; urgency=medium\n\n"
-              f"  * Release {requested}.\n\n"
-              f" -- Jorge Pereira <jpereiran@gmail.com>  {date}\n\n")
+    stanza = (
+        f"softgred ({requested}-1) unstable; urgency=medium\n\n"
+        f"  * Release {requested}.\n\n"
+        f" -- Jorge Pereira <jpereiran@gmail.com>  {date}\n\n"
+    )
     documents = []
     for relative in ("README.md", "docs/en_US/index.md"):
         document = root / relative
@@ -69,8 +71,12 @@ def check(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("version", nargs="?", default="patch",
-                        help="major, minor, patch (default), or an explicit X.Y.Z")
+    parser.add_argument(
+        "version",
+        nargs="?",
+        default="patch",
+        help="major, minor, patch (default), or an explicit X.Y.Z",
+    )
     parser.add_argument("--check", action="store_true", help="Validate version consistency")
     args = parser.parse_args()
     try:

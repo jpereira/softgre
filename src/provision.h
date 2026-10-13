@@ -20,6 +20,7 @@
 #define PROVISION_H
 #include "general.h"
 #include "payload.h"
+
 struct tunnel_context {
     struct in_addr ip_remote;
     char ifgre[IFNAMSIZ];
@@ -27,6 +28,7 @@ struct tunnel_context {
     bool ready, firewall_in, firewall_out;
     GHashTable *macs;
 };
+
 int provision_init(void);
 void provision_packet(const struct payload_packet *packet);
 struct tunnel_context *provision_add(const struct in_addr *remote);

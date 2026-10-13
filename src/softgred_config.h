@@ -19,7 +19,12 @@
 #ifndef SOFTGRED_CONFIG_H
 #define SOFTGRED_CONFIG_H
 #include "general.h"
-struct tunnel_bridge { char ifname[IFNAMSIZ]; uint16_t vlan_id; };
+
+struct tunnel_bridge {
+    char ifname[IFNAMSIZ];
+    uint16_t vlan_id;
+};
+
 struct softgred_config {
     char *config_file, *ifname, *tunnel_prefix, *pid_file;
     char *log_file, *dbg_file, *srv_bind_in;

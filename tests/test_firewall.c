@@ -1,7 +1,9 @@
-#include "iface_ebtables.h"
 #include "helper.h"
+#include "iface_ebtables.h"
+
 static unsigned calls, fail_call;
 static GPtrArray *commands;
+
 int helper_exec(const char *const argv[])
 {
     char *command = g_strjoinv(" ", (char **)argv);
@@ -9,6 +11,7 @@ int helper_exec(const char *const argv[])
     calls++;
     return calls == fail_call ? -1 : 0;
 }
+
 static void test_isolation(void)
 {
     commands = g_ptr_array_new_with_free_func(g_free);
@@ -16,20 +19,23 @@ static void test_isolation(void)
     bool in = false, out = false;
     fail_call = calls + 2;
     g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &in, &out), ==, -1);
-    g_assert_true(in); g_assert_false(out);
+    g_assert_true(in);
+    g_assert_false(out);
     fail_call = 0;
     g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, 0);
-    g_assert_false(in); g_assert_false(out);
+    g_assert_false(in);
+    g_assert_false(out);
     g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &in, &out), ==, 0);
     g_assert_cmpint(iface_ebtables_allow("sgre0", "02:00:00:00:00:42"), ==, 0);
     fail_call = calls + 2;
     g_assert_cmpint(iface_ebtables_allow("sgre0", "02:00:00:00:00:43"), ==, -1);
     g_assert_nonnull(strstr(g_ptr_array_index(commands, commands->len - 1),
-                           "-D SOFTGRE_IN -i sgre0.+ -s 02:00:00:00:00:43"));
+                            "-D SOFTGRE_IN -i sgre0.+ -s 02:00:00:00:00:43"));
     fail_call = 0;
     fail_call = calls + 1;
     g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, -1);
-    g_assert_true(in); g_assert_false(out);
+    g_assert_true(in);
+    g_assert_false(out);
     fail_call = 0;
     g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, 0);
     unsigned before = calls;
@@ -48,6 +54,7 @@ static void test_isolation(void)
     }
     g_ptr_array_free(commands, true);
 }
+
 int main(int argc, char **argv)
 {
     g_test_init(&argc, &argv, NULL);

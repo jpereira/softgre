@@ -61,8 +61,9 @@ class WebTestCases:
             reserve.bind(("127.0.0.1", 0))
             cls.http_port = reserve.getsockname()[1]
         env = dict(os.environ, SOFTGRE_API_PORT=str(cls.port))
-        cls.process = subprocess.Popen(cls.server_command(), env=env,
-                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cls.process = subprocess.Popen(
+            cls.server_command(), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         for _ in range(100):
             try:
                 with socket.create_connection(("127.0.0.1", cls.http_port), timeout=0.1):
@@ -105,8 +106,13 @@ class WebTestCases:
         self.assertIn("HELP", result["body"])
 
     def test_invalid_input(self):
-        for params in ("action=unknown", "action[]=status", "action=ues&arg=999.1.1.1",
-                       "action=cpe&arg=bad", "action=ues&arg=192.0.2.1%0ASTUN"):
+        for params in (
+            "action=unknown",
+            "action[]=status",
+            "action=ues&arg=999.1.1.1",
+            "action=cpe&arg=bad",
+            "action=ues&arg=192.0.2.1%0ASTUN",
+        ):
             status, result = self.request(params)
             self.assertEqual(status, 400)
             self.assertEqual(result["status"], "INVALID")
@@ -118,15 +124,18 @@ class WebTestCases:
 class PHPWebTests(WebTestCases, unittest.TestCase):
     @classmethod
     def server_command(cls):
-        return ["php", "-S", f"127.0.0.1:{cls.http_port}",
-                "-t", str(ROOT / "share/webinterface")]
+        return ["php", "-S", f"127.0.0.1:{cls.http_port}", "-t", str(ROOT / "share/webinterface")]
 
 
 class PythonWebTests(WebTestCases, unittest.TestCase):
     @classmethod
     def server_command(cls):
-        return [sys.executable, str(ROOT / "share/webinterface/server.py"),
-                "--port", str(cls.http_port)]
+        return [
+            sys.executable,
+            str(ROOT / "share/webinterface/server.py"),
+            "--port",
+            str(cls.http_port),
+        ]
 
     def test_static_assets_and_isolation(self):
         for path in ("/", "/index.html", "/dashboard.css", "/dashboard.js"):
@@ -149,17 +158,23 @@ class PythonWebTests(WebTestCases, unittest.TestCase):
         status, result = self.request("action=overview")
         self.assertEqual(status, 200)
         self.assertEqual(result["tunnel_count"], 1)
-        self.assertEqual(result["tunnels"], [{"remote": "192.0.2.2", "interface": "sgre0",
-                                            "macs": ["02:00:00:00:00:42"]}])
+        self.assertEqual(
+            result["tunnels"],
+            [{"remote": "192.0.2.2", "interface": "sgre0", "macs": ["02:00:00:00:00:42"]}],
+        )
         self.assertFalse(result["truncated"])
         self.assertTrue(any(link["name"] == "lo" for link in result["interfaces"]))
-        self.assertTrue(all(isinstance(link["rx_packets"], int)
-                            for link in result["interfaces"]))
+        self.assertTrue(all(isinstance(link["rx_packets"], int) for link in result["interfaces"]))
 
     def test_strict_input(self):
-        for params in ("action=status&action=help", "action=status&arg=x", "extra=x",
-                       "action=status&arg=&extra=x", "action=cpe&arg=02:00:00:00:00:42%0A",
-                       "action=ues&arg=192.0.2.002"):
+        for params in (
+            "action=status&action=help",
+            "action=status&arg=x",
+            "extra=x",
+            "action=status&arg=&extra=x",
+            "action=cpe&arg=02:00:00:00:00:42%0A",
+            "action=ues&arg=192.0.2.002",
+        ):
             status, _ = self.request(params)
             self.assertEqual(status, 400)
         for method in ("HEAD", "TRACE", "PROPFIND"):
@@ -219,13 +234,18 @@ class BackendTests(unittest.TestCase):
 
     def test_backend_statuses(self):
         for status in ("OK", "NULL", "NOTFOUND", "INVALID"):
-            self.assertEqual(self.query_reply(f"RESULT: {status}\n".encode()),
-                             {"status": status, "body": ""})
+            self.assertEqual(
+                self.query_reply(f"RESULT: {status}\n".encode()), {"status": status, "body": ""}
+            )
         self.assertEqual(self.query_reply(b"RESULT: OK\nBODY: a\nb\n")["body"], "a\nb")
 
     def test_backend_failures(self):
-        for reply in (b"", b"RESULT: UNKNOWN\n", b"RESULT: OK\nBODY: \xff",
-                      b"x" * (web.MAX_RESPONSE + 1)):
+        for reply in (
+            b"",
+            b"RESULT: UNKNOWN\n",
+            b"RESULT: OK\nBODY: \xff",
+            b"x" * (web.MAX_RESPONSE + 1),
+        ):
             with self.assertRaises(web.AdapterError) as raised:
                 self.query_reply(reply)
             self.assertEqual(raised.exception.code, 502)
@@ -258,18 +278,23 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(len(deadlines), 66)
         self.assertEqual(len(set(deadlines)), 1)
         for malformed in ("bad@sgre0", "192.0.2.2@../../etc", "192.0.2.2"):
-            responses = [{"status": "OK", "body": "status"},
-                         {"status": "OK", "body": malformed}]
+            responses = [{"status": "OK", "body": "status"}, {"status": "OK", "body": malformed}]
             with patch.object(web, "backend_query", side_effect=responses):
                 with self.assertRaises(web.AdapterError) as raised:
                     web.overview(("127.0.0.1", 8888))
                 self.assertEqual(raised.exception.code, 502)
 
     def test_invalid_configuration(self):
-        for arguments in (["--port", "0"], ["--port", "65536"],
-                          ["--api-host", "example.com"], ["--bind", "::1"]):
-            result = subprocess.run([sys.executable, str(ROOT / "share/webinterface/server.py"),
-                                     *arguments], capture_output=True)
+        for arguments in (
+            ["--port", "0"],
+            ["--port", "65536"],
+            ["--api-host", "example.com"],
+            ["--bind", "::1"],
+        ):
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "share/webinterface/server.py"), *arguments],
+                capture_output=True,
+            )
             self.assertEqual(result.returncode, 2)
 
 

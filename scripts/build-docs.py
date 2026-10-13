@@ -9,13 +9,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = {
     "en_US": {
-        "lang": "en-US", "label": "English",
+        "lang": "en-US",
+        "label": "English",
         "eyebrow": "LINUX NETWORKING / DYNAMIC GRE",
         "title": "Tunnels on demand.\nLinux in control.",
         "intro": "Discover GRE peers, connect VLANs to bridges and let the kernel forward traffic.",
-        "search": "Search documentation", "contents": "In this guide", "copy": "Copy",
-        "copied": "Copied", "empty": "No sections found.", "guide": "Complete guide",
-        "source": "Source code", "footer": "Project documentation · LGPL-3.0-or-later",
+        "search": "Search documentation",
+        "contents": "In this guide",
+        "copy": "Copy",
+        "copied": "Copied",
+        "empty": "No sections found.",
+        "guide": "Complete guide",
+        "source": "Source code",
+        "footer": "Project documentation · LGPL-3.0-or-later",
         "nodes": ["GRE peer", "SoftGRE", "Linux bridge"],
         "detail": "IPv4 + Ethernet + VLAN → discovery → gretap + VLAN → kernel forwarding",
     },
@@ -32,7 +38,7 @@ def inline(text):
     pattern = r"`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)"
     output, offset = [], 0
     for match in re.finditer(pattern, text):
-        output.append(html.escape(text[offset:match.start()]))
+        output.append(html.escape(text[offset : match.start()]))
         if match.group(1) is not None:
             output.append(f"<code>{html.escape(match.group(1))}</code>")
         else:
@@ -72,8 +78,10 @@ def render(markdown, labels):
                 raise ValueError(f"Duplicate section: {title}")
             ids.add(anchor)
             toc.append((anchor, title))
-            current = [f'<section class="doc-section" id="{anchor}">',
-                       f'<h2><a href="#{anchor}">{html.escape(title)}</a></h2>']
+            current = [
+                f'<section class="doc-section" id="{anchor}">',
+                f'<h2><a href="#{anchor}">{html.escape(title)}</a></h2>',
+            ]
         elif line.startswith("### "):
             flush()
             title = line[4:]
@@ -92,10 +100,12 @@ def render(markdown, labels):
                 index += 1
             if index == len(lines):
                 raise ValueError("Unclosed code fence")
-            current.append('<div class="code-block">'
-                           f'<div class="code-bar"><span>{html.escape(language or "text")}</span>'
-                           f'<button type="button" class="copy">{labels["copy"]}</button></div>'
-                           f'<pre><code>{html.escape(chr(10).join(code))}</code></pre></div>')
+            current.append(
+                '<div class="code-block">'
+                f'<div class="code-bar"><span>{html.escape(language or "text")}</span>'
+                f'<button type="button" class="copy">{labels["copy"]}</button></div>'
+                f"<pre><code>{html.escape(chr(10).join(code))}</code></pre></div>"
+            )
         elif line.startswith("| "):
             flush()
             rows = []
@@ -107,10 +117,13 @@ def render(markdown, labels):
             if not rows:
                 raise ValueError("Empty table")
             header = "".join(f'<th scope="col">{inline(cell)}</th>' for cell in rows[0])
-            body = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in row) + "</tr>"
-                           for row in rows[1:])
-            current.append(f'<div class="table-wrap"><table><thead><tr>{header}</tr></thead>'
-                           f'<tbody>{body}</tbody></table></div>')
+            body = "".join(
+                "<tr>" + "".join(f"<td>{inline(c)}</td>" for c in row) + "</tr>" for row in rows[1:]
+            )
+            current.append(
+                f'<div class="table-wrap"><table><thead><tr>{header}</tr></thead>'
+                f"<tbody>{body}</tbody></table></div>"
+            )
             continue
         elif line.startswith("- "):
             flush()
@@ -142,11 +155,12 @@ def page(locale, markdown, prefix="../"):
     article, toc = render(markdown, labels)
     nav = "".join(f'<a href="#{anchor}">{html.escape(title)}</a>' for anchor, title in toc)
     nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
-        f'<span class="node">{name}</span>' for name in labels["nodes"])
+        f'<span class="node">{name}</span>' for name in labels["nodes"]
+    )
     dark_label = "Dark theme"
     light_label = "Light theme"
     title = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
-    return f'''<!doctype html>
+    return f"""<!doctype html>
 <html lang="{labels['lang']}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -179,7 +193,7 @@ data-dark="{dark_label}" data-light="{light_label}" hidden>{dark_label}</button>
 <p class="empty" role="status" hidden>{labels['empty']}</p>{article}</main></div>
 <footer>{labels['footer']}<a href="https://github.com/jpereira/softgre">GitHub →</a>
 </footer></div></body></html>
-'''
+"""
 
 
 def build(output=None):

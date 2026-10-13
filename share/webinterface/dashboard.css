@@ -1,15 +1,78 @@
-body { margin: 0; color: #d9e4e8; background: #0b1117; font: 16px/1.7 system-ui; }
-main { max-width: 850px; margin: 3rem auto; padding: 1.5rem; }
-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-h1 { margin: 0; } h1 span, a { color: #8ee6bd; } a { text-decoration: none; }
-form { display: grid; gap: .7rem; margin: 2rem 0; max-width: 500px; }
-input, select, button { font: inherit; padding: .6rem; color: inherit; background: #101922;
-  border: 1px solid #344651; border-radius: 4px; }
-button { cursor: pointer; color: #8ee6bd; }
-pre { padding: 1.2rem; border: 1px solid #344651; overflow: auto; min-height: 5rem; }
-:focus-visible { outline: 2px solid #8ee6bd; outline-offset: 3px; }
+body {
+  margin: 0;
+  color: #d9e4e8;
+  background: #0b1117;
+  font: 16px/1.7 system-ui;
+}
+main {
+  max-width: 850px;
+  margin: 3rem auto;
+  padding: 1.5rem;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+h1 {
+  margin: 0;
+}
+h1 span,
+a {
+  color: #8ee6bd;
+}
+a {
+  text-decoration: none;
+}
+form {
+  display: grid;
+  gap: 0.7rem;
+  margin: 2rem 0;
+  max-width: 500px;
+}
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.6rem;
+  color: inherit;
+  background: #101922;
+  border: 1px solid #344651;
+  border-radius: 4px;
+}
+button {
+  cursor: pointer;
+  color: #8ee6bd;
+}
+pre {
+  padding: 1.2rem;
+  border: 1px solid #344651;
+  overflow: auto;
+  min-height: 5rem;
+}
+:focus-visible {
+  outline: 2px solid #8ee6bd;
+  outline-offset: 3px;
+}
 
-.table { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-th, td { padding: .6rem; text-align: left; border-bottom: 1px solid #344651; }
-td { overflow-wrap: anywhere; } h2 { margin-top: 2rem; }
+.table {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+th,
+td {
+  padding: 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #344651;
+}
+td {
+  overflow-wrap: anywhere;
+}
+h2 {
+  margin-top: 2rem;
+}

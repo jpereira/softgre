@@ -19,6 +19,7 @@
 #ifndef HELPER_H
 #define HELPER_H
 #include "general.h"
+
 int helper_exec(const char *const argv[]);
 void helper_print_payload(const unsigned char *data, size_t len);
 #endif

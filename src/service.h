@@ -19,6 +19,7 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 #include "general.h"
+
 #define SERVICE_MAX_CLIENTS 128
 int service_init(void);
 unsigned service_pollfds(struct pollfd *fds);

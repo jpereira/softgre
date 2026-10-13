@@ -19,6 +19,7 @@
 #ifndef IFACE_BRIDGE_H
 #define IFACE_BRIDGE_H
 #include "general.h"
+
 int iface_bridge_prepare(const char *name, bool create);
 int iface_bridge_attach(const char *gre, const char *bridge, uint16_t vlan);
 #endif

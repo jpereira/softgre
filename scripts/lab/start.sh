@@ -13,7 +13,7 @@ fi
 ip link set sg-test-in up
 ip link set sg-test-peer up
 mkdir -p /run/softgre-lab
-cat > /run/softgre-lab/softgred.conf <<'CONF'
+cat >/run/softgre-lab/softgred.conf <<'CONF'
 [global]
 interface=sg-test-in
 tunnel-prefix=sgre

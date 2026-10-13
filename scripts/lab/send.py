@@ -29,26 +29,36 @@ def main():
     mac = bytes.fromhex(args.mac.replace(":", ""))
     if mac[0] & 1 or not any(mac):
         parser.error("Expected a nonzero unicast source MAC")
-    clients = [(str(args.remote), mac, args.vlan)] if args.remote else [
-        ("192.0.2.2", bytes.fromhex("020000000042"), 1000),
-        ("192.0.2.2", bytes.fromhex("020000000043"), 10),
-        ("192.0.2.3", bytes.fromhex("020000000044"), 1000)]
+    clients = (
+        [(str(args.remote), mac, args.vlan)]
+        if args.remote
+        else [
+            ("192.0.2.2", bytes.fromhex("020000000042"), 1000),
+            ("192.0.2.2", bytes.fromhex("020000000043"), 10),
+            ("192.0.2.3", bytes.fromhex("020000000044"), 1000),
+        ]
+    )
     with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3)) as raw:
         raw.bind(("sg-test-peer", 0))
         for remote, source, vlan in clients:
             for _ in range(args.count):
                 raw.send(frame(remote=remote, mac=source, vlan=vlan))
                 time.sleep(args.interval)
-            print(f"Sent {args.count} GRE packets: remote={remote} VLAN={vlan} "
-                  f"MAC={source.hex(':')}", flush=True)
+            print(
+                f"Sent {args.count} GRE packets: remote={remote} VLAN={vlan} "
+                f"MAC={source.hex(':')}",
+                flush=True,
+            )
     deadline = time.monotonic() + 8
     while time.monotonic() < deadline:
         url = "http://127.0.0.1:8080/api?action=overview"
         with urllib.request.urlopen(url, timeout=6) as reply:
             snapshot = json.load(reply)
         learned = {t["remote"]: t for t in snapshot["tunnels"]}
-        if all(remote in learned and source.hex(':') in learned[remote]["macs"]
-               for remote, source, _ in clients):
+        if all(
+            remote in learned and source.hex(":") in learned[remote]["macs"]
+            for remote, source, _ in clients
+        ):
             break
         time.sleep(0.1)
     else:

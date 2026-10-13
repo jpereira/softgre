@@ -19,6 +19,7 @@
 #ifndef SOFTGRED_LOG_H
 #define SOFTGRED_LOG_H
 #include "general.h"
+
 int log_open(const char *path);
 void log_close(void);
 void log_message(int level, const char *format, ...) G_GNUC_PRINTF(2, 3);

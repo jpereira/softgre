@@ -18,3 +18,5 @@ EXTRA_DIST += Dockerfile.lab scripts/lab/start.sh scripts/lab/status.sh \
 EXTRA_DIST += scripts/check-lab.sh
 EXTRA_DIST += docs/assets/softgre-logo.svg docs/assets/theme.js
 EXTRA_DIST += tests/test_log.c share/softgred.logrotate debian/softgred.logrotate
+EXTRA_DIST += .clang-format .prettierrc.json Dockerfile.format scripts/format-code.sh \
+    scripts/format-includes.py
