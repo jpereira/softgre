@@ -27,5 +27,5 @@ python3 tests/test_docs.py
 ```
 
 The full Linux validation script also needs Clang and Python. See the guides for configuration,
-systemd, containers, optional PHP dashboard, integration tests, protocol limits and performance.
+systemd, containers, optional Python/PHP dashboard, integration tests, protocol limits and performance.
 Licensed under LGPL-3.0-or-later; see [LICENSE](LICENSE) and [COPYING](COPYING).

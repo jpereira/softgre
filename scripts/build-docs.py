@@ -85,6 +85,14 @@ def render(markdown, labels):
             toc.append((anchor, title))
             current = [f'<section class="doc-section" id="{anchor}">',
                        f'<h2><a href="#{anchor}">{html.escape(title)}</a></h2>']
+        elif line.startswith("### "):
+            flush()
+            title = line[4:]
+            anchor = slug(title)
+            if anchor in ids:
+                raise ValueError(f"Duplicate heading: {title}")
+            ids.add(anchor)
+            current.append(f'<h3 id="{anchor}">{html.escape(title)}</h3>')
         elif line.startswith("```"):
             flush()
             language = line[3:]

@@ -85,6 +85,11 @@ class DocsTests(unittest.TestCase):
             builder.render("## A\n\n## A\n", labels)
         with self.assertRaises(ValueError):
             builder.inline("[bad](javascript:alert)")
+        article, _ = builder.render("## A\n\n### Detail\n\n```sh\npython3 server.py\n```", labels)
+        self.assertIn('<h3 id="detail">Detail</h3>', article)
+        self.assertIn("python3 server.py", article)
+        with self.assertRaises(ValueError):
+            builder.render("## A\n\n### A\n", labels)
         self.assertIn('href="https://example.com"', builder.inline("[ok](https://example.com)"))
 
 

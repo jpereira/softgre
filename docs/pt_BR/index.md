@@ -166,29 +166,91 @@ Respostas bem-sucedidas incluem `RESULT: OK` e uma linha `BODY:`. Comandos ou ar
 inválidos retornam `RESULT: INVALID`. Consultas MAC aceitam seis octetos hexadecimais
 separados por dois pontos, inclusive letras maiúsculas. LMIP ordena MACs
 lexicograficamente; a ordem de STUN é indefinida. Uptime usa segundos; `início` é o
-timestamp Unix do carregamento da configuração. A interface PHP opcional encaminha esses
+timestamp Unix do carregamento da configuração. A interface web opcional encaminha esses
 comandos de consulta e oferece um dashboard simples sem dependências de frontend.
 
-## Dashboard PHP opcional
+## Dashboard Python e PHP
 
-Compile com `--enable-web` para instalar o dashboard de consulta em
-`/usr/share/softgred/webinterface` com prefixo `/usr`. Sirva esse diretório com PHP 8.1 ou
-mais recente em uma rede de gerência confiável. Os assets são estáticos e não exigem build
-Node. O adaptador usa as variáveis `SOFTGRE_API_HOST` e `SOFTGRE_API_PORT`, com padrão
-`127.0.0.1:8888`. O host deve ser um IPv4 literal e a porta deve estar em `1..65535`.
+O mesmo `index.html` usa qualquer um dos adaptadores. Python 3.9+ serve os assets estáticos
+e o adaptador TCP sem dependências externas. Execute no diretório do código-fonte:
+
+```sh
+python3 share/webinterface/server.py --bind 0.0.0.0 --port 8080
+```
+
+Abra `http://IP_DO_SERVIDOR:8080/index.html` no navegador. Abra a página pelo servidor
+Python, em vez de `file://`; as consultas usam a mesma origem HTTP. `--bind` aceita um
+IPv4 literal. O padrão avulso é `127.0.0.1`; `0.0.0.0` escuta em todas as interfaces IPv4.
+`--api-host` e `--api-port` selecionam a API TCP do daemon, com padrão `127.0.0.1:8888`.
+As variáveis de ambiente são `SOFTGRE_WEB_BIND`, `SOFTGRE_WEB_PORT`, `SOFTGRE_API_HOST` e
+`SOFTGRE_API_PORT`. A API TCP do daemon precisa estar habilitada.
+
+O dashboard Python atualiza a cada cinco segundos. Mostra túneis, MACs aprendidos,
+interfaces, ligação às bridges e contadores RX/TX de pacotes do kernel. Os contadores são
+das interfaces e incluem todo seu tráfego; não contam apenas pacotes GRE validados. A
+visão mostra até 64 túneis e 128 interfaces, com aviso quando há túneis omitidos. Nomes e
+contadores vêm do namespace de rede do servidor Python. Mantenha-o no namespace do daemon
+para ver suas interfaces. As rotas HTTP `/api` e `/api.php` retornam JSON; `api.php` é uma
+rota de compatibilidade, sem executar PHP.
+
+O adaptador valida IP/MAC, aceita consultas GET de leitura, conecta em até dois segundos
+e limita respostas do backend a 1 MiB. A visão completa tem prazo de cinco segundos para
+consultar o backend. Conexões HTTP duram até dez segundos e o servidor aceita até 16
+conexões ativas. Requisições inválidas retornam 400, métodos não suportados 405, backend
+indisponível ou malformado 502, timeout do backend 504 e excesso de conexões 503. As rotas
+estáticas servem apenas HTML, JavaScript e CSS; não expõem código-fonte ou listagens de
+diretórios. Os adaptadores não fornecem autenticação. Para acesso externo, use uma rede
+de gerência confiável ou um proxy reverso com controle de acesso.
+
+### Instalar e iniciar junto ao softgred
+
+Os builds do pacote Debian/Ubuntu incluem os dois adaptadores e recomenda Python. A instalação pelo
+código-fonte exige `--enable-web`; o build padrão do daemon/container omite o dashboard:
 
 ```sh
 ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-web
 make -j2
 sudo make install
+sudo install -m 644 share/softgred.service /etc/systemd/system/softgred.service
+sudo install -m 644 share/softgred-web.service /etc/systemd/system/softgred-web.service
+sudo systemctl daemon-reload
+```
+
+Para uma instalação por pacote, instale Python e habilite o serviço opcional:
+
+```sh
+sudo apt-get install python3
+sudo systemctl enable --now softgred-web.service
+```
+
+Configure `softgred` primeiro. Habilitar o serviço do painel também inicia o daemon.
+As próximas inicializações de `softgred` iniciam o dashboard; paradas e reinicializações
+se propagam para ele. Desabilitar o serviço remove a inicialização automática. O painel
+usa um usuário dinâmico sem privilégios e escuta em `0.0.0.0:8080`. Selecione o IP
+principal ou outra porta da API com:
+
+```sh
+sudo tee /etc/default/softgred-web <<'CONF'
+SOFTGRE_WEB_BIND=192.168.1.253
+SOFTGRE_WEB_PORT=8080
+SOFTGRE_API_HOST=127.0.0.1
+SOFTGRE_API_PORT=8888
+CONF
+sudo systemctl restart softgred-web.service
+sudo journalctl -u softgred -u softgred-web -f
+```
+
+### Alternativa PHP
+
+Sirva o mesmo diretório com PHP 8.1+. As consultas por comando ficam disponíveis; a
+visão automática de interfaces exige Python:
+
+```sh
 php -S 127.0.0.1:8080 -t /usr/share/softgred/webinterface
 ```
 
-O servidor de desenvolvimento PHP serve para preview local. Em produção, configure PHP-FPM
-com seu servidor web e restrinja o acesso. O adaptador aceita apenas GET, valida
-argumentos IP/MAC e envia comandos terminados por nova linha. O timeout de conexão é dois
-segundos, o prazo de resposta é cinco segundos e as respostas têm limite de 1 MiB. O JSON
-contém os campos `status` e `body`.
+O servidor de desenvolvimento PHP serve para preview local. Para uma implantação gerida,
+use PHP-FPM com seu servidor web. Os dois adaptadores oferecem as seguintes consultas:
 
 | Endpoint | Comando TCP |
 | --- | --- |
@@ -199,11 +261,110 @@ contém os campos `status` e `body`.
 | `api.php?action=version` | `VERS` |
 | `api.php?action=help` | `HELP` |
 
-Requisições inválidas retornam HTTP 400, métodos não suportados 405, falhas do backend 502
-e timeouts de resposta 504. O dashboard renderiza texto, nunca HTML. Dashboard e adaptador
-não fornecem autenticação. Os builds padrão do daemon, pacote e container não instalam o
-dashboard. `--enable-web` exige a API TCP habilitada. Execute `python3 tests/test_web.py`
-com PHP instalado para testar o adaptador com backend simulado e conexões HTTP reais.
+Execute `python3 tests/test_web.py` para testar conexões HTTP reais, enquadramento e erros
+do backend, limites e a visão Python. Os testes de compatibilidade PHP rodam quando PHP
+está instalado.
+
+## How-to: laboratório Ubuntu 24.04 e dashboard ao vivo
+
+O laboratório roda em um namespace de rede Docker. Cria interfaces veth e bridges de
+teste sem mudar a rede do host homelab. Exige `NET_ADMIN` e `NET_RAW`, sem modo
+privilegiado ou rede do host. Use Docker em Linux. Com o contexto `homelab` configurado,
+execute no diretório do código-fonte:
+
+```sh
+docker --context homelab build -f Dockerfile.lab -t softgre-lab:ubuntu24.04 .
+docker --context homelab run -d --name test-softgre --restart unless-stopped --cap-add NET_ADMIN --cap-add NET_RAW -p 192.168.1.253:8080:8080 softgre-lab:ubuntu24.04
+```
+
+Troque `192.168.1.253` pelo IPv4 principal do host Docker. A porta 8080 deve estar livre.
+Não reutilize um nome de contêiner de outra aplicação. O contexto remoto transfere os
+arquivos do build; não exige bind mount do workspace. Com Docker local em Linux, omita
+`--context homelab`. A imagem Ubuntu 24.04 compila o daemon, inclui os dois adaptadores e
+roda Python sem root. O entrypoint inicia daemon e dashboard juntos, espera a saída de
+um deles e encerra o processo restante. Reiniciar o contêiner recria o aprendizado vazio.
+
+A veth de captura é `sg-test-in`, com IPv4 local `192.0.2.1/24`. Os frames entram por
+`sg-test-peer`. VLAN 1000 vai para `br-radius`; VLAN 10 vai para `br-hotspot`. A API TCP
+escuta na loopback do contêiner, porta 8888. Python escuta na porta 8080 do contêiner e
+Docker a publica no IP principal do host. Inicialmente não há túneis aprendidos.
+
+### 1. Abrir o dashboard
+
+Abra `http://192.168.1.253:8080/index.html` e mantenha a página aberta.
+
+### 2. Inspecionar o estado inicial e acompanhar os logs
+
+```sh
+docker --context homelab exec test-softgre /opt/softgre-lab/status.sh
+docker --context homelab logs -f test-softgre
+```
+
+### 3. Injetar pacotes GRE
+
+Em outro terminal, injete frames GRE Ethernet reais na interface de captura:
+
+```sh
+docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+```
+
+O script envia cinco pacotes para cada um de três clientes: dois MACs no remoto
+`192.0.2.2` e um em `192.0.2.3`. Espera o aprendizado, consulta o JSON do dashboard e
+confere a bridge de cada interface VLAN com `ip -j -d link`. Repeti-lo mantém os clientes
+aprendidos e aumenta os contadores de pacotes.
+
+### 4. Ver túneis, MACs e bridges
+
+O dashboard mostra dois túneis, três MACs, `sgre0.1000` em `br-radius` e `sgre0.10` em
+`br-hotspot`. O segundo túnel também tem as duas interfaces VLAN configuradas. Os nomes
+dependem dos slots de túnel livres. Confira o estado do kernel diretamente:
+
+```sh
+docker --context homelab exec test-softgre ip -d link show type gretap
+docker --context homelab exec test-softgre bridge link show
+docker --context homelab exec test-softgre /opt/softgre-lab/status.sh
+```
+
+### 5. Adicionar outro remoto
+
+```sh
+docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.2.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
+```
+
+### 6. Limpar o aprendizado e testar de novo
+
+Use o sinal suportado pelo daemon e injete novamente:
+
+```sh
+docker --context homelab exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
+docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+```
+
+Todos os containers do projeto incluem `brctl`, `ifconfig`, `netstat`, `htop`, `vim`,
+`strace` e `lsof`. Inspecione o laboratório ao vivo com:
+
+```sh
+docker --context homelab exec test-softgre brctl show
+docker --context homelab exec test-softgre ifconfig -a
+docker --context homelab exec test-softgre netstat -lntp
+docker --context homelab exec test-softgre lsof -i
+docker --context homelab exec -it test-softgre htop
+```
+
+Para testar provisionamento, dashboard e reinicialização, use outro laboratório temporário:
+
+```sh
+DOCKER_CONTEXT=homelab scripts/check-lab.sh
+```
+
+Os exemplos testam provisionamento real e ligação às bridges. Os peers injetados são
+sintéticos; o laboratório não cria um roteador remoto separado ou um serviço LAN completo.
+Use a suíte de integração para conferir também o caminho de broadcast da bridge para o
+GRE. O laboratório é persistente para manter o painel disponível. Encerre quando terminar:
+
+```sh
+docker --context homelab stop test-softgre
+```
 
 ## Firewall e modelo de confiança
 
