@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SoftGRE status</title><link rel="stylesheet" href="dashboard.css">
+<script src="dashboard.js" defer></script></head>
+<body><main><header><h1>SoftGRE <span>status</span></h1>
+<a href="https://jpereira.github.io/softgre/">Documentation ↗</a></header>
+<p>Read-only GRE tunnel and client information.</p>
+<form id="query"><label for="action">Query</label><select id="action">
+<option value="status">System status</option><option value="tunnels">Tunnels</option>
+<option value="ues">MACs by remote IPv4</option><option value="cpe">Tunnel by MAC</option>
+<option value="version">Version</option><option value="help">Help</option></select>
+<label for="arg">IPv4 / MAC (when required)</label><input id="arg" autocomplete="off">
+<button type="submit">Refresh</button></form>
+<p id="state" role="status">Ready</p><pre id="result" aria-label="Query response"></pre>
+</main></body></html>
