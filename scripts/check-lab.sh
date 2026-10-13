@@ -1,5 +1,5 @@
 #!/bin/sh
-# Use DOCKER_CONTEXT=homelab for remote Linux validation; never reuse the persistent demo.
+# Run against a Linux Docker engine; never reuse the persistent demo.
 set -eu
 name=softgre-lab-ci
 started=false
