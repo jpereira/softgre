@@ -20,3 +20,4 @@ EXTRA_DIST += docs/assets/softgre-logo.svg docs/assets/theme.js
 EXTRA_DIST += tests/test_log.c share/softgred.logrotate debian/softgred.logrotate
 EXTRA_DIST += .clang-format .prettierrc.json docker/Dockerfile.format scripts/format-code.sh \
     scripts/format-includes.py
+EXTRA_DIST += scripts/run-services.py

@@ -1,6 +1,6 @@
 [Unit]
 Description=Dynamic GRE Ethernet provisioning
-Wants=network-online.target
+Wants=network-online.target softgred-web.service
 After=network-online.target
 
 [Service]

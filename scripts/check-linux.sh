@@ -15,7 +15,7 @@ for mode in gcc clang sanitize minimal; do
         sanitize) "$src/configure" CC=clang \
             CFLAGS='-O1 -g -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' \
             LDFLAGS='-fsanitize=address,undefined' ;;
-        minimal) "$src/configure" --disable-service CFLAGS='-O2 -Werror' ;;
+        minimal) "$src/configure" --disable-service --disable-web CFLAGS='-O2 -Werror' ;;
     esac
     make -j2
     make check
