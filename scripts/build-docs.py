@@ -154,6 +154,8 @@ def page(locale, markdown):
     nav = "".join(f'<a href="#{anchor}">{html.escape(title)}</a>' for anchor, title in toc)
     nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
         f'<span class="node">{name}</span>' for name in labels["nodes"])
+    dark_label = "Tema escuro" if locale == "pt_BR" else "Dark theme"
+    light_label = "Tema claro" if locale == "pt_BR" else "Light theme"
     title = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
     return f'''<!doctype html>
 <html lang="{labels['lang']}">
@@ -161,15 +163,19 @@ def page(locale, markdown):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{html.escape(labels['intro'])}">
 <title>SoftGRE · {labels['label']}</title>
+<link rel="icon" type="image/svg+xml" href="../assets/softgre-logo.svg">
 <link rel="stylesheet" href="../assets/site.css">
 <script src="../assets/site.js" defer></script>
 </head>
 <body data-copy="{labels['copy']}" data-copied="{labels['copied']}">
 <a class="skip" href="#documentation">{labels['guide']}</a>
-<header class="topbar"><a class="brand" href="../index.html"><span>◈</span> SoftGRE</a>
+<header class="topbar"><a class="brand" href="../index.html">
+<img class="brand-logo" src="../assets/softgre-logo.svg" alt="" width="42" height="42">
+SoftGRE</a>
 <nav aria-label="Language / Idioma"><a href="../{labels['other']}/index.html"
 lang="{LANGUAGES[labels['other']]['lang']}">{labels['other_label']}</a>
-<a href="https://github.com/jpereira/softgre">GitHub ↗</a></nav></header>
+<a href="https://github.com/jpereira/softgre">GitHub ↗</a>
+</nav></header>
 <div class="shell"><section class="hero">
 <p class="eyebrow">{labels['eyebrow']}</p><h1>{title}</h1><p class="lead">{labels['intro']}</p>
 <div class="badges"><span>Linux</span><span>AF_PACKET + BPF</span><span>Native netlink</span></div>
@@ -203,11 +209,17 @@ def build(output=None):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="SoftGRE Linux GRE documentation in English and Portuguese.">
 <title>SoftGRE · Documentation / Documentação</title>
-<link rel="stylesheet" href="assets/site.css"></head>
-<body><header class="topbar"><a class="brand" href="index.html"><span>◈</span> SoftGRE</a>
-<nav><a href="https://github.com/jpereira/softgre">GitHub ↗</a></nav></header>
+<link rel="icon" type="image/svg+xml" href="assets/softgre-logo.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body><header class="topbar"><a class="brand" href="index.html">
+<img class="brand-logo" src="assets/softgre-logo.svg" alt="" width="42" height="42">
+SoftGRE</a>
+<nav><a href="https://github.com/jpereira/softgre">GitHub ↗</a>
+</nav></header>
 <main class="shell language-home"><p class="eyebrow">LINUX / DYNAMIC GRE</p>
-<h1>SoftGRE<span class="accent">.</span></h1>
+<img class="hero-logo" src="assets/softgre-logo.svg" alt="SoftGRE tunnel logo"
+width="144" height="144"><h1>SoftGRE<span class="accent">.</span></h1>
 <p class="lead">IPv4 GRE discovery. Native Linux networking.</p>
 <p>Documentação completa · Complete documentation</p>
 <div class="language-cards"><a href="pt_BR/index.html" lang="pt-BR"><small>pt_BR</small>

@@ -152,3 +152,7 @@ footer {
   footer { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.brand { display: inline-flex; align-items: center; gap: .6rem; }
+.brand-logo { width: 42px; height: 42px; }
+.hero-logo { width: 144px; height: 144px; display: block; margin-bottom: 1rem; }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <title>SoftGRE</title>
+  <desc>A network packet crosses three rings forming a tunnel.</desc>
+  <g stroke="#0f766e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 22 86 43M40 106 86 85" opacity=".45"/>
+    <ellipse cx="40" cy="64" rx="25" ry="42"/>
+    <ellipse cx="65" cy="64" rx="20" ry="32" opacity=".75"/>
+    <ellipse cx="86" cy="64" rx="14" ry="21" opacity=".5"/>
+  </g>
+  <path d="M7 64h107m-10-10 10 10-10 10" stroke="#16a085" stroke-width="6"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="48" y="56" width="22" height="16" rx="4" fill="#16a085" stroke="#ffffff"
+        stroke-width="3"/>
+</svg>
