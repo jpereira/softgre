@@ -3,6 +3,7 @@ FROM ${BASE}
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential autoconf automake pkg-config libglib2.0-dev debhelper python3 \
     bridge-utils net-tools htop vim strace lsof \
+    systemd systemd-sysv init-system-helpers logrotate \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .

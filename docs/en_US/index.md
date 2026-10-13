@@ -390,8 +390,8 @@ docker --context homelab exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre
 docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
-All project containers include `brctl`, `ifconfig`, `netstat`, `htop`, `vim`, `strace` and
-`lsof`. Inspect the live lab with:
+All project containers include `brctl`, `ifconfig`, `netstat`, `htop`, `vim`, `strace`,
+`lsof`, `systemctl`, `journalctl`, `service` and `logrotate`. Inspect the live lab with:
 
 ```sh
 docker --context homelab exec test-softgre brctl show
@@ -476,6 +476,40 @@ namespace for experiments. The host kernel must support GRE, VLANs, bridges and 
 the container cannot supply missing kernel modules. The production image contains the
 daemon, GLib and ebtables and runs in the foreground. Build and run Docker on Linux; a
 macOS client can target a remote Docker context.
+
+### Restarting the daemon
+
+Install the main unit from `share/softgred.service` after a source build. Package builds
+install it automatically. The unit requires `/usr/sbin/softgred` and the configured
+`/etc/softgred/softgred.conf`; configure the capture interface before starting it:
+
+```sh
+sudo install -m 644 share/softgred.service /etc/systemd/system/softgred.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now softgred.service
+sudo systemctl restart softgred.service
+sudo systemctl status softgred.service
+sudo journalctl -u softgred -f
+```
+
+Stop a manually started instance before enabling its unit, because the daemon's PID
+lock prevents duplicates. `service softgred restart` can delegate to systemd on supported
+hosts. `journalctl` is a log reader, without a restart operation. The enabled web
+companion follows daemon starts, stops and restarts.
+
+The Docker images run the daemon directly or through the lab supervisor. Systemd and
+journald commands are installed, but systemd is not their PID 1. Manage the container
+with Docker instead:
+
+```sh
+docker --context homelab restart test-softgre
+docker --context homelab logs -f test-softgre
+docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+docker --context homelab exec test-softgre python3 /opt/softgre-lab/send.py
+```
+
+Restarting rebuilds the lab interfaces and clears learned tunnels and MACs; inject again
+to populate the dashboard. The log file appends across restarts of the same container.
 
 ## Releases and Debian/Ubuntu packages
 

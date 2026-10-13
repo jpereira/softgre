@@ -2,6 +2,7 @@ FROM ubuntu:24.04 AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential autoconf automake pkg-config libglib2.0-dev \
     bridge-utils net-tools htop vim strace lsof \
+    systemd systemd-sysv init-system-helpers logrotate \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
@@ -11,6 +12,7 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0t64 ebtables iptables iproute2 python3 util-linux \
     bridge-utils net-tools htop vim strace lsof \
+    systemd systemd-sysv init-system-helpers logrotate \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /install/ /
 COPY scripts/lab/ /opt/softgre-lab/

@@ -136,6 +136,40 @@ has no authentication; expose it on a trusted management network or through an
 access-controlled reverse proxy. See the guide for automatic startup with the optional
 `softgred-web.service`, log rotation, package downloads and persistent container storage.
 
+## Restart and inspect services
+
+On a Linux host with systemd, install the units when using a source build. Package
+builds install them automatically. Stop manually started daemon/backend processes before
+switching to the service manager:
+
+```sh
+sudo install -m 644 share/softgred.service /etc/systemd/system/softgred.service
+sudo install -m 644 share/softgred-web.service /etc/systemd/system/softgred-web.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now softgred-web.service
+sudo systemctl restart softgred.service
+sudo systemctl status softgred.service softgred-web.service
+sudo journalctl -u softgred -u softgred-web -f
+```
+
+The enabled companion starts with the daemon; daemon restarts propagate to the dashboard.
+`service softgred restart` delegates to the service manager on supported Linux hosts.
+`journalctl` reads the journal and does not start, stop or restart services.
+
+The lab container uses its supervisor as PID 1. Restart it from the Docker host/client:
+
+```sh
+docker --context homelab restart test-softgre
+docker --context homelab logs -f test-softgre
+docker --context homelab exec test-softgre tail -f /var/log/softgred.log
+```
+
+A restart clears learned state. Run `/opt/softgre-lab/send.py` again to recreate the
+example tunnels. Containers include `systemctl`, `journalctl`, `service`, `logrotate`,
+`brctl`, `ifconfig`, `netstat`, `htop`, `vim`, `strace` and `lsof`. Installing systemd
+commands does not make it PID 1 or run journald. Use Docker logs and the event file in
+these supervised containers.
+
 ## Protocol scope
 
 Accepted traffic uses outer IPv4, unkeyed GRE v0 with zero flags, Ethernet protocol

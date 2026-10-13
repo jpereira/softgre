@@ -25,7 +25,7 @@ docker run -d --name "$name" --cap-add NET_ADMIN --cap-add NET_RAW \
 started=true
 wait_ready
 docker exec "$name" sh -c '
-for tool in brctl ifconfig netstat htop vim strace lsof; do
+for tool in brctl ifconfig netstat htop vim strace lsof systemctl journalctl service logrotate; do
     command -v "$tool"
 done
 '
