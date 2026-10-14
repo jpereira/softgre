@@ -47,7 +47,7 @@ class DocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = builder.build(directory)
             pages = {path: Page(path.read_text()) for path in output.rglob("*.html")}
-            self.assertEqual(len(pages), 2)
+            self.assertEqual(len(pages), len(builder.PAGES) + 1)
             for path, page in pages.items():
                 self.assertFalse(page.duplicate_ids)
                 self.assertFalse(page.unbalanced)
@@ -62,18 +62,35 @@ class DocsTests(unittest.TestCase):
                     if url.fragment:
                         self.assertIn(url.fragment, pages[target].ids)
             self.assertEqual(set(builder.LANGUAGES), {"en_US"})
-            counts = []
             for locale, labels in builder.LANGUAGES.items():
-                source = (ROOT / "docs" / locale / "index.md").read_text()
-                article, toc = builder.render(source, labels)
-                self.assertGreater(len(toc), 8)
-                counts.append(len(toc))
-                self.assertEqual(pages[output / locale / "index.html"].lang, labels["lang"])
-                self.assertIn("AF_PACKET", article)
-                self.assertIn("NETLINK_ROUTE", article)
-            self.assertEqual(len(counts), 1)
+                text, sections = "", 0
+                for name in builder.PAGES:
+                    path = output / locale / f"{name}.html"
+                    source = (ROOT / "docs" / locale / f"{name}.md").read_text()
+                    article, toc = builder.render(source, labels)
+                    self.assertGreaterEqual(len(toc), 2, name)
+                    sections += len(toc)
+                    text += article
+                    self.assertEqual(pages[path].lang, labels["lang"])
+                    html = path.read_text()
+                    # Every page lists every page and marks itself as current.
+                    self.assertEqual(html.count('aria-current="page"'), 1)
+                    for other in builder.PAGES:
+                        self.assertIn(f'href="{other}.html"', html)
+                self.assertGreater(sections, 30)
+                self.assertIn("AF_PACKET", text)
+                self.assertIn("NETLINK_ROUTE", text)
+                overview = (output / locale / "index.html").read_text()
+                self.assertIn('class="hero"', overview)
+                self.assertIn('src="../assets/softgre-flow.svg"', overview)
             self.assertFalse((output / "pt_BR").exists())
+            root = (output / "index.html").read_text()
             self.assertEqual(pages[output / "index.html"].lang, "en-US")
+            self.assertIn('url=en_US/index.html"', root)
+            # The light theme is the default; dark mode is only an explicit choice.
+            theme = (ROOT / "docs/assets/theme.js").read_text()
+            self.assertIn('let theme = "light"', theme)
+            self.assertNotIn("prefers-color-scheme", (ROOT / "docs/assets/site.css").read_text())
 
     def test_escaping_and_invalid_markdown(self):
         labels = builder.LANGUAGES["en_US"]
@@ -94,6 +111,17 @@ class DocsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             builder.render("## A\n\n### A\n", labels)
         self.assertIn('href="https://example.com"', builder.inline("[ok](https://example.com)"))
+        self.assertIn('href="dhcp.html#option-82"', builder.inline("[x](dhcp.md#option-82)"))
+        self.assertIn("<strong>bold</strong>", builder.inline("**bold**"))
+        with self.assertRaises(ValueError):
+            builder.inline("[x](missing.md)")
+        article, _ = builder.render("## A\n\n1. one\n2. two\n", labels)
+        self.assertIn("<ol><li>one</li><li>two</li></ol>", article)
+        article, _ = builder.render("## A\n\n![Flow](../assets/softgre-flow.svg)\n", labels)
+        self.assertIn('<img src="../assets/softgre-flow.svg" alt="Flow"', article)
+        for image in ("![](../assets/a.svg)", "![x](https://example.com/a.svg)", "![x](a.svg)"):
+            with self.assertRaises(ValueError):
+                builder.render(f"## A\n\n{image}\n", labels)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,8 @@ test -x /usr/share/softgred/dhcp-lease-hook.py
 test -s /usr/share/doc/softgred/LICENSE.md
 test -s /usr/share/doc/softgred/docs/assets/softgre-logo.svg
 test -s /usr/share/doc/softgred/docs/en_US/index.md
+test -s /usr/share/doc/softgred/docs/en_US/dhcp.md
+test -s /usr/share/doc/softgred/docs/assets/softgre-flow.svg
 test -s /etc/logrotate.d/softgred
 for unit in softgred softgred-web; do
     test -s "/lib/systemd/system/$unit.service" \

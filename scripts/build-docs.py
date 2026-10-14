@@ -7,6 +7,18 @@ import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Guide pages in reading order; each is docs/<locale>/<slug>.md with a "# Title" line.
+PAGES = (
+    "index",
+    "try-it",
+    "dhcp",
+    "install",
+    "configuration",
+    "api",
+    "architecture",
+    "development",
+)
+REPOSITORY = "https://github.com/jpereira/softgre"
 LANGUAGES = {
     "en_US": {
         "lang": "en-US",
@@ -14,8 +26,11 @@ LANGUAGES = {
         "eyebrow": "LINUX NETWORKING / DYNAMIC GRE",
         "title": "Tunnels on demand.\nLinux in control.",
         "intro": "Discover GRE peers, connect VLANs to bridges and let the kernel forward traffic.",
-        "search": "Search documentation",
-        "contents": "In this guide",
+        "search": "Filter this page",
+        "pages": "Guide",
+        "contents": "On this page",
+        "previous": "Previous",
+        "next": "Next",
         "copy": "Copy",
         "copied": "Copied",
         "empty": "No sections found.",
@@ -35,17 +50,25 @@ def slug(text):
 
 def inline(text):
     # Tokenize code/links before escaping, so generated tags never become Markdown input.
-    pattern = r"`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)"
+    pattern = r"`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*"
     output, offset = [], 0
     for match in re.finditer(pattern, text):
         output.append(html.escape(text[offset : match.start()]))
         if match.group(1) is not None:
             output.append(f"<code>{html.escape(match.group(1))}</code>")
+        elif match.group(4) is not None:
+            output.append(f"<strong>{inline(match.group(4))}</strong>")
         else:
             label, url = match.group(2), match.group(3)
-            if not re.match(r"^(https?://|#|\.?\.?/)", url):
+            page = re.fullmatch(r"([a-z0-9-]+)\.md(#[a-z0-9-]+)?", url)
+            if page:
+                # Links between guide pages work on GitHub (.md) and on the site (.html).
+                if page.group(1) not in PAGES:
+                    raise ValueError(f"Unknown guide page: {url}")
+                url = page.group(1) + ".html" + (page.group(2) or "")
+            elif not re.match(r"^(https?://|#|\.?\.?/)", url):
                 raise ValueError(f"Unsupported documentation link: {url}")
-            output.append(f'<a href="{html.escape(url, quote=True)}">{html.escape(label)}</a>')
+            output.append(f'<a href="{html.escape(url, quote=True)}">{inline(label)}</a>')
         offset = match.end()
     output.append(html.escape(text[offset:]))
     return "".join(output)
@@ -125,18 +148,31 @@ def render(markdown, labels):
                 f"<tbody>{body}</tbody></table></div>"
             )
             continue
-        elif line.startswith("- "):
+        elif line.startswith("- ") or re.match(r"\d+\. ", line):
             flush()
+            ordered = not line.startswith("- ")
+            marker = r"\d+\. " if ordered else r"- "
             items = []
-            while index < len(lines) and lines[index].startswith("- "):
-                item = lines[index][2:]
+            while index < len(lines) and re.match(marker, lines[index]):
+                item = re.sub(marker, "", lines[index], count=1)
                 index += 1
                 while index < len(lines) and lines[index].startswith("  "):
                     item += " " + lines[index].strip()
                     index += 1
                 items.append(f"<li>{inline(item)}</li>")
-            current.append("<ul>" + "".join(items) + "</ul>")
+            tag = "ol" if ordered else "ul"
+            current.append(f"<{tag}>" + "".join(items) + f"</{tag}>")
             continue
+        elif line.startswith("!["):
+            flush()
+            image = re.fullmatch(r"!\[([^\]]+)\]\((\.\./assets/[\w.-]+)\)", line.strip())
+            if not image:
+                raise ValueError(f"Images must reference ../assets/ with alt text: {line}")
+            alt, source = html.escape(image.group(1), quote=True), image.group(2)
+            current.append(
+                f'<figure><a href="{source}"><img src="{source}" alt="{alt}" loading="lazy">'
+                "</a></figure>"
+            )
         elif not line.strip():
             flush()
         else:
@@ -150,49 +186,101 @@ def render(markdown, labels):
     return "\n".join(sections), toc
 
 
-def page(locale, markdown, prefix="../"):
+def title_of(markdown, name):
+    for line in markdown.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    raise ValueError(f"Guide page without a title: {name}")
+
+
+def page(locale, name, markdown, pages):
     labels = LANGUAGES[locale]
     article, toc = render(markdown, labels)
+    titles = dict(pages)
+    position = [slug for slug, _ in pages].index(name)
     nav = "".join(f'<a href="#{anchor}">{html.escape(title)}</a>' for anchor, title in toc)
-    nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
-        f'<span class="node">{name}</span>' for name in labels["nodes"]
+    current = ' aria-current="page"'
+    guide = "".join(
+        f'<a href="{slug}.html"{current if slug == name else ""}>{html.escape(title)}</a>'
+        for slug, title in pages
     )
+    pager = []
+    if position > 0:
+        slug, title = pages[position - 1]
+        pager.append(
+            f'<a class="previous" href="{slug}.html"><span>{labels["previous"]}</span>'
+            f"{html.escape(title)}</a>"
+        )
+    if position + 1 < len(pages):
+        slug, title = pages[position + 1]
+        pager.append(
+            f'<a class="next" href="{slug}.html"><span>{labels["next"]}</span>'
+            f"{html.escape(title)}</a>"
+        )
+    nodes = '<span class="arrow" aria-hidden="true">→</span>'.join(
+        f'<span class="node">{node}</span>' for node in labels["nodes"]
+    )
+    if name == "index":
+        heading = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
+        header = f"""<section class="hero">
+<p class="eyebrow">{labels['eyebrow']}</p><h1>{heading}</h1><p class="lead">{labels['intro']}</p>
+<div class="badges"><span>Linux</span><span>AF_PACKET + BPF</span><span>Native netlink</span></div>
+<div class="network" aria-label="{html.escape(labels['detail'])}">{nodes}</div>
+<p class="diagram-caption">{labels['detail']}</p>
+<p class="actions"><a class="primary" href="try-it.html">{html.escape(titles['try-it'])}</a>
+<a href="install.html">{html.escape(titles['install'])}</a></p></section>"""
+    else:
+        header = f"""<header class="page-header"><p class="eyebrow">{labels['pages']} \
+{position + 1}/{len(pages)}</p><h1>{html.escape(titles[name])}</h1></header>"""
     dark_label = "Dark theme"
     light_label = "Light theme"
-    title = "<br>".join(html.escape(part) for part in labels["title"].split("\n"))
+    source = f"{REPOSITORY}/blob/master/docs/{locale}/{name}.md"
     return f"""<!doctype html>
 <html lang="{labels['lang']}">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{html.escape(labels['intro'])}">
-<title>SoftGRE · {labels['label']}</title>
-<link rel="icon" type="image/svg+xml" href="{prefix}assets/softgre-logo.svg">
-<link rel="stylesheet" href="{prefix}assets/site.css">
-<script src="{prefix}assets/theme.js"></script>
-<script src="{prefix}assets/site.js" defer></script>
+<title>{html.escape(titles[name])} · SoftGRE</title>
+<link rel="icon" type="image/svg+xml" href="../assets/softgre-logo.svg">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/theme.js"></script>
+<script src="../assets/site.js" defer></script>
 </head>
 <body data-copy="{labels['copy']}" data-copied="{labels['copied']}">
 <a class="skip" href="#documentation">{labels['guide']}</a>
-<header class="topbar"><a class="brand" href="{prefix}index.html">
-<img class="brand-logo" src="{prefix}assets/softgre-logo.svg" alt="" width="42" height="42">
+<header class="topbar"><a class="brand" href="index.html">
+<img class="brand-logo" src="../assets/softgre-logo.svg" alt="" width="42" height="42">
 SoftGRE</a>
-<nav aria-label="Site navigation"><a href="#documentation">Guide</a>
-<a href="https://github.com/jpereira/softgre">GitHub ↗</a>
+<nav aria-label="Site navigation"><a href="try-it.html">{html.escape(titles['try-it'])}</a>
+<a href="install.html">{html.escape(titles['install'])}</a>
+<a href="{REPOSITORY}">GitHub ↗</a>
 <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"
 data-dark="{dark_label}" data-light="{light_label}" hidden>{dark_label}</button></nav></header>
-<div class="shell"><section class="hero">
-<p class="eyebrow">{labels['eyebrow']}</p><h1>{title}</h1><p class="lead">{labels['intro']}</p>
-<div class="badges"><span>Linux</span><span>AF_PACKET + BPF</span><span>Native netlink</span></div>
-<div class="network" aria-label="{html.escape(labels['detail'])}">{nodes}</div>
-<p class="diagram-caption">{labels['detail']}</p></section>
+<div class="shell">{header}
 <div class="docs-layout"><aside><div class="sidebar">
+<p class="eyebrow">{labels['pages']}</p><nav class="pages" aria-label="{labels['pages']}">{guide}</nav>
+<p class="eyebrow">{labels['contents']}</p>
 <label for="search">{labels['search']}</label><input id="search" type="search" autocomplete="off">
-<p class="eyebrow">{labels['contents']}</p><nav aria-label="{labels['contents']}">{nav}</nav>
-<a class="source" href="https://github.com/jpereira/softgre/blob/master/docs/{locale}/index.md">
-{labels['source']} ↗</a></div></aside><main id="documentation" tabindex="-1">
-<p class="empty" role="status" hidden>{labels['empty']}</p>{article}</main></div>
-<footer>{labels['footer']}<a href="https://github.com/jpereira/softgre">GitHub →</a>
+<nav class="toc" aria-label="{labels['contents']}">{nav}</nav>
+<a class="source" href="{source}">{labels['source']} ↗</a></div></aside>
+<main id="documentation" tabindex="-1">
+<p class="empty" role="status" hidden>{labels['empty']}</p>{article}
+<nav class="pager" aria-label="{labels['pages']}">{"".join(pager)}</nav></main></div>
+<footer>{labels['footer']}<a href="{REPOSITORY}">GitHub →</a>
 </footer></div></body></html>
+"""
+
+
+def redirect(target):
+    return f"""<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url={target}">
+<link rel="canonical" href="{target}">
+<title>SoftGRE</title>
+</head>
+<body><p><a href="{target}">SoftGRE documentation</a></p></body></html>
 """
 
 
@@ -206,10 +294,11 @@ def build(output=None):
     for locale in LANGUAGES:
         target = output / locale
         target.mkdir(exist_ok=True)
-        markdown = (ROOT / "docs" / locale / "index.md").read_text()
-        (target / "index.html").write_text(page(locale, markdown))
-    markdown = (ROOT / "docs/en_US/index.md").read_text()
-    (output / "index.html").write_text(page("en_US", markdown, prefix=""))
+        sources = {name: (ROOT / "docs" / locale / f"{name}.md").read_text() for name in PAGES}
+        pages = [(name, title_of(sources[name], name)) for name in PAGES]
+        for name in PAGES:
+            (target / f"{name}.html").write_text(page(locale, name, sources[name], pages))
+    (output / "index.html").write_text(redirect("en_US/index.html"))
     stale = output / "pt_BR"
     if stale.is_dir():
         shutil.rmtree(stale)

@@ -35,3 +35,6 @@ EXTRA_DIST += scripts/lab/gateway-setup.sh scripts/lab/gateway-setup.conf \
     scripts/lab/dnsmasq-softgre.conf scripts/lab/dnsmasq.conf
 EXTRA_DIST += scripts/lab/ap.sh scripts/lab/udhcpc.sh
 EXTRA_DIST += scripts/check-gateway.sh
+EXTRA_DIST += docs/en_US/try-it.md docs/en_US/dhcp.md docs/en_US/install.md \
+    docs/en_US/configuration.md docs/en_US/api.md docs/en_US/architecture.md \
+    docs/en_US/development.md

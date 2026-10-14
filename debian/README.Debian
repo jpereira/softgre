@@ -39,8 +39,8 @@ or a DHCP server. Accepted frames use unkeyed GRE v0, Ethernet protocol 0x6558
 and a single mapped inner VLAN. Use the guide for protocol and resource limits.
 
 The README, complete English guide, logo and license are installed under
-/usr/share/doc/softgred. The guide is docs/en_US/index.md relative to that
-folder. The web assets and Python/PHP adapters are under
+/usr/share/doc/softgred. The guide starts at docs/en_US/index.md relative to
+that folder; each topic has its own page there. The web assets and Python/PHP adapters are under
 /usr/share/softgred/webinterface.
 
 Configure with ./autogen.sh and build with make deb. The distribution-specific release
