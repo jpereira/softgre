@@ -25,7 +25,7 @@ static bool write_failed;
 
 int log_open(const char *path)
 {
-    if (!path || !g_path_is_absolute(path)) {
+    if (!path || !path_is_absolute(path)) {
         errno = EINVAL;
         return -1;
     }
@@ -72,7 +72,7 @@ void log_message(int level, const char *format, ...)
     strftime(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%S%z", &tm);
     va_list args;
     va_start(args, format);
-    char *message = g_strdup_vprintf(format, args);
+    char *message = xstrdup_vprintf(format, args);
     va_end(args);
     if (cfg->dbg_time)
         fprintf(stderr, "[%s] ", stamp);
@@ -82,8 +82,8 @@ void log_message(int level, const char *format, ...)
                                : level == 6 ? "WARNING"
                                : level == 7 ? "ERROR"
                                             : "INFO";
-        char *line = g_strdup_printf("[%s] pid=%ld level=%s %s%s", stamp, (long)getpid(), severity,
-                                     message, g_str_has_suffix(message, "\n") ? "" : "\n");
+        char *line = xstrdup_printf("[%s] pid=%ld level=%s %s%s", stamp, (long)getpid(), severity,
+                                    message, str_has_suffix(message, "\n") ? "" : "\n");
         size_t length = strlen(line), offset = 0;
         while (offset < length) {
             ssize_t written = write(log_fd, line + offset, length - offset);
@@ -100,8 +100,8 @@ void log_message(int level, const char *format, ...)
         }
         if (offset == length)
             write_failed = false;
-        g_free(line);
+        free(line);
     }
-    g_free(message);
+    free(message);
     errno = saved_errno;
 }

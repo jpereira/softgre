@@ -1,5 +1,6 @@
 #include "helper.h"
 #include "softgred_config.h"
+#include "testing.h"
 
 static void test_processes(void)
 {
@@ -24,16 +25,16 @@ static void test_processes(void)
 static void test_no_shell(void)
 {
     char *path;
-    int fd = g_file_open_tmp("softgre-exec-XXXXXX", &path, NULL);
+    int fd = testing_tmp_file("softgre-exec-XXXXXX", &path);
     g_assert_cmpint(fd, >=, 0);
     close(fd);
     unlink(path);
-    char *text = g_strdup_printf("$(touch %s); touch %s", path, path);
+    char *text = xstrdup_printf("$(touch %s); touch %s", path, path);
     const char *args[] = {"printf", "%s", text, NULL};
     g_assert_cmpint(helper_exec(args), ==, 0);
     g_assert_cmpint(access(path, F_OK), ==, -1);
-    g_free(text);
-    g_free(path);
+    free(text);
+    free(path);
 }
 
 int main(int argc, char **argv)

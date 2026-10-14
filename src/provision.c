@@ -24,13 +24,13 @@
 #include "log.h"
 #include "softgred_config.h"
 
-static GHashTable *tunnels, *mac_index;
+static struct hashmap *tunnels, *mac_index;
 static bool slots[SOFTGRED_MAX_SLOTS];
 static uint64_t packets, ignored, failures;
-static gint64 retry_after;
+static int64_t retry_after;
 static bool cleanup_pending;
 
-GHashTable *provision_table(void)
+struct hashmap *provision_table(void)
 {
     return tunnels;
 }
@@ -38,14 +38,14 @@ GHashTable *provision_table(void)
 static void tunnel_free(void *value)
 {
     struct tunnel_context *tun = value;
-    g_hash_table_destroy(tun->macs);
-    g_free(tun);
+    hashmap_destroy(tun->macs);
+    free(tun);
 }
 
 int provision_init(void)
 {
-    tunnels = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, tunnel_free);
-    mac_index = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    tunnels = hashmap_new(hashmap_hash_u32, hashmap_equal_u32, NULL, tunnel_free);
+    mac_index = hashmap_new(hashmap_hash_str, hashmap_equal_str, free, NULL);
     memset(slots, 0, sizeof(slots));
     cleanup_pending = false;
     return 0;
@@ -53,12 +53,12 @@ int provision_init(void)
 
 struct tunnel_context *provision_get_tunnel_byip(const struct in_addr *remote)
 {
-    return tunnels ? g_hash_table_lookup(tunnels, GUINT_TO_POINTER(remote->s_addr)) : NULL;
+    return tunnels ? hashmap_lookup(tunnels, (void *)(uintptr_t)remote->s_addr) : NULL;
 }
 
 struct tunnel_context *provision_get_tunnel_by_mac(const char *mac)
 {
-    return mac_index ? g_hash_table_lookup(mac_index, mac) : NULL;
+    return mac_index ? hashmap_lookup(mac_index, mac) : NULL;
 }
 
 struct tunnel_context *provision_add(const struct in_addr *remote)
@@ -86,11 +86,11 @@ struct tunnel_context *provision_add(const struct in_addr *remote)
         errno = ENOSPC;
         return NULL;
     }
-    struct tunnel_context *tun = g_new0(struct tunnel_context, 1);
+    struct tunnel_context *tun = xcalloc(1, sizeof(*tun));
     tun->ip_remote = *remote;
     tun->id = id;
     snprintf(tun->ifgre, sizeof(tun->ifgre), "%s%u", cfg->tunnel_prefix, id);
-    tun->macs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    tun->macs = hashmap_new(hashmap_hash_str, hashmap_equal_str, free, NULL);
     char ip[INET_ADDRSTRLEN], local[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, remote, ip, sizeof(ip));
     inet_ntop(AF_INET, &cfg->local, local, sizeof(local));
@@ -102,7 +102,7 @@ struct tunnel_context *provision_add(const struct in_addr *remote)
            cfg->ifname);
     /* Track immediately so a failed rollback remains visible and can be retried. */
     slots[id] = true;
-    g_hash_table_insert(tunnels, GUINT_TO_POINTER(remote->s_addr), tun);
+    hashmap_insert(tunnels, (void *)(uintptr_t)remote->s_addr, tun);
     if (iface_ebtables_add_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
         goto fail;
     for (unsigned i = 0; i < cfg->bridge_slot; i++) {
@@ -124,9 +124,9 @@ bool provision_tunnel_allow_mac(struct tunnel_context *tun, const char *mac)
 {
     if (!tun->ready)
         return false;
-    if (g_hash_table_contains(tun->macs, mac))
+    if (hashmap_contains(tun->macs, mac))
         return true;
-    if (g_hash_table_size(tun->macs) >= PROVISION_MAX_CLIENTS) {
+    if (hashmap_size(tun->macs) >= PROVISION_MAX_CLIENTS) {
         errno = ENOSPC;
         return false;
     }
@@ -135,12 +135,12 @@ bool provision_tunnel_allow_mac(struct tunnel_context *tun, const char *mac)
         return false;
     if (iface_ebtables_allow(tun->ifgre, mac))
         return false;
-    g_hash_table_add(tun->macs, g_strdup(mac));
-    g_hash_table_insert(mac_index, g_strdup(mac), tun);
+    hashmap_insert(tun->macs, xstrdup(mac), NULL);
+    hashmap_insert(mac_index, xstrdup(mac), tun);
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
     D_INFO("Client learned remote=%s mac=%s tunnel=%s clients=%u\n", ip, mac, tun->ifgre,
-           g_hash_table_size(tun->macs));
+           (unsigned)hashmap_size(tun->macs));
     return true;
 }
 
@@ -176,14 +176,14 @@ void provision_packet(const struct payload_packet *packet)
     snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x", packet->mac[0], packet->mac[1],
              packet->mac[2], packet->mac[3], packet->mac[4], packet->mac[5]);
     struct tunnel_context *tun = provision_get_tunnel_byip(&packet->remote);
-    if (tun && g_hash_table_contains(tun->macs, mac))
+    if (tun && hashmap_contains(tun->macs, mac))
         return;
     if (provision_get_tunnel_by_mac(mac)) {
         ignored++;
         return;
     }
     /* Prevent process-spawn / netlink storms when the kernel or firewall rejects work. */
-    gint64 now = g_get_monotonic_time();
+    int64_t now = monotonic_usec();
     if (now < retry_after)
         return;
     errno = 0;
@@ -200,7 +200,7 @@ void provision_packet(const struct payload_packet *packet)
         return;
     }
     failures++;
-    retry_after = now + G_USEC_PER_SEC;
+    retry_after = now + USEC_PER_SEC;
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &packet->remote, ip, sizeof(ip));
     D_WARNING("Provisioning failed remote=%s mac=%s vlan=%u retry=1s\n", ip, mac, packet->vlan);
@@ -213,14 +213,14 @@ int provision_del(const struct in_addr *remote)
         return 0;
     if (iface_gre_del(tun->ifgre) && errno != ENODEV)
         return -1;
-    GHashTableIter iter;
+    struct hashmap_iter iter;
     void *mac;
-    g_hash_table_iter_init(&iter, tun->macs);
-    while (g_hash_table_iter_next(&iter, &mac, NULL)) {
+    hashmap_iter_init(&iter, tun->macs);
+    while (hashmap_iter_next(&iter, &mac, NULL)) {
         if (iface_ebtables_revoke(tun->ifgre, mac))
             return -1;
-        g_hash_table_remove(mac_index, mac);
-        g_hash_table_iter_remove(&iter);
+        hashmap_remove(mac_index, mac);
+        hashmap_iter_remove(&iter);
     }
     if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
         return -1;
@@ -228,7 +228,7 @@ int provision_del(const struct in_addr *remote)
     inet_ntop(AF_INET, remote, ip, sizeof(ip));
     D_INFO("Tunnel removed remote=%s interface=%s\n", ip, tun->ifgre);
     slots[tun->id] = false;
-    g_hash_table_remove(tunnels, GUINT_TO_POINTER(remote->s_addr));
+    hashmap_remove(tunnels, (void *)(uintptr_t)remote->s_addr);
     return 0;
 }
 
@@ -238,10 +238,10 @@ void provision_delall(void)
         return;
     cleanup_pending = true;
     bool ok = true;
-    GHashTableIter iter;
+    struct hashmap_iter iter;
     void *value;
-    g_hash_table_iter_init(&iter, tunnels);
-    while (g_hash_table_iter_next(&iter, NULL, &value)) {
+    hashmap_iter_init(&iter, tunnels);
+    while (hashmap_iter_next(&iter, NULL, &value)) {
         struct tunnel_context *tun = value;
         tun->ready = false;
         if (iface_gre_del(tun->ifgre) && errno != ENODEV) {
@@ -254,13 +254,13 @@ void provision_delall(void)
             char ip[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &tun->ip_remote, ip, sizeof(ip));
             D_INFO("Tunnel removed remote=%s interface=%s clients=%u\n", ip, tun->ifgre,
-                   g_hash_table_size(tun->macs));
+                   (unsigned)hashmap_size(tun->macs));
         }
     }
     /* Bulk flush avoids spawning two processes per learned MAC during full cleanup. */
     if (ok && !iface_ebtables_reset()) {
-        g_hash_table_remove_all(mac_index);
-        g_hash_table_remove_all(tunnels);
+        hashmap_remove_all(mac_index);
+        hashmap_remove_all(tunnels);
         memset(slots, 0, sizeof(slots));
         cleanup_pending = false;
         retry_after = 0;
@@ -272,16 +272,15 @@ void provision_end(void)
 {
     provision_delall();
     if (mac_index)
-        g_hash_table_destroy(mac_index);
+        hashmap_destroy(mac_index);
     if (tunnels)
-        g_hash_table_destroy(tunnels);
+        hashmap_destroy(tunnels);
     mac_index = tunnels = NULL;
 }
 
 void provision_stats(void)
 {
-    D_INFO("Tunnels=%u MACs=%u packets=%" G_GUINT64_FORMAT " ignored=%" G_GUINT64_FORMAT
-           " failures=%" G_GUINT64_FORMAT "\n",
-           tunnels ? g_hash_table_size(tunnels) : 0, mac_index ? g_hash_table_size(mac_index) : 0,
-           packets, ignored, failures);
+    D_INFO("Tunnels=%u MACs=%u packets=%" PRIu64 " ignored=%" PRIu64 " failures=%" PRIu64 "\n",
+           tunnels ? (unsigned)hashmap_size(tunnels) : 0,
+           mac_index ? (unsigned)hashmap_size(mac_index) : 0, packets, ignored, failures);
 }

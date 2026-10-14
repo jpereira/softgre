@@ -35,59 +35,159 @@ bool config_valid_ifname(const char *name)
     if (!name || !*name || strlen(name) >= IFNAMSIZ || !strcmp(name, ".") || !strcmp(name, ".."))
         return false;
     for (const unsigned char *p = (const unsigned char *)name; *p; p++)
-        if (!(g_ascii_isalnum(*p) || *p == '_' || *p == '-' || *p == '.'))
+        if (!(ascii_isalnum(*p) || *p == '_' || *p == '-' || *p == '.'))
             return false;
     return true;
 }
 
-static bool read_bool(GKeyFile *file, const char *group, const char *key, bool *value,
-                      GError **error)
+/* Minimal INI reader replacing GLib's GKeyFile: [group] headers, key=value lines, '#' and
+ * ';' comments, whitespace trimmed. Later duplicate keys override earlier ones. */
+struct ini_pair {
+    char *group, *key, *value;
+};
+
+struct ini {
+    struct ini_pair *pair;
+    size_t count, cap;
+};
+
+static char config_error[256];
+
+static void config_set_error(const char *format, ...) __attribute__((format(printf, 1, 2)));
+
+static void config_set_error(const char *format, ...)
 {
-    if (!g_key_file_has_key(file, group, key, NULL))
-        return true;
-    char *text = g_key_file_get_string(file, group, key, error);
+    va_list ap;
+    va_start(ap, format);
+    vsnprintf(config_error, sizeof(config_error), format, ap);
+    va_end(ap);
+}
+
+static const char *ini_get(struct ini *ini, const char *group, const char *key)
+{
+    const char *value = NULL;
+    for (size_t i = 0; i < ini->count; i++)
+        if (!strcmp(ini->pair[i].group, group) && !strcmp(ini->pair[i].key, key))
+            value = ini->pair[i].value; /* Keep scanning so the last definition wins. */
+    return value;
+}
+
+static bool ini_has(struct ini *ini, const char *group, const char *key)
+{
+    return ini_get(ini, group, key) != NULL;
+}
+
+static void ini_free(struct ini *ini)
+{
+    if (!ini)
+        return;
+    for (size_t i = 0; i < ini->count; i++) {
+        free(ini->pair[i].group);
+        free(ini->pair[i].key);
+        free(ini->pair[i].value);
+    }
+    free(ini->pair);
+    free(ini);
+}
+
+/* Load the file; malformed lines are rejected rather than skipped so that a typo in a
+ * security setting (for example a missing '=' in allow-remotes) can never silently fall back
+ * to the permissive default. Returns NULL and sets config_error on failure. */
+static struct ini *ini_load(const char *path)
+{
+    FILE *file = fopen(path, "re");
+    if (!file) {
+        config_set_error("%s", strerror(errno));
+        return NULL;
+    }
+    struct ini *ini = xcalloc(1, sizeof(*ini));
+    char *line = NULL, group[64] = "";
+    size_t cap = 0;
+    unsigned number = 0;
+    bool ok = true;
+    while (ok && getline(&line, &cap, file) != -1) {
+        number++;
+        char *s = str_trim(line);
+        if (!*s || *s == '#' || *s == ';')
+            continue;
+        if (*s == '[') {
+            char *end = strchr(s, ']');
+            if (!end || end[1] || end == s + 1 || end - s - 1 >= (long)sizeof(group)) {
+                config_set_error("line %u: invalid group header", number);
+                ok = false;
+                break;
+            }
+            *end = '\0';
+            str_lcpy(group, s + 1, sizeof(group));
+            continue;
+        }
+        char *eq = strchr(s, '=');
+        if (!eq || eq == s) {
+            config_set_error("line %u: not a key=value pair", number);
+            ok = false;
+            break;
+        }
+        *eq = '\0';
+        char *key = str_trim(s), *value = str_trim(eq + 1);
+        if (!*key) {
+            config_set_error("line %u: empty key", number);
+            ok = false;
+            break;
+        }
+        if (ini->count == ini->cap) {
+            ini->cap = ini->cap ? ini->cap * 2 : 16;
+            ini->pair = xrealloc(ini->pair, ini->cap * sizeof(*ini->pair));
+        }
+        ini->pair[ini->count].group = xstrdup(group);
+        ini->pair[ini->count].key = xstrdup(key);
+        ini->pair[ini->count].value = xstrdup(value);
+        ini->count++;
+    }
+    free(line);
+    fclose(file);
+    if (!ok) {
+        ini_free(ini);
+        return NULL;
+    }
+    return ini;
+}
+
+static bool read_bool(struct ini *ini, const char *group, const char *key, bool *value)
+{
+    const char *text = ini_get(ini, group, key);
     if (!text)
-        return false;
-    g_strstrip(text);
+        return true;
     bool valid =
         !strcmp(text, "true") || !strcmp(text, "false") || !strcmp(text, "1") || !strcmp(text, "0");
     if (valid)
         *value = !strcmp(text, "true") || !strcmp(text, "1");
     else
-        g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
-                    "[%s] %s must be true, false, 1 or 0", group, key);
-    g_free(text);
+        config_set_error("[%s] %s must be true, false, 1 or 0", group, key);
     return valid;
 }
 
-static bool read_uint(GKeyFile *file, const char *group, const char *key, unsigned *value,
-                      unsigned min, unsigned max, GError **error)
+static bool read_uint(struct ini *ini, const char *group, const char *key, unsigned *value,
+                      unsigned min, unsigned max)
 {
-    if (!g_key_file_has_key(file, group, key, NULL))
-        return true;
-    char *text = g_key_file_get_string(file, group, key, error), *end = NULL;
+    const char *text = ini_get(ini, group, key);
     if (!text)
-        return false;
-    g_strstrip(text);
+        return true;
+    char *end = NULL;
     errno = 0;
     unsigned long parsed = strtoul(text, &end, 10);
-    bool valid = g_ascii_isdigit(*text) && !errno && end && !*end && parsed >= min && parsed <= max;
+    bool valid = ascii_isdigit((unsigned char)*text) && !errno && end && !*end && parsed >= min &&
+                 parsed <= max;
     if (valid)
         *value = parsed;
     else
-        g_set_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
-                    "[%s] %s must be between %u and %u", group, key, min, max);
-    g_free(text);
+        config_set_error("[%s] %s must be between %u and %u", group, key, min, max);
     return valid;
 }
 
-static char *read_string(GKeyFile *file, const char *group, const char *key, const char *fallback,
-                         GError **error)
+static char *read_string(struct ini *ini, const char *group, const char *key, const char *fallback)
 {
-    if (!g_key_file_has_key(file, group, key, NULL))
-        return g_strdup(fallback);
-    char *text = g_key_file_get_string(file, group, key, error);
-    return text ? g_strstrip(text) : NULL;
+    const char *text = ini_get(ini, group, key);
+    return xstrdup(text ? text : fallback);
 }
 
 bool config_remote_allowed(uint32_t remote)
@@ -104,11 +204,11 @@ bool config_remote_allowed(uint32_t remote)
 /* Parse an optional allowlist of authorized remote IPv4 addresses or CIDR networks. */
 static bool parse_allow(struct softgred_config *cfg, const char *list)
 {
-    char **entries = g_strsplit(list, ",", -1);
+    char *copy = xstrdup(list), *cursor = copy, *field;
     bool ok = true;
     cfg->allow_slot = 0;
-    for (char **p = entries; *p && ok; p++) {
-        char *entry = g_strstrip(*p);
+    while (ok && (field = str_split_next(&cursor, ','))) {
+        char *entry = str_trim(field);
         if (!*entry)
             continue;
         if (cfg->allow_slot >= SOFTGRED_MAX_ALLOW) {
@@ -122,7 +222,7 @@ static bool parse_allow(struct softgred_config *cfg, const char *list)
             *slash = '\0';
             errno = 0;
             bits = strtoul(slash + 1, &end, 10);
-            if (!g_ascii_isdigit(slash[1]) || errno || *end || bits > 32) {
+            if (!ascii_isdigit((unsigned char)slash[1]) || errno || *end || bits > 32) {
                 ok = false;
                 break;
             }
@@ -137,27 +237,27 @@ static bool parse_allow(struct softgred_config *cfg, const char *list)
         slot->mask = ntohl(mask);
         slot->network = ntohl(addr.s_addr) & slot->mask;
     }
-    g_strfreev(entries);
+    free(copy);
     return ok;
 }
 
 static bool parse_bridges(struct softgred_config *cfg, const char *map)
 {
-    char **entries = g_strsplit(map, ",", -1);
+    char *copy = xstrdup(map), *cursor = copy, *field;
     bool ok = true;
     cfg->bridge_slot = 0;
-    for (char **p = entries; *p; p++) {
-        char *vlan = g_strstrip(*p), *at = strchr(vlan, '@'), *end;
+    while ((field = str_split_next(&cursor, ','))) {
+        char *vlan = str_trim(field), *at = strchr(vlan, '@'), *end;
         if (!at || cfg->bridge_slot >= SOFTGRED_MAX_ATTACH) {
             ok = false;
             break;
         }
         *at++ = '\0';
-        g_strstrip(vlan);
-        char *bridge = g_strstrip(at);
+        str_trim(vlan);
+        char *bridge = str_trim(at);
         errno = 0;
         unsigned long id = strtoul(vlan, &end, 10);
-        if (!g_ascii_isdigit(*vlan) || errno || *end || id < 1 || id > 4094 ||
+        if (!ascii_isdigit((unsigned char)*vlan) || errno || *end || id < 1 || id > 4094 ||
             !config_valid_ifname(bridge)) {
             ok = false;
             break;
@@ -168,70 +268,69 @@ static bool parse_bridges(struct softgred_config *cfg, const char *map)
         if (!ok)
             break;
         struct tunnel_bridge *slot = &cfg->bridge[cfg->bridge_slot++];
-        g_strlcpy(slot->ifname, bridge, sizeof(slot->ifname));
+        str_lcpy(slot->ifname, bridge, sizeof(slot->ifname));
         slot->vlan_id = id;
     }
-    g_strfreev(entries);
+    free(copy);
     return ok && cfg->bridge_slot > 0;
 }
 
 bool softgred_config_load_conf(const char *path)
 {
     struct softgred_config *cfg = softgred_config_ref();
-    GKeyFile *file = g_key_file_new();
-    GError *error = NULL;
-    bool ok = g_key_file_load_from_file(file, path, G_KEY_FILE_NONE, &error);
+    config_error[0] = '\0';
+    struct ini *file = ini_load(path);
+    bool ok = file != NULL;
     if (!ok)
         goto done;
-    g_free(cfg->ifname);
-    cfg->ifname = read_string(file, "global", "interface", NULL, &error);
-    g_free(cfg->tunnel_prefix);
-    cfg->tunnel_prefix = read_string(file, "global", "tunnel-prefix", "sgre", &error);
-    char *map = read_string(file, "global", "bridge-map", NULL, &error);
+    free(cfg->ifname);
+    cfg->ifname = read_string(file, "global", "interface", NULL);
+    free(cfg->tunnel_prefix);
+    cfg->tunnel_prefix = read_string(file, "global", "tunnel-prefix", "sgre");
+    char *map = read_string(file, "global", "bridge-map", NULL);
     ok = config_valid_ifname(cfg->ifname) && config_valid_ifname(cfg->tunnel_prefix) &&
          strlen(cfg->tunnel_prefix) <= 6 && map && parse_bridges(cfg, map);
-    g_free(map);
+    free(map);
     if (!ok)
         goto done;
     cfg->allow_slot = 0;
-    if (g_key_file_has_key(file, "global", "allow-remotes", NULL)) {
-        char *list = read_string(file, "global", "allow-remotes", "", &error);
+    if (ini_has(file, "global", "allow-remotes")) {
+        char *list = read_string(file, "global", "allow-remotes", "");
         ok = list && parse_allow(cfg, list);
-        g_free(list);
+        free(list);
         if (!ok)
             goto done;
     }
     if (!cfg->pid_file)
-        cfg->pid_file = read_string(file, "global", "pid-file", SOFTGRED_DEFAULT_PIDFILE, &error);
+        cfg->pid_file = read_string(file, "global", "pid-file", SOFTGRED_DEFAULT_PIDFILE);
     if (!cfg->log_file)
-        cfg->log_file = read_string(file, "global", "log-file", SOFTGRED_DEFAULT_LOGFILE, &error);
-    if (!cfg->log_file || !g_path_is_absolute(cfg->log_file) || strpbrk(cfg->log_file, "\r\n")) {
+        cfg->log_file = read_string(file, "global", "log-file", SOFTGRED_DEFAULT_LOGFILE);
+    if (!cfg->log_file || !path_is_absolute(cfg->log_file) || strpbrk(cfg->log_file, "\r\n")) {
         ok = false;
         goto done;
     }
-    g_free(cfg->srv_bind_in);
-    cfg->srv_bind_in = read_string(file, "service", "bind-in", "lo", &error);
+    free(cfg->srv_bind_in);
+    cfg->srv_bind_in = read_string(file, "service", "bind-in", "lo");
     ok = cfg->srv_bind_in &&
          (config_valid_ifname(cfg->srv_bind_in) || !strcmp(cfg->srv_bind_in, "any"));
     bool timestamp = false;
-    ok = ok && read_bool(file, "global", "bridge-force", &cfg->bridge_force, &error) &&
-         read_bool(file, "debug", "enable", &cfg->dbg_enable, &error) &&
-         read_bool(file, "debug", "print-time", &timestamp, &error) &&
-         read_bool(file, "debug", "time", &timestamp, &error) &&
-         read_uint(file, "service", "port", &cfg->srv_port, 1, 65535, &error) &&
-         read_uint(file, "service", "max-listen", &cfg->srv_max_listen, 1, 128, &error);
+    ok = ok && read_bool(file, "global", "bridge-force", &cfg->bridge_force) &&
+         read_bool(file, "debug", "enable", &cfg->dbg_enable) &&
+         read_bool(file, "debug", "print-time", &timestamp) &&
+         read_bool(file, "debug", "time", &timestamp) &&
+         read_uint(file, "service", "port", &cfg->srv_port, 1, 65535) &&
+         read_uint(file, "service", "max-listen", &cfg->srv_max_listen, 1, 128);
     cfg->dbg_time = cfg->dbg_time || timestamp;
     if (cfg->dbg_enable && !cfg->dbg_mode)
         cfg->dbg_mode = 1;
     cfg->started_time = time(NULL);
     uname(&cfg->uts);
-    ok = ok && !error;
 done:
     if (!ok)
         fprintf(stderr, "Configuration %s: %s\n", path,
-                error ? error->message : "invalid interface, prefix, bridge map or log path");
-    g_clear_error(&error);
-    g_key_file_free(file);
+                config_error[0] ? config_error
+                                : "invalid interface, prefix, bridge map or log path");
+    ini_free(file);
     return ok;
 }
 
@@ -251,16 +350,16 @@ int softgred_config_load_cli(int argc, char **argv)
     while ((opt = getopt_long(argc, argv, "c:fp:l:dthv", opts, NULL)) != -1) {
         switch (opt) {
         case 'c':
-            g_free(cfg->config_file);
-            cfg->config_file = g_strdup(optarg);
+            free(cfg->config_file);
+            cfg->config_file = xstrdup(optarg);
             break;
         case 'p':
-            g_free(cfg->pid_file);
-            cfg->pid_file = g_strdup(optarg);
+            free(cfg->pid_file);
+            cfg->pid_file = xstrdup(optarg);
             break;
         case 'l':
-            g_free(cfg->log_file);
-            cfg->log_file = g_strdup(optarg);
+            free(cfg->log_file);
+            cfg->log_file = xstrdup(optarg);
             break;
         case 'f':
             cfg->is_foreground = true;
@@ -296,13 +395,13 @@ int softgred_config_load_cli(int argc, char **argv)
 void softgred_config_release(void)
 {
     struct softgred_config *cfg = softgred_config_ref();
-    g_free(cfg->config_file);
-    g_free(cfg->ifname);
-    g_free(cfg->tunnel_prefix);
-    g_free(cfg->pid_file);
-    g_free(cfg->srv_bind_in);
-    g_free(cfg->log_file);
-    g_free(cfg->dbg_file);
+    free(cfg->config_file);
+    free(cfg->ifname);
+    free(cfg->tunnel_prefix);
+    free(cfg->pid_file);
+    free(cfg->srv_bind_in);
+    free(cfg->log_file);
+    free(cfg->dbg_file);
     memset(cfg, 0, sizeof(*cfg));
     cfg->srv_port = 8888;
     cfg->srv_max_listen = 10;

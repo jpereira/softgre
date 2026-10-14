@@ -19,6 +19,7 @@
 #ifndef PROVISION_H
 #define PROVISION_H
 #include "general.h"
+#include "hashmap.h"
 #include "payload.h"
 
 struct tunnel_context {
@@ -26,7 +27,7 @@ struct tunnel_context {
     char ifgre[IFNAMSIZ];
     unsigned id;
     bool ready, firewall_in, firewall_out;
-    GHashTable *macs;
+    struct hashmap *macs;
 };
 
 int provision_init(void);
@@ -36,7 +37,7 @@ int provision_del(const struct in_addr *remote);
 void provision_delall(void);
 void provision_end(void);
 void provision_stats(void);
-GHashTable *provision_table(void);
+struct hashmap *provision_table(void);
 struct tunnel_context *provision_get_tunnel_byip(const struct in_addr *remote);
 struct tunnel_context *provision_get_tunnel_by_mac(const char *mac);
 bool provision_tunnel_allow_mac(struct tunnel_context *tun, const char *mac);

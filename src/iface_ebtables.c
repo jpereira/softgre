@@ -25,12 +25,10 @@ static bool initialized;
 
 static const char *ebtables_bin(void)
 {
-    static char *binary;
-    if (!binary) {
-        binary = g_find_program_in_path("ebtables-nft");
-        if (!binary)
-            binary = g_strdup("ebtables");
-    }
+    /* Prefer ebtables-nft when present; otherwise let execvp resolve "ebtables" on PATH. */
+    static char binary[256];
+    if (!binary[0] && !find_in_path("ebtables-nft", binary, sizeof(binary)))
+        str_lcpy(binary, "ebtables", sizeof(binary));
     return binary;
 }
 

@@ -8,6 +8,7 @@
 #include "service.h"
 #include "service_cmd.h"
 #include "softgred_config.h"
+#include "testing.h"
 
 static unsigned adds, deletes, allows;
 static bool fail_gre, fail_bridge, fail_firewall, fail_delete;
@@ -146,25 +147,24 @@ static void test_parser(void)
     write16(p + 20, 0x8000);
     g_assert_false(payload_parse(p, len, &parsed));
     /* Deterministic malformed input sweep runs under ASan/UBSan. */
-    GRand *rng = g_rand_new_with_seed(42);
+    testing_srand(42);
     for (unsigned i = 0; i < 20000; i++) {
         for (unsigned j = 0; j < sizeof(p); j++)
-            p[j] = g_rand_int(rng);
-        payload_parse(p, g_rand_int_range(rng, 0, sizeof(p)), &parsed);
+            p[j] = (unsigned char)testing_rand();
+        payload_parse(p, testing_rand_range(0, sizeof(p)), &parsed);
     }
-    g_rand_free(rng);
 }
 
 static bool load_text(const char *text)
 {
     char *path = NULL;
-    int fd = g_file_open_tmp("softgre-test-XXXXXX", &path, NULL);
+    int fd = testing_tmp_file("softgre-test-XXXXXX", &path);
     g_assert_cmpint(fd, >=, 0);
     g_assert_cmpint(write(fd, text, strlen(text)), ==, (ssize_t)strlen(text));
     close(fd);
     bool ok = softgred_config_load_conf(path);
     unlink(path);
-    g_free(path);
+    free(path);
     return ok;
 }
 
@@ -186,9 +186,9 @@ static void test_config(void)
         "4095@br0",      "65537@br0", "-1@br0", "10oops@br0", "10@abcdefghijklmnop", "10@br;evil",
         "10@br0,10@br1", "10@br0,",   ""};
     for (unsigned i = 0; i < ARRAY_SIZE(invalid); i++) {
-        char *text = g_strdup_printf("[global]\ninterface=eth0\nbridge-map=%s\n", invalid[i]);
+        char *text = xstrdup_printf("[global]\ninterface=eth0\nbridge-map=%s\n", invalid[i]);
         g_assert_false(load_text(text));
-        g_free(text);
+        free(text);
     }
     softgred_config_release();
     g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=10@br0\n"
@@ -199,6 +199,31 @@ static void test_config(void)
     g_assert_false(load_text("[global]\ninterface=eth0\nbridge-map=10@br0\n"
                              "bridge-force=maybe\n"));
     g_assert_false(config_valid_ifname("../etc"));
+    /* Fail closed: a malformed line must reject the file instead of being skipped, so a typo
+     * in a security setting such as allow-remotes cannot silently re-open the daemon. */
+    const char *base = "[global]\ninterface=eth0\nbridge-map=10@br0\n";
+    const char *malformed[] = {"allow-remotes 192.0.2.0/24\n", /* Missing '='. */
+                               "allow-remotes\n",
+                               "=192.0.2.0/24\n",
+                               " = x\n",
+                               "[unterminated\n",
+                               "[]\n",
+                               "[two]trailing\n",
+                               "allow-remotes=192.0.2.0/24\nstray words\n"};
+    for (unsigned i = 0; i < ARRAY_SIZE(malformed); i++) {
+        char *text = xstrdup_printf("%s%s", base, malformed[i]);
+        g_assert_false(load_text(text));
+        free(text);
+    }
+    /* Comments, blank lines and surrounding whitespace remain valid. */
+    g_assert_true(load_text("# comment\n; another\n\n[global]\n  interface = eth0  \n"
+                            "bridge-map = 10@br0\n  allow-remotes = 192.0.2.0/24 \n"));
+    g_assert_cmpuint(softgred_config_ref()->allow_slot, ==, 1);
+    /* The last definition of a key wins. */
+    g_assert_true(
+        load_text("[global]\ninterface=eth0\nbridge-map=10@br0\n"
+                  "allow-remotes=192.0.2.0/24\nallow-remotes=198.51.100.0/24,203.0.113.9\n"));
+    g_assert_cmpuint(softgred_config_ref()->allow_slot, ==, 2);
     softgred_config_release();
 }
 
@@ -222,12 +247,12 @@ static void test_provision(void)
         provision_packet(&parsed);
     g_assert_cmpuint(adds, ==, 1);
     g_assert_cmpuint(allows, ==, 1);
-    GString *out = service_command("LMIP 192.0.2.2");
+    struct strbuf *out = service_command("LMIP 192.0.2.2");
     g_assert_cmpstr(out->str, ==, "RESULT: OK\nBODY: 02:00:00:00:00:42\n");
-    g_string_free(out, true);
+    strbuf_free(out);
     out = service_command("GTMC 02:00:00:00:00:42");
     g_assert_nonnull(strstr(out->str, "192.0.2.2@sgre0"));
-    g_string_free(out, true);
+    strbuf_free(out);
     struct tunnel_context *tun = provision_get_tunnel_byip(&parsed.remote);
     for (unsigned i = 1; i < PROVISION_MAX_CLIENTS; i++) {
         char mac[18];
@@ -236,7 +261,7 @@ static void test_provision(void)
     }
     out = service_command("LMIP 192.0.2.2");
     g_assert_cmpuint(out->len, >, 18000);
-    g_string_free(out, true);
+    strbuf_free(out);
     g_assert_false(provision_tunnel_allow_mac(tun, "02:ff:ff:ff:ff:ff"));
     struct in_addr remote;
     inet_pton(AF_INET, "192.0.2.3", &remote);
@@ -244,7 +269,7 @@ static void test_provision(void)
     g_assert_nonnull(other);
     g_assert_false(provision_tunnel_allow_mac(other, "02:00:00:00:00:42"));
     provision_delall();
-    g_assert_cmpuint(g_hash_table_size(provision_table()), ==, 0);
+    g_assert_cmpuint(hashmap_size(provision_table()), ==, 0);
     g_assert_null(provision_get_tunnel_by_mac("02:00:00:00:00:42"));
     fail_gre = true;
     g_assert_null(provision_add(&remote));
@@ -252,7 +277,7 @@ static void test_provision(void)
     fail_bridge = true;
     g_assert_null(provision_add(&remote));
     fail_bridge = false;
-    g_assert_cmpuint(g_hash_table_size(provision_table()), ==, 0);
+    g_assert_cmpuint(hashmap_size(provision_table()), ==, 0);
     other = provision_add(&remote);
     g_assert_nonnull(other);
     g_assert_cmpstr(other->ifgre, ==, "sgre0");
@@ -262,11 +287,11 @@ static void test_provision(void)
     fail_firewall = false;
     fail_delete = true;
     provision_delall();
-    g_assert_cmpuint(g_hash_table_size(provision_table()), ==, 1);
+    g_assert_cmpuint(hashmap_size(provision_table()), ==, 1);
     g_assert_null(provision_add(&parsed.remote));
     fail_delete = false;
     provision_delall();
-    g_assert_cmpuint(g_hash_table_size(provision_table()), ==, 0);
+    g_assert_cmpuint(hashmap_size(provision_table()), ==, 0);
     provision_end();
     softgred_config_release();
 }
@@ -284,16 +309,16 @@ static void test_commands(void)
                          "HELP a b c",
                          "GTMC 0:1:2:3:4:5"};
     for (unsigned i = 0; i < ARRAY_SIZE(bad); i++) {
-        GString *out = service_command(bad[i]);
+        struct strbuf *out = service_command(bad[i]);
         g_assert_nonnull(strstr(out->str, "RESULT: INVALID"));
-        g_string_free(out, true);
+        strbuf_free(out);
     }
-    GString *out = service_command("STUN");
+    struct strbuf *out = service_command("STUN");
     g_assert_cmpstr(out->str, ==, "RESULT: NULL\n");
-    g_string_free(out, true);
+    strbuf_free(out);
     out = service_command("LMIP 192.0.2.2");
     g_assert_cmpstr(out->str, ==, "RESULT: NOTFOUND\n");
-    g_string_free(out, true);
+    strbuf_free(out);
 }
 
 static void test_pid(void)
@@ -301,10 +326,10 @@ static void test_pid(void)
     softgred_config_release();
     struct softgred_config *cfg = softgred_config_ref();
     char *path = NULL;
-    int fd = g_file_open_tmp("softgre-pid-XXXXXX", &path, NULL);
+    int fd = testing_tmp_file("softgre-pid-XXXXXX", &path);
     g_assert_cmpint(fd, >=, 0);
     close(fd);
-    cfg->pid_file = g_strdup(path);
+    cfg->pid_file = xstrdup(path);
     g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, 0);
     pid_t child = fork();
     g_assert_cmpint(child, >=, 0);
@@ -320,7 +345,7 @@ static void test_pid(void)
     g_assert_cmpint(symlink("/dev/null", path), ==, 0);
     g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, -1);
     unlink(path);
-    g_free(path);
+    free(path);
     softgred_config_release();
 }
 
@@ -432,7 +457,7 @@ static void test_api(void)
 {
     softgred_config_release();
     struct softgred_config *cfg = softgred_config_ref();
-    cfg->srv_bind_in = g_strdup("lo");
+    cfg->srv_bind_in = xstrdup("lo");
     cfg->srv_max_listen = 2;
     /* Get an ephemeral port, then release it for the server. */
     int fd = socket(AF_INET, SOCK_STREAM, 0);

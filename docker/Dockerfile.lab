@@ -1,6 +1,6 @@
 FROM ubuntu:24.04 AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential autoconf automake pkg-config libglib2.0-dev debhelper python3 \
+    build-essential autoconf automake debhelper python3 \
     bridge-utils net-tools htop vim strace lsof \
     systemd systemd-sysv init-system-helpers logrotate dbus \
     && rm -rf /var/lib/apt/lists/*
@@ -10,7 +10,7 @@ RUN ./autogen.sh && make deb \
     && scripts/install-deb.sh /softgred_*.deb && scripts/check-installed-package.sh
 FROM ubuntu:24.04 AS lab-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0t64 ebtables iptables iproute2 python3 util-linux \
+    ebtables iptables iproute2 python3 util-linux \
     bridge-utils net-tools htop vim strace lsof \
     systemd systemd-sysv init-system-helpers logrotate dbus \
     && rm -rf /var/lib/apt/lists/*

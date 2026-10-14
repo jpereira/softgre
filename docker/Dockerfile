@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential autoconf automake pkg-config libglib2.0-dev debhelper python3 \
+    build-essential autoconf automake debhelper python3 \
     bridge-utils net-tools htop vim strace lsof \
     systemd systemd-sysv init-system-helpers logrotate \
     && rm -rf /var/lib/apt/lists/*
@@ -11,7 +11,7 @@ RUN ./autogen.sh && make deb \
     && scripts/check-installed-package.sh
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 ebtables iptables \
+    ebtables iptables \
     bridge-utils net-tools htop vim strace lsof \
     systemd systemd-sysv init-system-helpers logrotate \
     && rm -rf /var/lib/apt/lists/*

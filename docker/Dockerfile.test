@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential autoconf automake pkg-config libglib2.0-dev clang libclang-rt-dev python3 \
+    build-essential autoconf automake clang libclang-rt-dev python3 \
     iproute2 ebtables iptables dnsmasq-base busybox iputils-ping php-cli php-sockets debhelper \
     bridge-utils net-tools htop vim strace lsof \
     systemd systemd-sysv init-system-helpers logrotate \

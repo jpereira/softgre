@@ -21,13 +21,14 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#include "compat.h"
 #include "config.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <glib.h>
 #include <ifaddrs.h>
+#include <inttypes.h>
 #include <net/if.h>
 #include <netinet/if_ether.h>
 #include <poll.h>

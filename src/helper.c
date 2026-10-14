@@ -20,53 +20,56 @@
 
 #include "log.h"
 
-static void child_signals(void *unused)
-{
-    (void)unused;
-    sigset_t empty;
-    sigemptyset(&empty);
-    sigprocmask(SIG_SETMASK, &empty, NULL);
-}
-
 int helper_exec(const char *const argv[])
 {
-    GError *error = NULL;
-    int status = 0;
-    GPid child;
-    bool ok =
-        g_spawn_async(NULL, (char **)argv, NULL,
-                      G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_DO_NOT_REAP_CHILD,
-                      child_signals, NULL, &child, &error);
-    if (ok) {
-        gint64 deadline = g_get_monotonic_time() + 3 * G_USEC_PER_SEC;
-        for (;;) {
-            pid_t waited = waitpid(child, &status, WNOHANG);
-            if (waited == child)
-                break;
-            if (waited < 0 && errno != EINTR) {
-                ok = false;
-                break;
-            }
-            if (g_get_monotonic_time() >= deadline) {
-                kill(child, SIGKILL);
-                while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
-                }
-                g_set_error_literal(&error, G_SPAWN_ERROR, G_SPAWN_ERROR_FAILED,
-                                    "command exceeded three-second deadline");
-                ok = false;
-                break;
-            }
-            g_usleep(1000);
+    pid_t child = fork();
+    if (child < 0) {
+        D_WARNING("%s: fork: %s\n", argv[0], strerror(errno));
+        return -1;
+    }
+    if (child == 0) {
+        /* Child: restore the default signal mask, silence stdout, then exec on PATH. The
+         * daemon's descriptors are O_CLOEXEC, so they do not leak into the command. */
+        sigset_t empty;
+        sigemptyset(&empty);
+        sigprocmask(SIG_SETMASK, &empty, NULL);
+        int devnull = open("/dev/null", O_WRONLY | O_CLOEXEC);
+        if (devnull >= 0) {
+            dup2(devnull, STDOUT_FILENO);
+            if (devnull != STDOUT_FILENO)
+                close(devnull);
         }
-        g_spawn_close_pid(child);
-        if (ok)
-            ok = g_spawn_check_wait_status(status, &error);
+        execvp(argv[0], (char *const *)argv);
+        _exit(127);
     }
-    if (!ok) {
-        D_WARNING("%s: %s\n", argv[0], error ? error->message : "execution failed");
-        g_clear_error(&error);
+    int64_t deadline = monotonic_usec() + 3 * USEC_PER_SEC;
+    int status = 0;
+    for (;;) {
+        pid_t waited = waitpid(child, &status, WNOHANG);
+        if (waited == child)
+            break;
+        if (waited < 0 && errno != EINTR) {
+            D_WARNING("%s: waitpid: %s\n", argv[0], strerror(errno));
+            return -1;
+        }
+        if (monotonic_usec() >= deadline) {
+            kill(child, SIGKILL);
+            while (waitpid(child, &status, 0) < 0 && errno == EINTR) {
+            }
+            D_WARNING("%s: command exceeded three-second deadline\n", argv[0]);
+            return -1;
+        }
+        sleep_usec(1000);
     }
-    return ok ? 0 : -1;
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+        return 0;
+    if (WIFSIGNALED(status))
+        D_WARNING("%s: killed by signal %d\n", argv[0], WTERMSIG(status));
+    else if (WIFEXITED(status))
+        D_WARNING("%s: exited with status %d\n", argv[0], WEXITSTATUS(status));
+    else
+        D_WARNING("%s: execution failed\n", argv[0]);
+    return -1;
 }
 
 void helper_print_payload(const unsigned char *data, size_t len)

@@ -9,8 +9,6 @@ AC_PROG_SED
 AC_USE_SYSTEM_EXTENSIONS
 AC_CANONICAL_HOST
 AS_CASE([$host_os], [linux*], [], [AC_MSG_ERROR([SoftGRE requires Linux])])
-PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.32])
 AC_CHECK_HEADERS([linux/if_packet.h linux/filter.h linux/rtnetlink.h], [],
                 [AC_MSG_ERROR([Linux networking headers are required])])
 AC_ARG_ENABLE([service], AS_HELP_STRING([--disable-service], [Disable TCP status API]),

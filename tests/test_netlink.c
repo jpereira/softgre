@@ -1,5 +1,6 @@
 #include "iface_gre.h"
 #include "softgred_config.h"
+#include "testing.h"
 
 static void test_attributes(void)
 {

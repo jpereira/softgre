@@ -1,23 +1,22 @@
 /* File logging must preserve events across rotation and reject unsafe destinations. */
 #include "log.h"
 #include "softgred_config.h"
-
-#include <glib/gstdio.h>
+#include "testing.h"
 
 static char *contents(const char *path)
 {
-    char *text = NULL;
-    g_assert_true(g_file_get_contents(path, &text, NULL, NULL));
+    char *text = testing_read_file(path);
+    g_assert_nonnull(text);
     return text;
 }
 
 static void test_logging(void)
 {
-    char *directory = g_dir_make_tmp("softgre-log-XXXXXX", NULL);
+    char *directory = testing_tmp_dir("softgre-log-XXXXXX");
     g_assert_nonnull(directory);
-    char *path = g_build_filename(directory, "events.log", NULL);
-    char *old = g_build_filename(directory, "events.log.1", NULL);
-    char *unsafe = g_build_filename(directory, "unsafe", NULL);
+    char *path = testing_path_join(directory, "events.log");
+    char *old = testing_path_join(directory, "events.log.1");
+    char *unsafe = testing_path_join(directory, "unsafe");
     g_assert_cmpint(log_open(path), ==, 0);
     errno = EBUSY;
     D_INFO("First event remote=192.0.2.2\n");
@@ -28,8 +27,8 @@ static void test_logging(void)
     g_assert_nonnull(strstr(text, "level=INFO First event remote=192.0.2.2\n"));
     g_assert_nonnull(strstr(text, "level=WARNING Warning event\n"));
     g_assert_null(strstr(text, "hidden debug"));
-    g_assert_true(g_regex_match_simple("^\\[[0-9]{4}-[0-9]{2}-[0-9]{2}T.*\\] pid=", text, 0, 0));
-    g_free(text);
+    g_assert_true(testing_regex("^\\[[0-9]{4}-[0-9]{2}-[0-9]{2}T.*\\] pid=", text));
+    free(text);
     struct stat st;
     g_assert_cmpint(stat(path, &st), ==, 0);
     g_assert_cmpuint(st.st_mode & 0777, ==, 0600);
@@ -41,14 +40,14 @@ static void test_logging(void)
     g_assert_nonnull(strstr(text, "First event"));
     g_assert_nonnull(strstr(text, "Before reopen"));
     g_assert_null(strstr(text, "After reopen"));
-    g_free(text);
+    free(text);
     g_assert_cmpint(symlink(old, unsafe), ==, 0);
     g_assert_cmpint(log_open(unsafe), ==, -1);
     D_CRIT("Kept previous descriptor\n");
     text = contents(path);
     g_assert_nonnull(strstr(text, "After reopen"));
     g_assert_nonnull(strstr(text, "level=ERROR Kept previous descriptor"));
-    g_free(text);
+    free(text);
     g_assert_cmpint(unlink(unsafe), ==, 0);
     g_assert_cmpint(link(path, unsafe), ==, 0);
     g_assert_cmpint(log_open(unsafe), ==, -1);
@@ -66,14 +65,14 @@ static void test_logging(void)
     text = contents(path);
     g_assert_nonnull(strstr(text, "After reopen"));
     g_assert_nonnull(strstr(text, "level=DEBUG Visible debug"));
-    g_free(text);
+    free(text);
     unlink(path);
     unlink(old);
     rmdir(directory);
-    g_free(path);
-    g_free(old);
-    g_free(unsafe);
-    g_free(directory);
+    free(path);
+    free(old);
+    free(unsafe);
+    free(directory);
     softgred_config_release();
 }
 

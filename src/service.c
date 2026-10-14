@@ -29,8 +29,8 @@ struct client {
     int fd;
     char input[SERVICE_MAX_REQUEST];
     size_t used, sent;
-    GString *response;
-    gint64 deadline;
+    struct strbuf *response;
+    int64_t deadline;
 };
 static struct client clients[SERVICE_MAX_CLIENTS];
 static unsigned poll_slots[SERVICE_MAX_CLIENTS];
@@ -41,7 +41,7 @@ static void close_client(struct client *client)
     if (client->fd >= 0)
         close(client->fd);
     if (client->response)
-        g_string_free(client->response, true);
+        strbuf_free(client->response);
     memset(client, 0, sizeof(*client));
     client->fd = -1;
 }
@@ -116,7 +116,7 @@ void service_dispatch(struct pollfd *fds, unsigned count)
     if (!count)
         return;
     /* Handle only clients represented in this poll, before accepting new ones. */
-    gint64 now = g_get_monotonic_time();
+    int64_t now = monotonic_usec();
     for (unsigned n = 1; n < count; n++) {
         struct client *client = &clients[poll_slots[n - 1]];
         short events = fds[n].revents;
@@ -145,12 +145,11 @@ void service_dispatch(struct pollfd *fds, unsigned count)
                 if (end)
                     *end = '\0';
                 if (!end && client->used == sizeof(client->input) - 1)
-                    client->response = g_string_new("RESULT: INVALID\nBODY: Request too large\n");
+                    client->response = strbuf_new("RESULT: INVALID\nBODY: Request too large\n");
                 else
                     client->response = service_command(client->input);
                 if (client->response->len > SERVICE_MAX_RESPONSE) {
-                    g_string_assign(client->response,
-                                    "RESULT: INVALID\nBODY: Response too large\n");
+                    strbuf_assign(client->response, "RESULT: INVALID\nBODY: Response too large\n");
                 }
             }
         }
@@ -183,7 +182,7 @@ void service_dispatch(struct pollfd *fds, unsigned count)
                 continue;
             }
             clients[slot].fd = fd;
-            clients[slot].deadline = now + 5 * G_USEC_PER_SEC;
+            clients[slot].deadline = now + 5 * USEC_PER_SEC;
         }
     }
 }
