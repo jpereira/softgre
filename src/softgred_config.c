@@ -105,8 +105,14 @@ static struct ini *ini_load(const char *path)
     size_t cap = 0;
     unsigned number = 0;
     bool ok = true;
-    while (ok && getline(&line, &cap, file) != -1) {
+    ssize_t length;
+    while (ok && (length = getline(&line, &cap, file)) != -1) {
         number++;
+        if (memchr(line, '\0', (size_t)length)) {
+            config_set_error("line %u: embedded NUL byte", number);
+            ok = false;
+            break;
+        }
         char *s = str_trim(line);
         if (!*s || *s == '#' || *s == ';')
             continue;
@@ -142,6 +148,10 @@ static struct ini *ini_load(const char *path)
         ini->pair[ini->count].key = xstrdup(key);
         ini->pair[ini->count].value = xstrdup(value);
         ini->count++;
+    }
+    if (ferror(file)) {
+        config_set_error("cannot read configuration: %s", strerror(errno));
+        ok = false;
     }
     free(line);
     fclose(file);
@@ -209,8 +219,10 @@ static bool parse_allow(struct softgred_config *cfg, const char *list)
     cfg->allow_slot = 0;
     while (ok && (field = str_split_next(&cursor, ','))) {
         char *entry = str_trim(field);
-        if (!*entry)
-            continue;
+        if (!*entry) {
+            ok = false;
+            break;
+        }
         if (cfg->allow_slot >= SOFTGRED_MAX_ALLOW) {
             ok = false;
             break;
@@ -238,6 +250,8 @@ static bool parse_allow(struct softgred_config *cfg, const char *list)
         slot->network = ntohl(addr.s_addr) & slot->mask;
     }
     free(copy);
+    if (!ok)
+        config_set_error("allow-remotes requires nonempty IPv4 addresses or CIDRs");
     return ok;
 }
 

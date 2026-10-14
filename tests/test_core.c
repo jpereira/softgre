@@ -155,17 +155,47 @@ static void test_parser(void)
     }
 }
 
-static bool load_text(const char *text)
+static bool load_bytes(const char *text, size_t length)
 {
     char *path = NULL;
     int fd = testing_tmp_file("softgre-test-XXXXXX", &path);
     g_assert_cmpint(fd, >=, 0);
-    g_assert_cmpint(write(fd, text, strlen(text)), ==, (ssize_t)strlen(text));
+    g_assert_cmpint(write(fd, text, length), ==, (ssize_t)length);
     close(fd);
     bool ok = softgred_config_load_conf(path);
     unlink(path);
     free(path);
     return ok;
+}
+
+static bool load_text(const char *text)
+{
+    return load_bytes(text, strlen(text));
+}
+
+static void test_config_fail_closed(void)
+{
+    const char *invalid[] = {
+        "", " ", ",", " , , ", "192.0.2.1,", ",192.0.2.1", "192.0.2.1,,203.0.113.1"};
+    for (unsigned i = 0; i < ARRAY_SIZE(invalid); i++) {
+        softgred_config_release();
+        char *text = xstrdup_printf("[global]\ninterface=eth0\nbridge-map=10@br0\n"
+                                    "allow-remotes=%s\n",
+                                    invalid[i]);
+        g_assert_false(load_text(text));
+        free(text);
+    }
+    const char hidden[] = "[global]\ninterface=eth0\nbridge-map=10@br0\n"
+                          "\0allow-remotes=192.0.2.0/24\n";
+    g_assert_false(load_bytes(hidden, sizeof(hidden) - 1));
+    const char truncated[] = "[global]\ninterface=eth0\nbridge-map=10@br0\n"
+                             "allow-remotes=192.0.2.0/24\0,0.0.0.0/0\n";
+    g_assert_false(load_bytes(truncated, sizeof(truncated) - 1));
+    softgred_config_release();
+    g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=10@br0\n"
+                            "allow-remotes=0.0.0.0/0\n"));
+    g_assert_true(config_remote_allowed(0xcb007163));
+    softgred_config_release();
 }
 
 static void test_config(void)
@@ -514,6 +544,7 @@ int main(int argc, char **argv)
     g_test_init(&argc, &argv, NULL);
     g_test_add_func("/packet/parser", test_parser);
     g_test_add_func("/config/types-and-bridges", test_config);
+    g_test_add_func("/config/fail-closed", test_config_fail_closed);
     g_test_add_func("/provision/state-and-rollback", test_provision);
     g_test_add_func("/provision/capacity-backoff", test_capacity_backoff);
     g_test_add_func("/provision/allow-remotes", test_allow_remotes);
