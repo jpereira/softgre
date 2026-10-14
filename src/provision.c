@@ -126,8 +126,10 @@ bool provision_tunnel_allow_mac(struct tunnel_context *tun, const char *mac)
         return false;
     if (g_hash_table_contains(tun->macs, mac))
         return true;
-    if (g_hash_table_size(tun->macs) >= PROVISION_MAX_CLIENTS)
+    if (g_hash_table_size(tun->macs) >= PROVISION_MAX_CLIENTS) {
+        errno = ENOSPC;
         return false;
+    }
     /* A MAC belongs to one remote; implicit migration would allow takeover. */
     if (provision_get_tunnel_by_mac(mac))
         return false;
@@ -178,15 +180,24 @@ void provision_packet(const struct payload_packet *packet)
     gint64 now = g_get_monotonic_time();
     if (now < retry_after)
         return;
+    errno = 0;
     if (!tun || !tun->ready)
         tun = provision_add(&packet->remote);
-    if (!tun || !provision_tunnel_allow_mac(tun, mac)) {
-        failures++;
-        retry_after = now + G_USEC_PER_SEC;
-        char ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &packet->remote, ip, sizeof(ip));
-        D_WARNING("Provisioning failed remote=%s mac=%s vlan=%u retry=1s\n", ip, mac, packet->vlan);
+    if (tun && tun->ready && provision_tunnel_allow_mac(tun, mac))
+        return;
+    /* A full tunnel or a full slot table is an expected, remotely triggerable capacity
+     * limit: drop the packet. Arming the shared backoff for it would let one peer that
+     * fills a tunnel stall provisioning for every other peer. Reserve the backoff for real
+     * kernel/firewall errors, which repeated retries would otherwise storm. */
+    if (errno == ENOSPC) {
+        ignored++;
+        return;
     }
+    failures++;
+    retry_after = now + G_USEC_PER_SEC;
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &packet->remote, ip, sizeof(ip));
+    D_WARNING("Provisioning failed remote=%s mac=%s vlan=%u retry=1s\n", ip, mac, packet->vlan);
 }
 
 int provision_del(const struct in_addr *remote)

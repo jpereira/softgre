@@ -323,6 +323,51 @@ static void test_pid(void)
     g_free(path);
     softgred_config_release();
 }
+
+static void feed(const char *remote, const char *mac_text, uint16_t vlan)
+{
+    struct softgred_config *cfg = softgred_config_ref();
+    struct payload_packet pk = {.local = cfg->local, .vlan = vlan};
+    inet_pton(AF_INET, remote, &pk.remote);
+    unsigned octet[6];
+    sscanf(mac_text, "%x:%x:%x:%x:%x:%x", &octet[0], &octet[1], &octet[2], &octet[3], &octet[4],
+           &octet[5]);
+    for (unsigned i = 0; i < 6; i++)
+        pk.mac[i] = octet[i];
+    provision_packet(&pk);
+}
+
+/* A peer that fills a tunnel (a remotely triggerable capacity limit) must not arm the
+ * shared backoff and stall provisioning for other peers. Regression for the global stall. */
+static void test_capacity_backoff(void)
+{
+    softgred_config_release();
+    g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"));
+    struct softgred_config *cfg = softgred_config_ref();
+    inet_pton(AF_INET, "192.0.2.1", &cfg->local);
+    provision_init();
+    fail_gre = fail_bridge = fail_firewall = false;
+    feed("192.0.2.66", "02:00:00:00:00:01", 1000);
+    struct tunnel_context *attacker = provision_get_tunnel_by_mac("02:00:00:00:00:01");
+    g_assert_nonnull(attacker);
+    for (unsigned i = 1; i < PROVISION_MAX_CLIENTS; i++) {
+        char mac[18];
+        snprintf(mac, sizeof(mac), "02:aa:00:00:%02x:%02x", i >> 8, i & 255);
+        g_assert_true(provision_tunnel_allow_mac(attacker, mac));
+    }
+    /* One more MAC on the full tunnel is a capacity rejection, not an operational failure. */
+    adds = 0;
+    feed("192.0.2.66", "02:bb:00:00:00:01", 1000);
+    g_assert_cmpuint(adds, ==, 0);
+    /* A fresh peer must provision immediately in the same instant, with no global gate. */
+    feed("192.0.2.77", "02:00:00:00:00:02", 1000);
+    g_assert_cmpuint(adds, ==, 1);
+    g_assert_nonnull(provision_get_tunnel_by_mac("02:00:00:00:00:02"));
+    provision_delall();
+    provision_end();
+    softgred_config_release();
+}
+
 #ifdef SOFTGRED_ENABLE_SERVICE
 static void pump(unsigned cycles)
 {
@@ -406,6 +451,7 @@ int main(int argc, char **argv)
     g_test_add_func("/packet/parser", test_parser);
     g_test_add_func("/config/types-and-bridges", test_config);
     g_test_add_func("/provision/state-and-rollback", test_provision);
+    g_test_add_func("/provision/capacity-backoff", test_capacity_backoff);
     g_test_add_func("/service/commands", test_commands);
     g_test_add_func("/process/pid-lock-and-symlink", test_pid);
 #ifdef SOFTGRED_ENABLE_SERVICE
