@@ -40,3 +40,19 @@ directory = Path(sys.argv[1])
 directory.mkdir(parents=True, exist_ok=True)
 for index, (vlan, tags, ihl) in enumerate([(1000, 0, 5), (10, 1, 5), (4094, 2, 7), (1, 0, 6)]):
     (directory / f"seed{index}").write_bytes(build(vlan, tags, ihl))
+
+# Seed typed configuration paths, not just the INI reader's early rejection branches.
+if len(sys.argv) > 2:
+    config = Path(sys.argv[2])
+    config.mkdir(parents=True, exist_ok=True)
+    base = b"[global]\ninterface=eth0\nbridge-map=1000@br0,10@br1\n"
+    for index, tail in enumerate(
+        (
+            b"",
+            b"allow-remotes=192.0.2.0/24,203.0.113.5\n",
+            b"allow-remotes=\n",
+            b"\0allow-remotes=192.0.2.0/24\n",
+            b"[service]\nport=8888\nmax-listen=128\n[debug]\nenable=true\n",
+        )
+    ):
+        (config / f"seed{index}").write_bytes(base + tail)

@@ -11,8 +11,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     ssize_t written = write(fd, data, size);
     close(fd);
-    if (written == (ssize_t)size)
-        softgred_config_load_conf(path);
+    if (written == (ssize_t)size) {
+        bool accepted = softgred_config_load_conf(path);
+        /* Binary corruption must never hide an authorization setting. */
+        if (accepted && memchr(data, '\0', size))
+            abort();
+    }
     unlink(path);
     softgred_config_release();
     return 0;

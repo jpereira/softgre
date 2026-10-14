@@ -43,6 +43,8 @@ jobs:
           python3 tests/dhcp_integration.py /usr/sbin/softgred
       - name: Python and PHP adapters
         run: docker run --rm softgre-test python3 tests/test_web.py
+      - name: Packet, hashmap and configuration fuzzing
+        run: docker run --rm -e FUZZ_SECONDS=10 softgre-test tests/fuzz/run.sh
       - name: Debian package
         run: docker run --rm softgre-test scripts/check-installed-package.sh
       - name: Production container

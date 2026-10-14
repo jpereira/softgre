@@ -12,7 +12,7 @@ cd "$work/tree"
 ./configure >/dev/null 2>&1
 flags="-g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined -I. -Isrc"
 defs='-DSOFTGRED_CONFDIR="/etc/softgred" -DSOFTGRED_PIDDIR="/run"'
-python3 tests/fuzz/seed.py "$work/corpus-parser"
+python3 tests/fuzz/seed.py "$work/corpus-parser" "$work/corpus-config"
 run() {
     name=$1
     shift
