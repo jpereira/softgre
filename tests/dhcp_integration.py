@@ -7,14 +7,15 @@ import tempfile
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tests"))
 from integration import query, run, wait_for
 
 # Each bridge is a separate service network with its own subnet, mask, gateway and DNS.
 NETWORKS = {
     1000: {
         "bridge": "br-radius",
-        "server": "radius",
+        "tag": "radius",
         "gateway": "10.100.0.1",
         "prefix": 24,
         "range": ("10.100.0.100", "10.100.0.199"),
@@ -23,7 +24,7 @@ NETWORKS = {
     },
     10: {
         "bridge": "br-hotspot",
-        "server": "hotspot",
+        "tag": "hotspot",
         "gateway": "172.16.10.1",
         "prefix": 23,
         "range": ("172.16.10.100", "172.16.11.199"),
@@ -74,20 +75,13 @@ def build_topology():
     run("ip", "link", "add", "sg-wan", "type", "bridge")
     run("ip", "addr", "add", "192.0.2.1/24", "dev", "sg-wan")
     run("ip", "link", "set", "sg-wan", "up")
-    # Operator-owned service bridges: the daemon attaches tunnels, it does not create them.
+    # Operator-owned service bridges with gateway addresses, as in the README: the daemon
+    # attaches tunnels to them, and dnsmasq on the same host can query the loopback API.
     for network in NETWORKS.values():
         run("ip", "link", "add", network["bridge"], "type", "bridge")
-        run("ip", "link", "set", network["bridge"], "up")
-    # One DHCP server namespace with a leg on each service bridge.
-    netns("sg-dhcp")
-    for network in NETWORKS.values():
-        port = "sg-dhcp-" + network["server"][0]
-        run("ip", "link", "add", port, "type", "veth", "peer", "name", network["server"])
-        run("ip", "link", "set", network["server"], "netns", "sg-dhcp")
-        run("ip", "link", "set", port, "master", network["bridge"], "up")
         address = f"{network['gateway']}/{network['prefix']}"
-        ns("sg-dhcp", "ip", "addr", "add", address, "dev", network["server"])
-        ns("sg-dhcp", "ip", "link", "set", network["server"], "up")
+        run("ip", "addr", "add", address, "dev", network["bridge"])
+        run("ip", "link", "set", network["bridge"], "up")
     for remote, ap in APS.items():
         netns(ap)
         run("ip", "link", "add", ap + "-wan", "type", "veth", "peer", "name", "wan")
@@ -141,11 +135,12 @@ def write_dnsmasq(directory):
         "user=root",
         f"dhcp-leasefile={directory}/dnsmasq.leases",
         f"log-facility={directory}/dnsmasq.log",
+        f"dhcp-script={ROOT}/scripts/dhcp-lease-hook.py",
     ]
     for network in NETWORKS.values():
-        tag, (first, last) = network["server"], network["range"]
+        tag, (first, last) = network["tag"], network["range"]
         lines += [
-            f"interface={tag}",
+            f"interface={network['bridge']}",
             f"dhcp-range=set:{tag},{first},{last},{network['subnet']},1h",
             f"dhcp-option=tag:{tag},option:router,{network['gateway']}",
             f"dhcp-option=tag:{tag},option:dns-server,{network['dns']}",
@@ -168,7 +163,7 @@ def main():
             "Run in a disposable privileged container with SOFTGRE_TEST_NAMESPACE=isolated"
         )
     binary = str(Path(sys.argv[1] if len(sys.argv) > 1 else "bin/softgred").resolve())
-    for name in ("sg-wan", "br-radius", "br-hotspot"):
+    for name in ("sg-wan", *(n["bridge"] for n in NETWORKS.values())):
         assert not Path("/sys/class/net", name).exists(), "test interface already exists"
     processes = []
     with tempfile.TemporaryDirectory() as directory:
@@ -200,9 +195,13 @@ max-listen=4
             daemon = subprocess.Popen([binary, "-f", "-c", str(config)], stdout=log, stderr=log)
             processes.append(daemon)
             wait_for(lambda: "RESULT: OK" in query("VERS"))
+            # dnsmasq passes its environment to the lease hook.
+            hook_env = dict(
+                os.environ, SOFTGRE_API_PORT="18888", SOFTGRE_DHCP_LOG=f"{directory}/leases.log"
+            )
             dnsmasq = subprocess.Popen(
-                ["ip", "netns", "exec", "sg-dhcp", "dnsmasq", "--keep-in-foreground"]
-                + [f"--conf-file={write_dnsmasq(directory)}"],
+                ["dnsmasq", "--keep-in-foreground", f"--conf-file={write_dnsmasq(directory)}"],
+                env=hook_env,
                 stdout=log,
                 stderr=log,
             )
@@ -245,6 +244,11 @@ max-listen=4
                 assert f"master {network['bridge']}" in attached, attached
                 # Data path, not just DHCP: reach the gateway through gretap and the bridge.
                 ns(client, "ping", "-c", "1", "-W", "2", network["gateway"])
+                # The hook tied the lease to the remote and tunnel that learned the client.
+                hooked = f"ip={offered['ip']} mac={mac} interface={network['bridge']} "
+                hooked += f"remote={remote} tunnel={tunnel}"
+                leases_log = Path(directory, "leases.log")
+                wait_for(lambda: f"DHCP lease action=add {hooked}" in leases_log.read_text())
                 print(
                     f"{client}: {mac} via {remote}/{tunnel}.{vlan} -> {network['bridge']} "
                     f"ip={offered['ip']} mask={offered['subnet']} dns={offered['dns']}"
@@ -254,14 +258,20 @@ max-listen=4
                 body = query(f"LMIP {remote}").split("BODY: ", 1)[1].strip()
                 learned = set(body.split(";"))
                 assert expected <= learned <= expected | {ap_mac(remote)}, (remote, learned)
+            # Bridged forwarding between tunnels: AP A's client reaches AP B's client on
+            # the same VLAN through both tunnels and the learned-MAC firewall rules.
+            for vlan in NETWORKS:
+                target = Path(directory, f"sg-ap3-c{vlan}.lease").read_text().split()[0]
+                ns(f"sg-ap2-c{vlan}", "ping", "-c", "1", "-W", "2", target.split("=")[1])
             leases = Path(directory, "dnsmasq.leases").read_text().splitlines()
             assert len(leases) == len(clients), leases
             events = Path(directory, "events.log").read_text()
             for remote in APS:
                 assert f"Tunnel created remote={remote}" in events, events
+            print(Path(directory, "leases.log").read_text().strip())
             print("DHCP integration: per-bridge networks, masks, gateways and DNS passed")
         except BaseException:
-            for name in ("events.log", "dnsmasq.log"):
+            for name in ("events.log", "dnsmasq.log", "leases.log"):
                 path = Path(directory, name)
                 if path.exists():
                     print(f"--- {name}\n{path.read_text()}")

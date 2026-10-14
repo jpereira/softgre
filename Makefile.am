@@ -30,3 +30,4 @@ EXTRA_DIST += scripts/lab/setup.sh scripts/lab/setup.service scripts/lab/daemon.
 EXTRA_DIST += .github/workflows/containers.yml
 EXTRA_DIST += tests/dhcp_integration.py
 EXTRA_DIST += docs/assets/softgre-flow.svg
+EXTRA_DIST += scripts/dhcp-lease-hook.py

@@ -659,11 +659,13 @@ isolated kernel integration suite.
 
 The DHCP suite replaces synthetic frames with real remote endpoints. Network namespaces
 model two APs with `gretap` and VLANs 1000 and 10, one client per VLAN behind each AP, and
-a dnsmasq server attached to `br-radius` (`10.100.0.0/24`, DNS `1.1.1.1`) and
-`br-hotspot` (`172.16.10.0/23`, DNS `8.8.8.8`). The clients' first DHCP broadcasts
-provision the tunnels and MACs. The suite then verifies each lease's range, mask, gateway
-and DNS, pings the gateway through the tunnel and checks learned MACs and bridge
-attachment through the API. Creating namespaces requires a privileged container:
+dnsmasq serving `br-radius` (`10.100.0.0/24`, DNS `1.1.1.1`) and `br-hotspot`
+(`172.16.10.0/23`, DNS `8.8.8.8`). The clients' DHCP broadcasts provision the tunnels and
+MACs. The suite then verifies each lease's range, mask, gateway and DNS, pings the gateway
+and the other AP's client through the tunnels, and checks learned MACs, bridge attachment
+and the lease hook's AP/tunnel record. The hook,
+`/usr/share/softgred/dhcp-lease-hook.py`, is a dnsmasq `dhcp-script` that asks the API
+which remote learned each leased MAC. Creating namespaces requires a privileged container:
 
 ```sh
 docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \

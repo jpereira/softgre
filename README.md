@@ -171,24 +171,55 @@ dhcp-option=tag:radius,option:dns-server,1.1.1.1
 dhcp-range=set:hotspot,172.16.10.100,172.16.11.199,255.255.254.0,1h
 dhcp-option=tag:hotspot,option:router,172.16.10.1
 dhcp-option=tag:hotspot,option:dns-server,8.8.8.8
+
+# Record which AP (remote) and tunnel each lease came through.
+dhcp-script=/usr/share/softgred/dhcp-lease-hook.py
 ```
 
 `port=0` turns off dnsmasq's DNS service so it only does DHCP. Remove it to also run a
 local resolver. A client on VLAN 1000 of any AP gets `10.100.0.x/24` with DNS `1.1.1.1`,
-and a client on VLAN 10 gets `172.16.10.x/23` with DNS `8.8.8.8`. The DHCP server can also
-run on another host connected to the bridges. Add routing/NAT from the bridges to your
-uplink as usual.
+and a client on VLAN 10 gets `172.16.10.x/23` with DNS `8.8.8.8`. Add routing/NAT from
+the bridges to your uplink as usual.
+
+### Which AP is behind each lease
+
+The DHCP server only sees the client MAC. `softgred` already knows which remote and
+tunnel learned that MAC, so the lease hook asks the API (`GTMC <mac>`) on every lease
+event and prints one line, which dnsmasq writes to its log:
+
+```text
+DHCP lease action=add ip=10.100.0.101 mac=02:10:00:00:02:01 interface=br-radius remote=192.0.2.2 tunnel=sgre0
+```
+
+The binding comes from the tunnel the client's traffic actually arrived on, so clients
+cannot forge it. Because the API listens on loopback, run dnsmasq on the concentrator.
+dnsmasq passes its environment to the hook: set `SOFTGRE_API_PORT` (and
+`SOFTGRE_API_HOST`) when the API does not use `127.0.0.1:8888`, and `SOFTGRE_DHCP_LOG` to
+also append the lines to a file, for example with a systemd drop-in for dnsmasq:
+
+```ini
+[Service]
+Environment=SOFTGRE_DHCP_LOG=/var/log/softgred-dhcp.log
+```
+
+The hook never fails a lease. If the API is unreachable or the MAC is unknown, it logs
+`remote=- tunnel=-`.
 
 ### End-to-end DHCP test
 
 [`tests/dhcp_integration.py`](tests/dhcp_integration.py) builds this whole picture with
 network namespaces: two real APs (`192.0.2.2`, `192.0.2.3`) with `gretap` and VLANs 1000
 and 10, one client per VLAN behind each AP, and dnsmasq attached to `br-radius` and
-`br-hotspot`. All four clients run `udhcpc` at the same time. Their first DHCP broadcasts
-teach `softgred` the tunnels and MACs, and the retries get leases. The test checks that
-every client got the address range, mask, gateway and DNS of its own bridge, pings its
-gateway through the tunnel, and checks the learned MACs and bridge attachment through
-the API:
+`br-hotspot` with the configuration above. All four clients run `udhcpc` at the same
+time, and their DHCP broadcasts teach `softgred` the tunnels and client MACs. The test
+checks that:
+
+- every client got the address range, mask, gateway and DNS of its own bridge;
+- every client pings its gateway through the tunnel;
+- the clients of AP A ping the clients of AP B on the same VLAN, through both tunnels
+  and the learned-MAC firewall rules;
+- the API reports the learned MACs and the bridge attachments;
+- the lease hook logged the right AP and tunnel for each lease.
 
 ```sh
 docker build -f docker/Dockerfile.test -t softgre-test .
@@ -202,6 +233,8 @@ sg-ap2-c1000: 02:10:00:00:02:01 via 192.0.2.2/sgre0.1000 -> br-radius ip=10.100.
 sg-ap2-c10: 02:10:00:00:02:02 via 192.0.2.2/sgre0.10 -> br-hotspot ip=172.16.11.142 mask=255.255.254.0 dns=8.8.8.8
 sg-ap3-c1000: 02:10:00:00:03:01 via 192.0.2.3/sgre1.1000 -> br-radius ip=10.100.0.100 mask=255.255.255.0 dns=1.1.1.1
 sg-ap3-c10: 02:10:00:00:03:02 via 192.0.2.3/sgre1.10 -> br-hotspot ip=172.16.10.137 mask=255.255.254.0 dns=8.8.8.8
+[2026-10-14T16:39:15+0000] DHCP lease action=add ip=172.16.11.142 mac=02:10:00:00:02:02 interface=br-hotspot remote=192.0.2.2 tunnel=sgre0
+...
 DHCP integration: per-bridge networks, masks, gateways and DNS passed
 ```
 
