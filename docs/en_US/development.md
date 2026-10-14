@@ -75,6 +75,16 @@ docker run --rm -v "$PWD:/src" softgre-format scripts/format-code.sh
 The last command rewrites the mounted workspace on a local Docker engine. With a remote
 Docker context, run the formatter in its copied tree and copy the results back.
 
+## Commit hooks
+
+The repository ships a `commit-msg` hook in `.githooks/` that strips any Claude or
+Anthropic co-authorship or "Generated with" trailer, keeping that attribution out of the
+history. Enable it once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## Releases
 
 Version 2.0.1 is defined in `VERSION`. Autoconf reads that file; `bump.sh` also updates

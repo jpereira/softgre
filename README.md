@@ -80,6 +80,8 @@ Then set the capture interface and VLAN-to-bridge mappings in
 interface = eth0
 bridge-map = 1000@br-radius,10@br-hotspot
 bridge-force = true
+# GRE is unauthenticated; allow only your APs to provision (omit to accept any remote).
+allow-remotes = 203.0.113.0/24
 ```
 
 See [Install and deploy](https://jpereira.github.io/softgre/en_US/install.html) for

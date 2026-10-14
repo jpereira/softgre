@@ -45,10 +45,10 @@ aggregation and hotspots, built from standard kernel parts.
 ## Scope
 
 SoftGRE accepts IPv4 outer transport, unkeyed GRE v0 and one inner VLAN per frame.
-Learning a MAC is discovery, not authentication: restrict GRE to trusted remotes. There is
-no built-in RADIUS, DHCP server, shaping or failover; those services attach to the
-bridges. See [Architecture and security](architecture.md) for the full protocol scope and
-trust model.
+Learning a MAC is discovery, not authentication, so restrict who may provision with the
+`allow-remotes` allowlist and keep GRE to trusted remotes. There is no built-in RADIUS,
+DHCP server, shaping or failover; those services attach to the bridges. See
+[Architecture and security](architecture.md) for the full protocol scope and trust model.
 
 ## Where to go next
 

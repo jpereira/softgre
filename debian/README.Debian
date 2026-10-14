@@ -8,6 +8,8 @@ The daemon uses native Linux interfaces and requires root network privileges.
 Configure /etc/softgred/softgred.conf for the capture interface, its local IPv4
 address and VLAN-to-bridge mappings before starting the service. Kernel GRE,
 VLAN and bridge support is required. The TCP API binds loopback by default.
+GRE is unauthenticated: set allow-remotes to the authorized AP addresses or
+networks so only they can provision tunnels.
 
     sudo systemctl enable --now softgred.service
     sudo systemctl restart softgred.service
