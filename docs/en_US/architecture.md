@@ -11,11 +11,16 @@ packets are ignored.
 
 For each new remote, native `NETLINK_ROUTE` requests create an unkeyed gretap interface
 and a VLAN interface per configured mapping. Requests include kernel acknowledgments,
-bounded attributes and a three-second receive timeout. GLib hash tables index remote IPv4
+bounded attributes and a three-second receive timeout. Hash tables index remote IPv4
 addresses and MAC addresses. One `poll` loop owns capture, API clients and `signalfd`
 signals, so readers never race deletions. The capture loop handles at most 64 packets per
 batch and the API accepts at most 16 clients per iteration. Network and firewall setup
 happen synchronously for new peers and MACs.
+
+The daemon links only against libc: the hash tables, string buffers, INI reader and process
+helper are small in-tree modules (`hashmap.c`, `compat.c`, `softgred_config.c`,
+`helper.c`) covered by unit tests and fuzzing. Allocation failure aborts the process, which
+systemd restarts, rather than limping on with a half-built state.
 
 Kernel bridges and gretap forward established traffic. Repeated packets from known MACs
 use hash lookups and do not spawn commands or recreate interfaces. ebtables receives

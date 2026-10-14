@@ -24,12 +24,12 @@ case ${1:-} in
         ;;
 esac
 # The mode variables intentionally contain only fixed formatter options.
-clang-format $c_mode src/*.c src/*.h tests/*.c
+clang-format $c_mode src/*.c src/*.h tests/*.c tests/fuzz/*.c
 python3 scripts/format-includes.py $py_mode
-black $py_mode --line-length 100 scripts/*.py scripts/lab/*.py tests/*.py share/webinterface/server.py
+black $py_mode --line-length 100 scripts/*.py scripts/lab/*.py tests/*.py tests/fuzz/*.py share/webinterface/server.py
 prettier "$js_mode" docs/assets/*.js docs/assets/*.css share/webinterface/*.js \
     share/webinterface/*.css share/webinterface/*.html .github/workflows/*.yml .prettierrc.json
-shfmt "$sh_mode" -i 4 -ci -bn autogen.sh bump.sh scripts/*.sh scripts/lab/*.sh
+shfmt "$sh_mode" -i 4 -ci -bn autogen.sh bump.sh scripts/*.sh scripts/lab/*.sh docker/*.sh tests/fuzz/*.sh
 # PHPCBF returns 1 when it successfully fixes formatting.
 status=0
 "$php_tool" -n --standard=PSR12 share/webinterface/api.php || status=$?

@@ -4,12 +4,38 @@ All Dockerfiles are in `docker/`. Run build commands from the project root and k
 as the build context; the root `.dockerignore` excludes Git metadata and generated
 artifacts. CI runs every check on this page for each push and pull request.
 
+## One script per image
+
+Each Dockerfile has a script that builds it and runs all of its checks, so you do not
+need to remember the individual commands below:
+
+| Script | Image | What it runs |
+| --- | --- | --- |
+| `docker/test.test.sh` | `Dockerfile.test` | Compiler matrix, integration, DHCP, web, package, docs, fuzzing |
+| `docker/test.format.sh` | `Dockerfile.format` | Formatting check on the working tree |
+| `docker/test.lab.sh` | `Dockerfile.lab` | Single-container lab and the gateway with external APs |
+| `docker/test.release.sh` | `Dockerfile.release` | Builds and verifies the `.deb` per distribution |
+| `docker/test.production.sh` | `Dockerfile` | Production image metadata, no GLib, live start |
+| `docker/test.all.sh` | all of them | Every script above, in turn |
+
+```sh
+docker/test.format.sh
+docker/test.release.sh ubuntu24.04
+FUZZ_SECONDS=60 docker/test.test.sh
+```
+
+`docker/test.release.sh` takes optional distribution names (default: all four) and builds
+each package inside a matching image. `FUZZ_SECONDS` sets the time spent on each fuzz
+target (default 10, `0` skips fuzzing). The full set pulls several base images, so run
+`docker/test.all.sh` on a good connection and redirect its output to a file.
+
 ## Unit and compiler checks
 
 `make check` exercises the bounded parser, every truncation of valid packet fixtures, IPv4
 options, outer VLAN tags, invalid GRE formats, seeded malformed inputs, typed
-configuration, bridge mappings, hash indexes, client capacity, rollback, PID locks, API
-commands, TCP fragmentation and peer disconnects. Tests use mock kernel operations for
+configuration (including rejection of malformed lines), bridge mappings, the hash map
+against a reference model, client capacity, rollback, PID locks, API commands, TCP
+fragmentation and peer disconnects. Tests use mock kernel operations for
 state-machine faults and real loopback sockets for the API; `test-netlink` checks encoded
 attributes, nesting and message bounds.
 
@@ -24,6 +50,23 @@ docker run --rm softgre-test scripts/check-installed-package.sh
 UBSan, checks `--disable-service --disable-web`, CLI exit codes and staged installation,
 then runs `make distcheck`. `test_web.py` tests real HTTP connections, backend framing,
 errors, limits and the overview; PHP compatibility tests run when PHP is installed.
+
+SoftGRE needs no third-party libraries: only libc and the Linux kernel interfaces. The unit
+tests use a small in-tree harness (`tests/testing.h`) instead of an external framework.
+
+## Fuzzing
+
+`tests/fuzz/` holds libFuzzer harnesses for the three places that parse untrusted or
+operator-supplied input: the GRE/VLAN/IPv4 packet parser, the INI and allowlist parsers
+and the hash map (checked against a reference model, with leak detection). They build with
+ASan and UBSan and run inside the test container:
+
+```sh
+docker run --rm -e FUZZ_SECONDS=60 softgre-test tests/fuzz/run.sh
+```
+
+The runner seeds the packet parser with valid frames, stops on the first crash, leak or
+model divergence and prints the offending input.
 
 ## Kernel integration tests
 

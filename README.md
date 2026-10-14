@@ -106,11 +106,10 @@ GitHub.
 ## Development
 
 ```sh
-docker build -f docker/Dockerfile.test -t softgre-test .
-docker run --rm softgre-test scripts/check-linux.sh
-docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
-  python3 tests/dhcp_integration.py /usr/sbin/softgred
-python3 scripts/build-docs.py && python3 tests/test_docs.py
+docker/test.test.sh     # compilers, sanitizers, integration, DHCP, web, package, fuzzing
+docker/test.format.sh   # formatting
+docker/test.lab.sh      # lab and gateway with external APs
+docker/test.all.sh      # every image, including release packages for each distribution
 ```
 
 [Development and testing](https://jpereira.github.io/softgre/en_US/development.html) lists

@@ -49,8 +49,11 @@ which joins those broadcast domains deliberately. Empty entries, malformed numbe
 duplicate VLANs fail configuration loading.
 
 Booleans accept `true`, `false`, `1` and `0`. Optional groups and keys can be omitted
-independently, and unrecognized keys are ignored. Configuration is loaded at startup;
-restart the daemon to apply changes.
+independently, and unrecognized keys are ignored. Blank lines and lines starting with `#`
+or `;` are comments; if a key appears twice, the last one wins. Any other line that is not
+a `[group]` header or a `key = value` pair makes the daemon refuse to start, so a typo such
+as `allow-remotes 192.0.2.0/24` (missing `=`) can never silently fall back to accepting
+every remote. Configuration is loaded at startup; restart the daemon to apply changes.
 
 ## Command line
 
@@ -124,7 +127,7 @@ external scheduler or manual rotation. A failed reopen keeps the previous descri
 
 | Symptom | Check |
 | --- | --- |
-| Build fails | Install GLib development headers, compiler and Autotools; build on Linux. |
+| Build fails | Install the C compiler and Autotools; build on Linux. |
 | Capture fails | Verify root, interface existence, IPv4 address and NET_RAW capability. |
 | Bridge startup fails | Ensure the target is a Linux bridge or enable `bridge-force`. |
 | No tunnels appear | Check GRE destination, protocol 47, unkeyed TEB payload and mapped inner VLAN. |

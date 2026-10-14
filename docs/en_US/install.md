@@ -48,12 +48,12 @@ anonymous pulls. Build the same image locally with
 
 ## Build from source
 
-Build dependencies are a C11 compiler, Make, Autoconf, Automake, pkg-config and GLib
-development headers. Runtime dependencies are GLib, ebtables and Python 3 for the
-dashboard and lease hook.
+Build dependencies are a C11 compiler, Make, Autoconf and Automake, with no third-party
+libraries. Runtime dependencies are ebtables and Python 3 for the dashboard and lease
+hook.
 
 ```sh
-sudo apt-get install build-essential autoconf automake pkg-config libglib2.0-dev ebtables iptables iproute2 python3
+sudo apt-get install build-essential autoconf automake ebtables iptables iproute2 python3
 git clone https://github.com/jpereira/softgre.git
 cd softgre
 ./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var --with-piddir=/run

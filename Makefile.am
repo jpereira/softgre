@@ -38,3 +38,8 @@ EXTRA_DIST += scripts/check-gateway.sh
 EXTRA_DIST += docs/en_US/try-it.md docs/en_US/dhcp.md docs/en_US/install.md \
     docs/en_US/configuration.md docs/en_US/api.md docs/en_US/architecture.md \
     docs/en_US/development.md
+EXTRA_DIST += tests/test_hashmap.c tests/testing.c tests/testing.h
+EXTRA_DIST += docker/test.test.sh docker/test.format.sh docker/test.lab.sh \
+    docker/test.release.sh docker/test.production.sh docker/test.all.sh \
+    tests/fuzz/parser_fuzz.c tests/fuzz/hashmap_fuzz.c tests/fuzz/config_fuzz.c \
+    tests/fuzz/seed.py tests/fuzz/run.sh
