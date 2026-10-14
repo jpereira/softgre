@@ -9,17 +9,17 @@ Only one instance should own a given network namespace. To experiment first, use
 
 Download the amd64 package for your distribution from the GitHub release:
 
-[Download SoftGRE 2.0.2](https://github.com/jpereira/softgre/releases/tag/v2.0.2)
+[Download SoftGRE 2.0.3](https://github.com/jpereira/softgre/releases/tag/v2.0.3)
 
 | Distribution | Release asset |
 | --- | --- |
-| Debian 12 | `softgred_2.0.2-1+debian12_amd64.deb` |
-| Debian 13 | `softgred_2.0.2-1+debian13_amd64.deb` |
-| Ubuntu 22.04 | `softgred_2.0.2-1+ubuntu22.04_amd64.deb` |
-| Ubuntu 24.04 | `softgred_2.0.2-1+ubuntu24.04_amd64.deb` |
+| Debian 12 | `softgred_2.0.3-1+debian12_amd64.deb` |
+| Debian 13 | `softgred_2.0.3-1+debian13_amd64.deb` |
+| Ubuntu 22.04 | `softgred_2.0.3-1+ubuntu22.04_amd64.deb` |
+| Ubuntu 24.04 | `softgred_2.0.3-1+ubuntu24.04_amd64.deb` |
 
 Download `SHA256SUMS` too, verify the hash and install with
-`sudo apt install ./softgred_2.0.2-1+debian12_amd64.deb` (adjust the filename for your
+`sudo apt install ./softgred_2.0.3-1+debian12_amd64.deb` (adjust the filename for your
 system). The package installs the daemon, the dashboard, the DHCP lease hook, the
 configuration, these guides, logrotate rules and both systemd units. The units are enabled
 and startup is requested on systemd hosts. Set the capture interface in
@@ -29,14 +29,14 @@ and startup is requested on systemd hosts. Set the capture interface in
 ## Container image
 
 [GitHub Packages](https://github.com/jpereira/softgre/pkgs/container/softgre) hosts the
-amd64 production image as `ghcr.io/jpereira/softgre:2.0.2` and `latest`. It runs the daemon
+amd64 production image as `ghcr.io/jpereira/softgre:2.0.3` and `latest`. It runs the daemon
 and the dashboard together. Configure the capture interface and VLAN mappings in a local
 `softgred.conf`, then run it with host networking:
 
 ```sh
-docker pull ghcr.io/jpereira/softgre:2.0.2
+docker pull ghcr.io/jpereira/softgre:2.0.3
 docker run --rm --network host --cap-add NET_ADMIN --cap-add NET_RAW \
-  -v /absolute/path/softgred.conf:/etc/softgred/softgred.conf:ro ghcr.io/jpereira/softgre:2.0.2
+  -v /absolute/path/softgred.conf:/etc/softgred/softgred.conf:ro ghcr.io/jpereira/softgre:2.0.3
 ```
 
 Host networking lets the daemon create interfaces and bridges on the Linux host. The host

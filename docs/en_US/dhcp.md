@@ -52,7 +52,7 @@ tunnel learned that MAC, so the lease hook asks the API (`GTMC <mac>`) on every 
 event and prints one line, which dnsmasq writes to its log:
 
 ```text
-DHCP lease action=add ip=10.100.0.101 mac=02:10:00:00:02:01 interface=br-radius remote=192.0.2.2 tunnel=sgre0
+DHCP lease action=add ip=10.100.0.101 mac=02:10:00:00:02:01 interface=br-radius remote=192.0.3.2 tunnel=sgre0
 ```
 
 The binding comes from the tunnel the client's traffic actually arrived on, so clients
@@ -100,7 +100,7 @@ by clients.
 ## End-to-end DHCP test
 
 [`tests/dhcp_integration.py`](https://github.com/jpereira/softgre/blob/master/tests/dhcp_integration.py)
-builds this picture with network namespaces: two APs (`192.0.2.2`, `192.0.2.3`) with
+builds this picture with network namespaces: two APs (`192.0.3.2`, `192.0.3.3`) with
 `gretap` and VLANs 1000 and 10, one client per VLAN behind each AP, and dnsmasq on
 `br-radius` and `br-hotspot` with the configuration above. All four clients run `udhcpc`
 at the same time, and their DHCP broadcasts teach `softgred` the tunnels and client MACs.
@@ -124,10 +124,10 @@ docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
 
 ```text
 4 DHCP leases through 2 learned tunnels in 1.24s
-sg-ap2-c1000: 02:10:00:00:02:01 via 192.0.2.2/sgre1.1000 -> br-radius ip=10.100.0.101 mask=255.255.255.0 dns=1.1.1.1
-sg-ap2-c10: 02:10:00:00:02:02 via 192.0.2.2/sgre1.10 -> br-hotspot ip=172.16.11.142 mask=255.255.254.0 dns=8.8.8.8
-sg-ap3-c1000: 02:10:00:00:03:01 via 192.0.2.3/sgre0.1000 -> br-radius ip=10.100.0.100 mask=255.255.255.0 dns=1.1.1.1
-sg-ap3-c10: 02:10:00:00:03:02 via 192.0.2.3/sgre0.10 -> br-hotspot ip=172.16.10.137 mask=255.255.254.0 dns=9.9.9.9
+sg-ap2-c1000: 02:10:00:00:02:01 via 192.0.3.2/sgre1.1000 -> br-radius ip=10.100.0.101 mask=255.255.255.0 dns=1.1.1.1
+sg-ap2-c10: 02:10:00:00:02:02 via 192.0.3.2/sgre1.10 -> br-hotspot ip=172.16.11.142 mask=255.255.254.0 dns=8.8.8.8
+sg-ap3-c1000: 02:10:00:00:03:01 via 192.0.3.3/sgre0.1000 -> br-radius ip=10.100.0.100 mask=255.255.255.0 dns=1.1.1.1
+sg-ap3-c10: 02:10:00:00:03:02 via 192.0.3.3/sgre0.10 -> br-hotspot ip=172.16.10.137 mask=255.255.254.0 dns=9.9.9.9
 DHCP integration: per-bridge networks, masks, gateways and DNS passed
 ```
 

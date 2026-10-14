@@ -57,7 +57,7 @@ Booleans accept `true`, `false`, `1` and `0`. Optional groups and keys can be om
 independently, and unrecognized keys are ignored. Blank lines and lines starting with `#`
 or `;` are comments; if a key appears twice, the last one wins. Any other line that is not
 a `[group]` header or a `key = value` pair makes the daemon refuse to start, so a typo such
-as `allow-remotes 192.0.2.0/24` (missing `=`) can never silently fall back to accepting
+as `allow-remotes 192.0.3.0/24` (missing `=`) can never silently fall back to accepting
 every remote. Embedded NUL bytes and file read errors also reject startup. Unrecognized
 keys are still ignored: check the spelling of security settings. Configuration is loaded at startup; restart the daemon to apply changes.
 
@@ -119,10 +119,10 @@ GRE and VLAN interfaces with their bridges, newly learned MACs, removals and fai
 provisioning. Known-client traffic does not create a record per packet:
 
 ```text
-Tunnel created remote=192.0.2.2 local=192.0.2.1 interface=sgre0 ingress=sg-test-in
-VLAN attached remote=192.0.2.2 interface=sgre0.1000 vlan=1000 bridge=br-radius
-VLAN attached remote=192.0.2.2 interface=sgre0.10 vlan=10 bridge=br-hotspot
-Client learned remote=192.0.2.2 mac=02:00:00:00:00:42 tunnel=sgre0 clients=1
+Tunnel created remote=192.0.3.2 local=192.0.3.1 interface=sgre0 ingress=sg-test-in
+VLAN attached remote=192.0.3.2 interface=sgre0.1000 vlan=1000 bridge=br-radius
+VLAN attached remote=192.0.3.2 interface=sgre0.10 vlan=10 bridge=br-hotspot
+Client learned remote=192.0.3.2 mac=02:00:00:00:00:42 tunnel=sgre0 clients=1
 ```
 
 The package installs a logrotate rule: daily rotation, seven retained files, delayed

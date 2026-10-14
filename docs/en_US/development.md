@@ -140,7 +140,7 @@ git config core.hooksPath .githooks
 
 ## Releases
 
-Version 2.0.2 is defined in `VERSION`. Autoconf reads that file; `bump.sh` also updates
+Version 2.0.3 is defined in `VERSION`. Autoconf reads that file; `bump.sh` also updates
 the Debian changelog and version references in the README and these guides.
 
 ```sh

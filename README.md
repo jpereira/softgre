@@ -71,9 +71,9 @@ repository. ebtables handles bridge firewall rules; Python 3 runs the dashboard 
 hook.
 
 - **Debian and Ubuntu:** download the package for your distribution from the
-  [latest release](https://github.com/jpereira/softgre/releases/tag/v2.0.2) and install it
-  with `sudo apt install ./softgred_2.0.2-1+<distribution>_amd64.deb`.
-- **Container:** `ghcr.io/jpereira/softgre:2.0.2` runs the daemon and dashboard with
+  [latest release](https://github.com/jpereira/softgre/releases/tag/v2.0.3) and install it
+  with `sudo apt install ./softgred_2.0.3-1+<distribution>_amd64.deb`.
+- **Container:** `ghcr.io/jpereira/softgre:2.0.3` runs the daemon and dashboard with
   `--network host --cap-add NET_ADMIN --cap-add NET_RAW` and your `softgred.conf` mounted.
 - **Source:** `./autogen.sh --prefix=/usr --sysconfdir=/etc --localstatedir=/var`, then
   `make`, `make check` and `sudo make install`.
