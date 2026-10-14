@@ -144,6 +144,70 @@ synthetic peers. It does not provide a separate remote router or a complete subs
 LAN. Interface packet counters include all their traffic. Stop the persistent lab with
 `docker stop test-softgre`.
 
+## Run a gateway with external APs
+
+The `gateway` target of the lab image is a complete concentrator: the Ubuntu 24.04
+packages installed, systemd running `softgred`, the dashboard and dnsmasq. It captures GRE
+on the container's Docker network interface, so APs in other containers send real GRE to
+it from outside. `br-radius` (`10.100.0.1/24`, DNS `1.1.1.1`) and `br-hotspot`
+(`172.16.10.1/23`, DNS `8.8.8.8`) have gateway addresses and NAT to the uplink. dnsmasq
+uses [`scripts/lab/dnsmasq-softgre.conf`](scripts/lab/dnsmasq-softgre.conf) and the lease
+hook.
+
+```sh
+docker build -f docker/Dockerfile.lab --target gateway -t softgre-gateway:ubuntu24.04 .
+docker network create softgre-net
+docker run -d --name softgre-gw --network softgre-net --privileged --cgroupns=private \
+  --tmpfs /run --tmpfs /run/lock -p 8080:8080 softgre-gateway:ubuntu24.04
+docker inspect --format '{{.State.Health.Status}}' softgre-gw
+```
+
+Wait for `healthy`, then start APs. Each AP container runs
+[`scripts/lab/ap.sh`](scripts/lab/ap.sh): a `gretap` to the gateway, VLANs 1000 and 10,
+and one client namespace per VLAN (`c1000`, `c10`) that requests a DHCP lease. With
+`--option82`, the AP inserts option 82 (circuit-id = SSID, remote-id = AP MAC):
+
+```sh
+docker run -d --name ap1 --network softgre-net --privileged --no-healthcheck \
+  --entrypoint /opt/softgre-lab/ap.sh softgre-gateway:ubuntu24.04 softgre-gw
+docker run -d --name ap2 --network softgre-net --privileged --no-healthcheck \
+  --entrypoint /opt/softgre-lab/ap.sh softgre-gateway:ubuntu24.04 softgre-gw --option82
+docker logs ap1
+```
+
+```text
+AP 172.21.0.3 -> gateway 172.21.0.2, tunnel softgre (02:a0:00:00:00:03)
+c1000 VLAN 1000 MAC 02:10:00:00:03:01: ip=10.100.0.100/24 router=10.100.0.1 dns=1.1.1.1
+c10 VLAN 10 MAC 02:10:00:00:03:02: ip=172.16.10.137/23 router=172.16.10.1 dns=8.8.8.8
+AP ready
+```
+
+Open `http://localhost:8080/index.html` to see one tunnel per AP and the learned MACs.
+Use the clients and follow the gateway:
+
+```sh
+docker exec ap1 ip netns exec c1000 ping -c 3 1.1.1.1
+docker exec ap1 ip netns exec c10 ping -c 3 10.100.0.1
+docker exec softgre-gw tail -f /var/log/softgred-dhcp.log
+docker exec softgre-gw journalctl -u softgred -u dnsmasq -f
+docker exec softgre-gw /opt/softgre-lab/status.sh
+```
+
+The first ping leaves through the gateway's NAT; the second reaches the RADIUS bridge's
+gateway address from the hotspot network. Add more APs with new container names. Each gets its own tunnel and
+addresses derived from its Docker IP. Clear learned state with
+`docker exec softgre-gw sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'`, then
+`docker restart ap1` to watch it be provisioned again. Remove everything with:
+
+```sh
+docker rm -f softgre-gw ap1 ap2
+docker network rm softgre-net
+```
+
+`scripts/check-gateway.sh` runs the same flow with two APs in a temporary network and
+checks leases, gateway pings, the lease hook (including option 82) and the dashboard. CI
+runs it on every push.
+
 ## DHCP per bridge
 
 SoftGRE has no DHCP server of its own. It delivers each VLAN to a bridge, and any DHCP

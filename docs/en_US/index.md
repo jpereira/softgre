@@ -421,6 +421,15 @@ is intentionally persistent so the dashboard remains available. Stop it when fin
 docker stop test-softgre
 ```
 
+### Gateway with external AP containers
+
+`docker build -f docker/Dockerfile.lab --target gateway` builds a concentrator variant of
+the lab: it captures GRE on the container's Docker network interface, gives `br-radius`
+and `br-hotspot` gateway addresses with NAT, and runs dnsmasq with the lease hook. AP
+containers from the same image run `/opt/softgre-lab/ap.sh GATEWAY [--option82]`, which
+builds a real `gretap`, VLANs 1000 and 10 and one DHCP client namespace per VLAN. The
+README lists the full commands; `scripts/check-gateway.sh` automates them with two APs.
+
 ## Firewall and trust model
 
 SoftGRE owns the `SOFTGRE_IN` and `SOFTGRE_OUT` ebtables chains. It adds FORWARD jumps
