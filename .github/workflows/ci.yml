@@ -67,6 +67,12 @@ jobs:
       - name: Dashboard, GRE provisioning and container lifecycle
         if: hashFiles('docker/Dockerfile.lab') != ''
         run: scripts/check-lab.sh
+      - name: Ubuntu 24.04 gateway image
+        if: hashFiles('scripts/check-gateway.sh') != ''
+        run: docker build -f docker/Dockerfile.lab --target gateway -t softgre-gateway:ubuntu24.04 .
+      - name: External AP containers, DHCP per bridge and lease hook
+        if: hashFiles('scripts/check-gateway.sh') != ''
+        run: scripts/check-gateway.sh
   formatting:
     runs-on: ubuntu-latest
     steps:

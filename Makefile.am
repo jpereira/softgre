@@ -34,3 +34,4 @@ EXTRA_DIST += scripts/dhcp-lease-hook.py
 EXTRA_DIST += scripts/lab/gateway-setup.sh scripts/lab/gateway-setup.conf \
     scripts/lab/dnsmasq-softgre.conf scripts/lab/dnsmasq.conf
 EXTRA_DIST += scripts/lab/ap.sh scripts/lab/udhcpc.sh
+EXTRA_DIST += scripts/check-gateway.sh
