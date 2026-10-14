@@ -8,7 +8,7 @@ WORKDIR /src
 COPY . .
 RUN ./autogen.sh && make deb \
     && scripts/install-deb.sh /softgred_*.deb && scripts/check-installed-package.sh
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS lab-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0t64 ebtables iptables iproute2 python3 util-linux \
     bridge-utils net-tools htop vim strace lsof \
@@ -19,7 +19,7 @@ COPY scripts/install-deb.sh scripts/check-installed-package.sh /tmp/
 RUN /tmp/install-deb.sh /tmp/packages/*.deb && /tmp/check-installed-package.sh \
     && rm -rf /tmp/packages /var/lib/apt/lists/*
 COPY scripts/lab/ /opt/softgre-lab/
-RUN chmod +x /opt/softgre-lab/setup.sh \
+RUN chmod +x /opt/softgre-lab/*.sh \
     && mkdir -p /etc/systemd/system/softgred.service.d /var/log/journal \
     && cp /opt/softgre-lab/setup.service /etc/systemd/system/softgre-lab-setup.service \
     && cp /opt/softgre-lab/daemon.conf /etc/systemd/system/softgred.service.d/lab.conf \
@@ -30,3 +30,17 @@ EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=7s --start-period=15s \
     CMD ["python3", "/opt/softgre-lab/health.py"]
 ENTRYPOINT ["/sbin/init"]
+
+# Concentrator for APs in other containers: capture on the Docker network, dnsmasq per bridge.
+FROM lab-base AS gateway
+RUN apt-get update && apt-get install -y --no-install-recommends dnsmasq busybox iputils-ping \
+    && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/systemd/system/softgre-lab-setup.service.d /etc/systemd/system/dnsmasq.service.d \
+    && cp /opt/softgre-lab/gateway-setup.conf \
+        /etc/systemd/system/softgre-lab-setup.service.d/gateway.conf \
+    && cp /opt/softgre-lab/dnsmasq.conf /etc/systemd/system/dnsmasq.service.d/softgre.conf \
+    && cp /opt/softgre-lab/dnsmasq-softgre.conf /etc/dnsmasq.d/softgre.conf \
+    && systemctl enable dnsmasq.service
+
+# Default target: the self-contained lab with internal test interfaces.
+FROM lab-base AS lab
