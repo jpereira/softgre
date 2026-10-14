@@ -375,6 +375,24 @@ static void test_pid(void)
     g_assert_cmpint(symlink("/dev/null", path), ==, 0);
     g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, -1);
     unlink(path);
+    /* Reject hardlinks before truncating either name of the underlying file. */
+    fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+    g_assert_cmpint(fd, >=, 0);
+    g_assert_cmpint(write(fd, "valuable data\n", 14), ==, 14);
+    close(fd);
+    char *alias = xstrdup_printf("%s.alias", path);
+    g_assert_cmpint(link(path, alias), ==, 0);
+    g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, -1);
+    char *text = testing_read_file(alias);
+    g_assert_cmpstr(text, ==, "valuable data\n");
+    free(text);
+    unlink(alias);
+    free(alias);
+    g_assert_cmpint(chmod(path, 0620), ==, 0);
+    g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, -1);
+    g_assert_cmpint(chmod(path, 0602), ==, 0);
+    g_assert_cmpint(softgred_config_create_pid_file(getpid()), ==, -1);
+    unlink(path);
     free(path);
     softgred_config_release();
 }

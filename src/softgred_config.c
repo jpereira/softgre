@@ -429,7 +429,14 @@ int softgred_config_create_pid_file(int pid)
         return -1;
     struct flock lock = {.l_type = F_WRLCK, .l_whence = SEEK_SET};
     struct stat st;
-    if (fstat(pid_fd, &st) || !S_ISREG(st.st_mode) || fcntl(pid_fd, F_SETLK, &lock))
+    if (fstat(pid_fd, &st))
+        goto fail;
+    if (!S_ISREG(st.st_mode) || st.st_nlink != 1 || st.st_uid != geteuid() ||
+        (st.st_mode & (S_IWGRP | S_IWOTH))) {
+        errno = EPERM;
+        goto fail;
+    }
+    if (fcntl(pid_fd, F_SETLK, &lock))
         goto fail;
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%d\n", pid);
