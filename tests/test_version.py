@@ -32,6 +32,8 @@ class VersionTests(unittest.TestCase):
             (root / "VERSION").write_text("2.0.1\n")
             (root / "debian/changelog").write_text("softgred (2.0.1-1) unstable; urgency=medium\n")
             (root / "README.md").write_text("Download version 2.0.1\n")
+            (root / "docs/en_US").mkdir(parents=True)
+            (root / "docs/en_US/install.md").write_text("Install 2.0.1\n")
             self.assertEqual(version.check(root), "2.0.1")
             self.assertEqual(version.bump(root, "patch"), "2.0.2")
             self.assertEqual(version.bump(root, "minor"), "2.1.0")
@@ -39,6 +41,7 @@ class VersionTests(unittest.TestCase):
             self.assertEqual(version.bump(root, "4.5.6"), "4.5.6")
             self.assertEqual(version.check(root), "4.5.6")
             self.assertIn("4.5.6", (root / "README.md").read_text())
+            self.assertIn("4.5.6", (root / "docs/en_US/install.md").read_text())
             before = (root / "debian/changelog").read_text()
             for invalid in ("4.5.6", "1.0.0", "01.2.3", "a.b.c", "1.2", "1.2.3-rc1"):
                 with self.assertRaises(ValueError):

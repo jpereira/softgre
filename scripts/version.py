@@ -49,8 +49,7 @@ def bump(root, requested):
         f" -- Jorge Pereira <jpereiran@gmail.com>  {date}\n\n"
     )
     documents = []
-    for relative in ("README.md", "docs/en_US/index.md"):
-        document = root / relative
+    for document in [root / "README.md", *sorted(root.glob("docs/*/*.md"))]:
         if document.exists():
             documents.append((document, document.read_text().replace(current, requested)))
     atomic_write(path, stanza + previous)
