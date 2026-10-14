@@ -31,6 +31,7 @@ print-time = true
 | `global.tunnel-prefix` | Interface prefix, default `sgre`, maximum six characters. |
 | `global.bridge-map` | Required comma-separated `VLAN@bridge` entries, up to ten. |
 | `global.bridge-force` | Create missing bridges, default `false`. |
+| `global.allow-remotes` | Optional allowlist of remote IPv4 addresses or CIDRs that may provision; omit to accept any remote. |
 | `global.log-file` | Event log, default `/var/log/softgred.log`; absolute path required. |
 | `global.pid-file` | Locked PID file, default under the configured PID directory. |
 | `service.bind-in` | Bind to interface IPv4 address; `lo` by default, `any` binds all. |

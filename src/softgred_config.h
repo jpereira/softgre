@@ -25,6 +25,11 @@ struct tunnel_bridge {
     uint16_t vlan_id;
 };
 
+/* An authorized remote network, stored in host byte order for fast masked comparison. */
+struct allow_remote {
+    uint32_t network, mask;
+};
+
 struct softgred_config {
     char *config_file, *ifname, *tunnel_prefix, *pid_file;
     char *log_file, *dbg_file, *srv_bind_in;
@@ -33,6 +38,8 @@ struct softgred_config {
     unsigned srv_port, srv_max_listen;
     struct tunnel_bridge bridge[SOFTGRED_MAX_ATTACH];
     unsigned bridge_slot;
+    struct allow_remote allow[SOFTGRED_MAX_ALLOW];
+    unsigned allow_slot;
     struct in_addr local;
     time_t started_time;
     struct utsname uts;
@@ -44,4 +51,6 @@ void softgred_config_release(void);
 int softgred_config_create_pid_file(int pid);
 void softgred_config_remove_pid_file(void);
 bool config_valid_ifname(const char *name);
+/* True when no allowlist is configured, or the remote (host byte order) is in it. */
+bool config_remote_allowed(uint32_t remote_host_order);
 #endif

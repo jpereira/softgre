@@ -368,6 +368,45 @@ static void test_capacity_backoff(void)
     softgred_config_release();
 }
 
+/* Ingress authorization: an allowlist blocks spoofed/unknown remotes from provisioning,
+ * which is the mitigation for MAC first-claim pinning and resource exhaustion. */
+static void test_allow_remotes(void)
+{
+    softgred_config_release();
+    g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"
+                            "allow-remotes=192.0.2.0/24, 203.0.113.5\n"));
+    struct softgred_config *cfg = softgred_config_ref();
+    g_assert_cmpuint(cfg->allow_slot, ==, 2);
+    inet_pton(AF_INET, "192.0.2.1", &cfg->local);
+    provision_init();
+    fail_gre = fail_bridge = fail_firewall = false;
+    adds = 0;
+    /* A spoofed remote outside the allowlist cannot claim the victim's MAC. */
+    feed("198.51.100.9", "02:00:00:00:00:aa", 1000);
+    g_assert_cmpuint(adds, ==, 0);
+    g_assert_null(provision_get_tunnel_by_mac("02:00:00:00:00:aa"));
+    /* The real AP, inside the allowlist, provisions and owns the MAC. */
+    feed("192.0.2.2", "02:00:00:00:00:aa", 1000);
+    g_assert_cmpuint(adds, ==, 1);
+    g_assert_nonnull(provision_get_tunnel_by_mac("02:00:00:00:00:aa"));
+    /* A single configured host (/32 default) is honored; its neighbor is not. */
+    feed("203.0.113.5", "02:00:00:00:00:bb", 1000);
+    g_assert_nonnull(provision_get_tunnel_by_mac("02:00:00:00:00:bb"));
+    feed("203.0.113.6", "02:00:00:00:00:cc", 1000);
+    g_assert_null(provision_get_tunnel_by_mac("02:00:00:00:00:cc"));
+    provision_delall();
+    provision_end();
+    /* Malformed allowlists fail configuration loading; an absent key allows all remotes. */
+    g_assert_false(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"
+                             "allow-remotes=192.0.2.0/33\n"));
+    g_assert_false(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"
+                             "allow-remotes=not-an-ip\n"));
+    g_assert_true(load_text("[global]\ninterface=eth0\nbridge-map=1000@br0\n"));
+    g_assert_cmpuint(softgred_config_ref()->allow_slot, ==, 0);
+    g_assert_true(config_remote_allowed(0x01020304));
+    softgred_config_release();
+}
+
 #ifdef SOFTGRED_ENABLE_SERVICE
 static void pump(unsigned cycles)
 {
@@ -452,6 +491,7 @@ int main(int argc, char **argv)
     g_test_add_func("/config/types-and-bridges", test_config);
     g_test_add_func("/provision/state-and-rollback", test_provision);
     g_test_add_func("/provision/capacity-backoff", test_capacity_backoff);
+    g_test_add_func("/provision/allow-remotes", test_allow_remotes);
     g_test_add_func("/service/commands", test_commands);
     g_test_add_func("/process/pid-lock-and-symlink", test_pid);
 #ifdef SOFTGRED_ENABLE_SERVICE

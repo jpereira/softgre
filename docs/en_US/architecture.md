@@ -47,9 +47,18 @@ rule; cleanup revokes permissions and removes jumps before deleting owned chains
 Packet-derived values never enter a shell.
 
 GRE has no built-in authentication, and observing a source MAC is discovery, not identity
-verification. Use ingress anti-spoofing and restrict IP protocol 47 to trusted remotes or
-a protected transport. The AP's own frames can also be learned, using one client slot per
-tunnel. DHCP option 82 is only trustworthy when the AP strips client-supplied copies (see
+verification. Because the daemon trusts the packet's source IPv4 and MAC, a host that can
+send IP protocol 47 to the capture interface with a spoofed source can otherwise create
+tunnels, inject frames onto the service bridges, or claim a subscriber's MAC before its
+real AP does and deny it service (a MAC stays bound to the first remote that uses it).
+
+Set `global.allow-remotes` to the authorized AP addresses or networks so only they can
+provision; this is the primary defense against spoofed-source provisioning, MAC claiming
+and resource exhaustion. Combine it with ingress anti-spoofing and restricting protocol 47
+to trusted remotes or a protected transport. A capacity limit (a full tunnel or the slot
+table) only drops the offending packet: it never pauses provisioning for other peers. The
+AP's own frames can also be learned, using one client slot per tunnel. DHCP option 82 is
+only trustworthy when the AP strips client-supplied copies (see
 [DHCP and subscriber services](dhcp.md#option-82-from-the-ap)).
 
 ## Limits and performance

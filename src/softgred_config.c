@@ -90,6 +90,57 @@ static char *read_string(GKeyFile *file, const char *group, const char *key, con
     return text ? g_strstrip(text) : NULL;
 }
 
+bool config_remote_allowed(uint32_t remote)
+{
+    struct softgred_config *cfg = softgred_config_ref();
+    if (!cfg->allow_slot)
+        return true;
+    for (unsigned i = 0; i < cfg->allow_slot; i++)
+        if ((remote & cfg->allow[i].mask) == cfg->allow[i].network)
+            return true;
+    return false;
+}
+
+/* Parse an optional allowlist of authorized remote IPv4 addresses or CIDR networks. */
+static bool parse_allow(struct softgred_config *cfg, const char *list)
+{
+    char **entries = g_strsplit(list, ",", -1);
+    bool ok = true;
+    cfg->allow_slot = 0;
+    for (char **p = entries; *p && ok; p++) {
+        char *entry = g_strstrip(*p);
+        if (!*entry)
+            continue;
+        if (cfg->allow_slot >= SOFTGRED_MAX_ALLOW) {
+            ok = false;
+            break;
+        }
+        char *slash = strchr(entry, '/');
+        unsigned long bits = 32;
+        if (slash) {
+            char *end;
+            *slash = '\0';
+            errno = 0;
+            bits = strtoul(slash + 1, &end, 10);
+            if (!g_ascii_isdigit(slash[1]) || errno || *end || bits > 32) {
+                ok = false;
+                break;
+            }
+        }
+        struct in_addr addr;
+        if (inet_pton(AF_INET, entry, &addr) != 1) {
+            ok = false;
+            break;
+        }
+        uint32_t mask = bits ? htonl(~0u << (32 - bits)) : 0;
+        struct allow_remote *slot = &cfg->allow[cfg->allow_slot++];
+        slot->mask = ntohl(mask);
+        slot->network = ntohl(addr.s_addr) & slot->mask;
+    }
+    g_strfreev(entries);
+    return ok;
+}
+
 static bool parse_bridges(struct softgred_config *cfg, const char *map)
 {
     char **entries = g_strsplit(map, ",", -1);
@@ -142,6 +193,14 @@ bool softgred_config_load_conf(const char *path)
     g_free(map);
     if (!ok)
         goto done;
+    cfg->allow_slot = 0;
+    if (g_key_file_has_key(file, "global", "allow-remotes", NULL)) {
+        char *list = read_string(file, "global", "allow-remotes", "", &error);
+        ok = list && parse_allow(cfg, list);
+        g_free(list);
+        if (!ok)
+            goto done;
+    }
     if (!cfg->pid_file)
         cfg->pid_file = read_string(file, "global", "pid-file", SOFTGRED_DEFAULT_PIDFILE, &error);
     if (!cfg->log_file)

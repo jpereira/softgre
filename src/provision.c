@@ -158,6 +158,12 @@ void provision_packet(const struct payload_packet *packet)
         ignored++;
         return;
     }
+    /* Optional ingress authorization: only configured remote networks may provision. This
+     * is the defense against spoofed-source GRE claiming MACs or exhausting resources. */
+    if (!config_remote_allowed(host)) {
+        ignored++;
+        return;
+    }
     bool mapped = false;
     for (unsigned i = 0; i < cfg->bridge_slot; i++)
         if (cfg->bridge[i].vlan_id == packet->vlan)
