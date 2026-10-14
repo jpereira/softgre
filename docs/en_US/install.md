@@ -1,7 +1,7 @@
 # Install and deploy
 
 Run SoftGRE on a Linux host with IPv4, bridge, 802.1Q, GRE/gretap, AF_PACKET and bridge
-firewall (ebtables) support. The daemon needs root or `CAP_NET_ADMIN` and `CAP_NET_RAW`.
+firewall (ebtables) support. The daemon runs as root and needs `CAP_NET_ADMIN` and `CAP_NET_RAW`.
 Only one instance should own a given network namespace. To experiment first, use the
 [Docker labs](try-it.md); they do not touch the host network.
 
@@ -49,7 +49,8 @@ anonymous pulls. Build the same image locally with
 ## Build from source
 
 Build dependencies are a C11 compiler, Make, Autoconf and Automake, with no third-party
-libraries. Runtime dependencies are ebtables and Python 3 for the dashboard and lease
+libraries. GLib headers (`glib.h`) and libraries are not required: the hash maps, string
+buffers, INI parser and process helpers are included in the source tree. Runtime dependencies are ebtables and Python 3 for the dashboard and lease
 hook.
 
 ```sh

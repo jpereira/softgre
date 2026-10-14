@@ -4,7 +4,7 @@
 
 The capture socket is Linux `AF_PACKET`, bound to the configured interface without
 promiscuous mode. A classic BPF filter selects IPv4 GRE in the kernel, including up to two
-outer VLAN tags. The bounded parser validates Ethernet, IPv4 lengths and options,
+outer VLAN tags. The bounded parser validates Ethernet, IPv4 header and packet lengths (including options),
 fragmentation, GRE flags and protocol, inner VLAN ID and source MAC. Only packets
 addressed to the capture interface's IPv4 address can trigger provisioning; outgoing
 packets are ignored.
@@ -42,10 +42,12 @@ payloads.
 
 ## Firewall and trust model
 
-SoftGRE owns the `SOFTGRE_IN` and `SOFTGRE_OUT` ebtables chains. It adds FORWARD jumps
-scoped to each owned tunnel's VLAN interfaces, permits learned source and destination
-MACs, and drops other matching traffic. Egress broadcast and multicast are permitted for
-ARP, DHCP and neighbor discovery. It never flushes FORWARD or changes its global policy.
+SoftGRE owns `SOFTGRE_IN` in the ebtables `nat` table and `SOFTGRE_OUT` in `filter`.
+Jumps are scoped to each owned tunnel's VLAN interfaces: `nat PREROUTING` validates source
+MACs before bridge learning or local delivery, and `filter FORWARD` and `OUTPUT` validate
+destination MACs. This protects both bridged traffic and local services, and prevents a
+MAC forged on a different tunnel from poisoning the bridge forwarding database. Egress broadcast and multicast are permitted for
+ARP, DHCP and neighbor discovery. It never flushes built-in chains or changes their policies.
 Startup refuses preexisting owned chain names, preventing accidental takeover of another
 instance or abandoned firewall state. Each learned MAC installs one ingress and one egress
 rule; cleanup revokes permissions and removes jumps before deleting owned chains.
@@ -58,9 +60,11 @@ tunnels, inject frames onto the service bridges, or claim a subscriber's MAC bef
 real AP does and deny it service (a MAC stays bound to the first remote that uses it).
 
 Set `global.allow-remotes` to the authorized AP addresses or networks so only they can
-provision; this is the primary defense against spoofed-source provisioning, MAC claiming
-and resource exhaustion. Combine it with ingress anti-spoofing and restricting protocol 47
-to trusted remotes or a protected transport. A capacity limit (a full tunnel or the slot
+provision. An explicit allowlist must contain at least one address or CIDR; empty entries
+and binary NUL bytes in configuration are rejected. The allowlist checks the claimed
+source IPv4, so an attacker able to spoof an authorized address can still pass it. Enforce
+ingress anti-spoofing and restrict protocol 47 to trusted remotes or a protected transport;
+the allowlist provides no cryptographic peer authentication. A capacity limit (a full tunnel or the slot
 table) only drops the offending packet: it never pauses provisioning for other peers. The
 AP's own frames can also be learned, using one client slot per tunnel. DHCP option 82 is
 only trustworthy when the AP strips client-supplied copies (see

@@ -6,9 +6,9 @@ tunnel-prefix = sgre
 bridge-map = 10@br-gre, 11@br-gre
 # Create missing bridges. Existing target interfaces must be bridges.
 bridge-force = true
-# Ingress authorization (recommended): only these remote IPv4 addresses or CIDR networks
-# may provision tunnels. GRE is unauthenticated, so without this a spoofed source can
-# create tunnels, claim client MACs or exhaust resources. Omit to accept any remote.
+# Remote IPv4 addresses or CIDRs allowed to provision tunnels. An explicit value must
+# have no empty entries. Omit to accept any remote. This checks the claimed source IP:
+# GRE is unauthenticated, so also enforce ingress anti-spoofing or a protected transport.
 # allow-remotes = 203.0.113.0/24, 198.51.100.7
 # Append events here; SIGHUP reopens the file after rotation.
 log-file = /var/log/softgred.log

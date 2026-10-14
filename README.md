@@ -27,7 +27,8 @@ aggregation and hotspots, built from standard kernel parts.
    its bridge (`sgreN.1000 -> br-radius`, `sgreN.10 -> br-hotspot`).
 4. **MAC learning and firewall.** Each new client MAC is bound to its remote and allowed
    in the daemon's own ebtables chains; other tunnel traffic is dropped.
-5. **The kernel forwards.** After provisioning, traffic never passes through the daemon.
+5. **The kernel forwards.** The kernel handles forwarding; the daemon observes captured
+   GRE copies for discovery.
 6. **Services sit behind the bridges.** Routing, NAT and DHCP attach to each bridge, so
    every VLAN can have its own subnet, mask, gateway and DNS.
 
@@ -63,6 +64,11 @@ Open `http://localhost:8080/index.html` to see the tunnel and its clients. The
 more APs, option 82, logs, reprovisioning, cleanup and a single-container lab.
 
 ## Install
+
+The C daemon links only against libc. No GLib headers (`glib.h`) or libraries are
+required: the hash maps, string buffers, INI parser and process helpers ship in this
+repository. ebtables handles bridge firewall rules; Python 3 runs the dashboard and lease
+hook.
 
 - **Debian and Ubuntu:** download the package for your distribution from the
   [latest release](https://github.com/jpereira/softgre/releases/tag/v2.0.2) and install it

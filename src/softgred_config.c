@@ -396,7 +396,10 @@ int softgred_config_load_cli(int argc, char **argv)
                    "  -d, --debug        Increase debug level (up to four)\n"
                    "  -t, --debug-time   Timestamp log messages\n"
                    "  -h, --help         Show help\n"
-                   "  -v, --version      Show version\n",
+                   "  -v, --version      Show version\n"
+                   "Requires Linux and root with CAP_NET_ADMIN and CAP_NET_RAW.\n"
+                   "Set global.allow-remotes to your AP IPv4 addresses or CIDRs.\n"
+                   "GRE has no authentication; enforce ingress anti-spoofing.\n",
                    SOFTGRED_DEFAULT_CONFFILE, SOFTGRED_DEFAULT_PIDFILE, SOFTGRED_DEFAULT_LOGFILE);
             return 0;
         default:

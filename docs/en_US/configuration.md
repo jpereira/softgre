@@ -48,12 +48,18 @@ bridges are brought up and retained on exit. Several VLANs may target the same b
 which joins those broadcast domains deliberately. Empty entries, malformed numbers and
 duplicate VLANs fail configuration loading.
 
+An explicit `allow-remotes` value requires one or more IPv4 addresses or CIDRs. Blank
+values, empty comma-separated entries and invalid CIDRs reject startup. Omit the key to
+accept any remote; `0.0.0.0/0` explicitly selects all IPv4 addresses. The allowlist matches
+claimed source addresses and needs ingress anti-spoofing or a protected transport.
+
 Booleans accept `true`, `false`, `1` and `0`. Optional groups and keys can be omitted
 independently, and unrecognized keys are ignored. Blank lines and lines starting with `#`
 or `;` are comments; if a key appears twice, the last one wins. Any other line that is not
 a `[group]` header or a `key = value` pair makes the daemon refuse to start, so a typo such
 as `allow-remotes 192.0.2.0/24` (missing `=`) can never silently fall back to accepting
-every remote. Configuration is loaded at startup; restart the daemon to apply changes.
+every remote. Embedded NUL bytes and file read errors also reject startup. Unrecognized
+keys are still ignored: check the spelling of security settings. Configuration is loaded at startup; restart the daemon to apply changes.
 
 ## Command line
 
@@ -72,8 +78,10 @@ softgred [-f] [-c FILE] [-p FILE] [-l FILE] [-d...] [-t] [-h] [-v]
 | `-h`, `--help` | Help without root or configuration loading. |
 | `-v`, `--version` | Version without root or configuration loading. |
 
-The daemon must run as root or with the network capabilities. A PID file uses an
-exclusive advisory lock held for the daemon's lifetime and refuses symlinks. Background
+The daemon must run as root with `CAP_NET_ADMIN` and `CAP_NET_RAW`. A PID file uses an
+exclusive advisory lock held for the daemon's lifetime. It must be a regular file owned
+by the daemon's user, with one hard link and no group or world write permission; symlinks
+are refused. Keep its parent directory writable only by the administrator. Background
 startup reports success only after capture, API, bridges and firewall are ready; the
 foreground process returns failure when startup or capture fails.
 

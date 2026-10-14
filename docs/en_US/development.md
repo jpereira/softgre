@@ -2,7 +2,10 @@
 
 All Dockerfiles are in `docker/`. Run build commands from the project root and keep `.`
 as the build context; the root `.dockerignore` excludes Git metadata and generated
-artifacts. CI runs every check on this page for each push and pull request.
+artifacts. CI runs compiler, sanitizer, integration, security, DHCP, web, package,
+production-build, lab, documentation, formatting and short fuzzing checks for pushes and
+pull requests. Release tags also build the four distribution packages and publish images;
+the live production-start check is available through `docker/test.production.sh`.
 
 ## One script per image
 
@@ -35,7 +38,8 @@ target (default 10, `0` skips fuzzing). The full set pulls several base images, 
 options, outer VLAN tags, invalid GRE formats, seeded malformed inputs, typed
 configuration (including rejection of malformed lines), bridge mappings, the hash map
 against a reference model, client capacity, rollback, PID locks, API commands, TCP
-fragmentation and peer disconnects. Tests use mock kernel operations for
+fragmentation and peer disconnects. Security regressions cover empty allowlists, embedded
+NUL bytes and unsafe PID destinations, including hardlinks. Tests use mock kernel operations for
 state-machine faults and real loopback sockets for the API; `test-netlink` checks encoded
 attributes, nesting and message bounds.
 
@@ -66,7 +70,8 @@ docker run --rm -e FUZZ_SECONDS=60 softgre-test tests/fuzz/run.sh
 ```
 
 The runner seeds the packet parser with valid frames, stops on the first crash, leak or
-model divergence and prints the offending input.
+model divergence and prints the failure log. Configuration seeds include valid typed
+settings, empty allowlists and embedded NUL bytes.
 
 ## Kernel integration tests
 
@@ -85,7 +90,12 @@ docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
 capture, 10000 repeated packets without duplicate rules, outer VLANs, API framing, signal
 cleanup, unrelated firewall preservation, PID locking and background startup failures.
 It prints the packet injection duration, a repeatable smoke measurement rather than a
-throughput benchmark. `dhcp_integration.py` builds real APs and clients in namespaces
+throughput benchmark. `security_integration.py` uses real GRE frames from two authorized APs to verify that a
+MAC owned by one AP cannot reach local bridge services through the other. It also checks
+that a source outside `allow-remotes` creates no state. Run it in its own disposable
+container with the same capabilities and environment as `integration.py`.
+
+`dhcp_integration.py` builds real APs and clients in namespaces
 and is described in [DHCP and subscriber services](dhcp.md#end-to-end-dhcp-test).
 
 ## Lab and gateway checks
