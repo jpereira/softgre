@@ -31,6 +31,11 @@ jobs:
           docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW
           -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
           python3 tests/integration.py /usr/sbin/softgred
+      - name: Per-bridge DHCP leases through learned tunnels
+        run: >-
+          docker run --rm --privileged
+          -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
+          python3 tests/dhcp_integration.py /usr/sbin/softgred
       - name: Python and PHP adapters
         run: docker run --rm softgre-test python3 tests/test_web.py
       - name: Debian package
