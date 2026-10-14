@@ -165,7 +165,9 @@ max-listen=4
                     wait_for(lambda: "RESULT: NULL" in query("STUN"))
                     assert not Path("/sys/class/net/sgre0").exists()
                     assert run("ebtables", "-L", "FORWARD") == original
-                    assert "02:00:00:00:00:42" not in run("ebtables", "-t", "nat", "-L", "SOFTGRE_IN")
+                    assert "02:00:00:00:00:42" not in run(
+                        "ebtables", "-t", "nat", "-L", "SOFTGRE_IN"
+                    )
                     # Existing interfaces are never adopted or removed; skip occupied slots.
                     run("ip", "link", "add", "sgre0", "type", "dummy")
                     raw.send(frame())
