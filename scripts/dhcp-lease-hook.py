@@ -23,6 +23,14 @@ def clean(value):
     return re.sub(r"[^\w.:@/+-]", "_", value)[:64]
 
 
+def relay_id(name):
+    # dnsmasq passes option 82 sub-options as raw bytes, cut at the first zero byte.
+    raw = os.environb.get(name.encode(), b"")
+    if all(0x20 <= byte < 0x7F for byte in raw):
+        return raw.decode("ascii")
+    return raw.hex(":")
+
+
 def tunnel_of(mac, address):
     try:
         with socket.create_connection(address, timeout=2) as api:
@@ -59,8 +67,8 @@ def main(argv):
         "remote": remote,
         "tunnel": tunnel,
         "hostname": argv[4] if len(argv) > 4 else "",
-        "circuit-id": os.environ.get("DNSMASQ_CIRCUIT_ID", ""),
-        "remote-id": os.environ.get("DNSMASQ_REMOTE_ID", ""),
+        "circuit-id": relay_id("DNSMASQ_CIRCUIT_ID"),
+        "remote-id": relay_id("DNSMASQ_REMOTE_ID"),
     }
     line = "DHCP lease " + " ".join(f"{k}={clean(v)}" for k, v in fields.items() if v)
     print(line, flush=True)

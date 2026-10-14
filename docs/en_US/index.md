@@ -665,7 +665,9 @@ MACs. The suite then verifies each lease's range, mask, gateway and DNS, pings t
 and the other AP's client through the tunnels, and checks learned MACs, bridge attachment
 and the lease hook's AP/tunnel record. The hook,
 `/usr/share/softgred/dhcp-lease-hook.py`, is a dnsmasq `dhcp-script` that asks the API
-which remote learned each leased MAC. Creating namespaces requires a privileged container:
+which remote learned each leased MAC. One AP also inserts option 82 (remote-id = AP MAC,
+circuit-id = SSID); the suite checks that dnsmasq applies a per-AP DNS from it and that
+the hook logs both IDs. Trust option 82 only when the AP strips client-supplied copies. Creating namespaces requires a privileged container:
 
 ```sh
 docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \

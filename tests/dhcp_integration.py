@@ -34,6 +34,10 @@ NETWORKS = {
 }
 # Remote access points: every AP carries one client on each mapped VLAN.
 APS = {"192.0.2.2": "sg-ap2", "192.0.2.3": "sg-ap3"}
+# AP B acts as a DHCP relay agent (option 82): remote-id is its MAC as text, circuit-id
+# the SSID.
+# Its hotspot clients get a per-AP DNS; everything else keeps the bridge defaults.
+AGENT_AP, AGENT_DNS = "192.0.2.3", "9.9.9.9"
 
 HOOK = """#!/bin/sh
 # udhcpc event hook: apply the lease and record the offered options for the test.
@@ -59,6 +63,18 @@ def ap_mac(remote):
 
 def client_mac(remote, vlan):
     return f"02:10:00:00:{int(remote.split('.')[-1]):02x}:{1 if vlan == 1000 else 2:02x}"
+
+
+def agent_option(remote, vlan):
+    """Option 82 as the AP would insert it; udhcpc stands in for the AP's relay agent."""
+    circuit = NETWORKS[vlan]["tag"].encode()
+    remote_id = ap_mac(remote).encode()
+    value = bytes([1, len(circuit)]) + circuit + bytes([2, len(remote_id)]) + remote_id
+    return "0x52:" + value.hex()
+
+
+def expected_dns(remote, vlan):
+    return AGENT_DNS if remote == AGENT_AP and vlan == 10 else NETWORKS[vlan]["dns"]
 
 
 def netns(name):
@@ -136,14 +152,19 @@ def write_dnsmasq(directory):
         f"dhcp-leasefile={directory}/dnsmasq.leases",
         f"log-facility={directory}/dnsmasq.log",
         f"dhcp-script={ROOT}/scripts/dhcp-lease-hook.py",
+        # Quoted: match the text remote-id, not the hex bytes 02:a0:...
+        f'dhcp-remoteid=set:ap-b,"{ap_mac(AGENT_AP)}"',
+        f"dhcp-option=tag:hotspot,tag:ap-b,option:dns-server,{AGENT_DNS}",
     ]
     for network in NETWORKS.values():
         tag, (first, last) = network["tag"], network["range"]
+        # dnsmasq does not prefer the more specific match; exclude AP B explicitly.
+        exclude = "tag:!ap-b," if tag == "hotspot" else ""
         lines += [
             f"interface={network['bridge']}",
             f"dhcp-range=set:{tag},{first},{last},{network['subnet']},1h",
             f"dhcp-option=tag:{tag},option:router,{network['gateway']}",
-            f"dhcp-option=tag:{tag},option:dns-server,{network['dns']}",
+            f"dhcp-option=tag:{tag},{exclude}option:dns-server,{network['dns']}",
         ]
     config = Path(directory, "dnsmasq.conf")
     config.write_text("\n".join(lines) + "\n")
@@ -219,6 +240,8 @@ max-listen=4
                     lease = Path(directory, client + ".lease")
                     command = ["ip", "netns", "exec", client, "busybox", "udhcpc", "-i", "eth0"]
                     command += ["-f", "-q", "-n", "-t", "20", "-T", "1", "-A", "1", "-s", str(hook)]
+                    if remote == AGENT_AP:
+                        command += ["-x", agent_option(remote, vlan)]
                     env = dict(os.environ, SOFTGRE_LEASE=str(lease))
                     clients[client] = (remote, vlan, lease)
                     processes.append(subprocess.Popen(command, env=env, stdout=log, stderr=log))
@@ -232,7 +255,7 @@ max-listen=4
                 assert in_range(offered["ip"], *network["range"]), (client, offered)
                 assert offered["subnet"] == network["subnet"], (client, offered)
                 assert offered["router"] == network["gateway"], (client, offered)
-                assert offered["dns"] == network["dns"], (client, offered)
+                assert offered["dns"] == expected_dns(remote, vlan), (client, offered)
                 assert offered["serverid"] == network["gateway"], (client, offered)
                 # The client is reachable only after it was learned on its own remote.
                 mac = client_mac(remote, vlan)
@@ -247,6 +270,8 @@ max-listen=4
                 # The hook tied the lease to the remote and tunnel that learned the client.
                 hooked = f"ip={offered['ip']} mac={mac} interface={network['bridge']} "
                 hooked += f"remote={remote} tunnel={tunnel}"
+                if remote == AGENT_AP:
+                    hooked += f" circuit-id={network['tag']} remote-id={ap_mac(remote)}"
                 leases_log = Path(directory, "leases.log")
                 wait_for(lambda: f"DHCP lease action=add {hooked}" in leases_log.read_text())
                 print(
