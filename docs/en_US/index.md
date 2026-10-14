@@ -657,6 +657,19 @@ prints the packet injection duration; this is a repeatable smoke measurement, no
 forwarding throughput benchmark. CI runs compiler/sanitizer/distribution checks and the
 isolated kernel integration suite.
 
+The DHCP suite replaces synthetic frames with real remote endpoints. Network namespaces
+model two APs with `gretap` and VLANs 1000 and 10, one client per VLAN behind each AP, and
+a dnsmasq server attached to `br-radius` (`10.100.0.0/24`, DNS `1.1.1.1`) and
+`br-hotspot` (`172.16.10.0/23`, DNS `8.8.8.8`). The clients' first DHCP broadcasts
+provision the tunnels and MACs. The suite then verifies each lease's range, mask, gateway
+and DNS, pings the gateway through the tunnel and checks learned MACs and bridge
+attachment through the API. Creating namespaces requires a privileged container:
+
+```sh
+docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
+  python3 tests/dhcp_integration.py /usr/sbin/softgred
+```
+
 Steady-state discovery uses average O(1) IPv4/MAC lookups. Initial setup needs netlink
 round trips and two firewall processes per MAC. Those operations temporarily block the
 owner loop, each for at most its timeout. For high churn or millions of learned MACs,

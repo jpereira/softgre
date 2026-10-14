@@ -29,3 +29,4 @@ EXTRA_DIST += scripts/install-deb.sh
 EXTRA_DIST += scripts/lab/setup.sh scripts/lab/setup.service scripts/lab/daemon.conf
 EXTRA_DIST += .github/workflows/containers.yml
 EXTRA_DIST += tests/dhcp_integration.py
+EXTRA_DIST += docs/assets/softgre-flow.svg

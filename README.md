@@ -2,10 +2,40 @@
 
 # SoftGRE
 
-SoftGRE discovers IPv4 GRE Ethernet peers, creates `gretap` and VLAN interfaces, and
-attaches them to Linux bridges. A Python dashboard shows learned MACs, tunnel interfaces,
-bridge membership and packet counters. Packet capture uses AF_PACKET with a kernel BPF
-filter; interface management uses native NETLINK_ROUTE.
+SoftGRE is a self-provisioning GRE Ethernet concentrator for Linux. Access points (or any
+CPE) tunnel their subscribers' VLAN-tagged Ethernet frames over IPv4 GRE to one server.
+You never configure a tunnel per AP: when traffic from a new AP arrives, `softgred`
+creates its `gretap` and VLAN interfaces, attaches them to your Linux bridges and opens the
+bridge firewall for each client MAC it sees. This is the "soft-GRE" model used for Wi-Fi
+aggregation and hotspots, built from standard kernel parts.
+
+![SoftGRE traffic flow](docs/assets/softgre-flow.svg)
+
+## How it works
+
+1. **The AP side is static.** Each AP has a `gretap` toward the concentrator's IPv4
+   address and one 802.1Q VLAN per service (for example VLAN 1000 for a RADIUS-backed SSID
+   and VLAN 10 for an open hotspot). Clients are bridged into those VLANs.
+2. **Passive discovery.** `softgred` reads a copy of the GRE traffic on the capture
+   interface with AF_PACKET and a kernel BPF filter. It accepts only GRE v0 carrying
+   VLAN-tagged Ethernet (`0x6558`, [RFC 2784](docs/rfc2784.txt)) addressed to its own IPv4
+   address, with a mapped VLAN.
+3. **On-demand provisioning.** The first packet from a new remote creates `sgreN` for it
+   through native NETLINK_ROUTE, plus one VLAN interface for *every* `bridge-map` entry,
+   each attached to its bridge (`sgreN.1000 -> br-radius`, `sgreN.10 -> br-hotspot`).
+4. **MAC learning and firewall.** Each new source MAC is bound to the remote it came from
+   and gets an ebtables accept rule in the daemon's own `SOFTGRE_IN`/`SOFTGRE_OUT` chains.
+   Other traffic on tunnel ports is dropped. Broadcast and multicast toward tunnels stay
+   allowed, so ARP, DHCP and neighbor discovery work. Global firewall rules are untouched.
+5. **The kernel forwards.** After provisioning, frames flow through `gretap`, VLANs and
+   bridges entirely in the kernel. The daemon only handles discovery.
+6. **Services sit behind the bridges.** Each bridge is a separate service network. Routing,
+   NAT, and an optional DHCP server live there, so every VLAN can hand out its own subnet,
+   mask, gateway and DNS (see [DHCP per bridge](#dhcp-per-bridge)).
+
+A Python dashboard shows learned MACs, tunnel interfaces, bridge membership and packet
+counters. `SIGUSR1` clears the learned state, and an event log records every tunnel,
+VLAN attachment and client.
 
 - [Complete English guide](docs/en_US/index.md)
 - [Documentation website](https://jpereira.github.io/softgre/)
@@ -113,6 +143,70 @@ This lab tests real GRE decoding, kernel provisioning and bridge attachment with
 synthetic peers. It does not provide a separate remote router or a complete subscriber
 LAN. Interface packet counters include all their traffic. Stop the persistent lab with
 `docker stop test-softgre`.
+
+## DHCP per bridge
+
+SoftGRE has no DHCP server of its own. It delivers each VLAN to a bridge, and any DHCP
+server on that bridge serves the clients behind every AP. One dnsmasq instance can give
+each bridge a different network, mask, gateway and DNS. On the concentrator, give each
+bridge a gateway address and add one range per bridge:
+
+```sh
+sudo ip addr add 10.100.0.1/24 dev br-radius
+sudo ip addr add 172.16.10.1/23 dev br-hotspot
+```
+
+```ini
+# /etc/dnsmasq.d/softgre.conf
+port=0
+bind-interfaces
+interface=br-radius
+interface=br-hotspot
+dhcp-authoritative
+
+dhcp-range=set:radius,10.100.0.100,10.100.0.199,255.255.255.0,1h
+dhcp-option=tag:radius,option:router,10.100.0.1
+dhcp-option=tag:radius,option:dns-server,1.1.1.1
+
+dhcp-range=set:hotspot,172.16.10.100,172.16.11.199,255.255.254.0,1h
+dhcp-option=tag:hotspot,option:router,172.16.10.1
+dhcp-option=tag:hotspot,option:dns-server,8.8.8.8
+```
+
+`port=0` turns off dnsmasq's DNS service so it only does DHCP. Remove it to also run a
+local resolver. A client on VLAN 1000 of any AP gets `10.100.0.x/24` with DNS `1.1.1.1`,
+and a client on VLAN 10 gets `172.16.10.x/23` with DNS `8.8.8.8`. The DHCP server can also
+run on another host connected to the bridges. Add routing/NAT from the bridges to your
+uplink as usual.
+
+### End-to-end DHCP test
+
+[`tests/dhcp_integration.py`](tests/dhcp_integration.py) builds this whole picture with
+network namespaces: two real APs (`192.0.2.2`, `192.0.2.3`) with `gretap` and VLANs 1000
+and 10, one client per VLAN behind each AP, and dnsmasq attached to `br-radius` and
+`br-hotspot`. All four clients run `udhcpc` at the same time. Their first DHCP broadcasts
+teach `softgred` the tunnels and MACs, and the retries get leases. The test checks that
+every client got the address range, mask, gateway and DNS of its own bridge, pings its
+gateway through the tunnel, and checks the learned MACs and bridge attachment through
+the API:
+
+```sh
+docker build -f docker/Dockerfile.test -t softgre-test .
+docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test \
+  python3 tests/dhcp_integration.py /usr/sbin/softgred
+```
+
+```text
+4 DHCP leases through 2 learned tunnels in 1.24s
+sg-ap2-c1000: 02:10:00:00:02:01 via 192.0.2.2/sgre0.1000 -> br-radius ip=10.100.0.101 mask=255.255.255.0 dns=1.1.1.1
+sg-ap2-c10: 02:10:00:00:02:02 via 192.0.2.2/sgre0.10 -> br-hotspot ip=172.16.11.142 mask=255.255.254.0 dns=8.8.8.8
+sg-ap3-c1000: 02:10:00:00:03:01 via 192.0.2.3/sgre1.1000 -> br-radius ip=10.100.0.100 mask=255.255.255.0 dns=1.1.1.1
+sg-ap3-c10: 02:10:00:00:03:02 via 192.0.2.3/sgre1.10 -> br-hotspot ip=172.16.10.137 mask=255.255.254.0 dns=8.8.8.8
+DHCP integration: per-bridge networks, masks, gateways and DNS passed
+```
+
+`--privileged` is needed to create network namespaces. Every interface and namespace
+lives inside the disposable container. CI runs this test on every push.
 
 ## Build and run on Linux
 
