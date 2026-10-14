@@ -8,6 +8,8 @@ docker build -f docker/Dockerfile.test -t "$image" .
 docker run --rm "$image" scripts/check-linux.sh
 docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW -e SOFTGRE_TEST_NAMESPACE=isolated "$image" \
     python3 tests/integration.py /usr/sbin/softgred
+docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW -e SOFTGRE_TEST_NAMESPACE=isolated "$image" \
+    python3 tests/security_integration.py /usr/sbin/softgred
 docker run --rm --privileged -e SOFTGRE_TEST_NAMESPACE=isolated "$image" \
     python3 tests/dhcp_integration.py /usr/sbin/softgred
 docker run --rm "$image" python3 tests/test_web.py

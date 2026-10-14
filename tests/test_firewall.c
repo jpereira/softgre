@@ -36,16 +36,14 @@ static void test_isolation(void)
 {
     commands_len = 0;
     g_assert_cmpint(iface_ebtables_init(), ==, 0);
-    bool in = false, out = false;
+    unsigned installed = 0;
     fail_call = calls + 2;
-    g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &in, &out), ==, -1);
-    g_assert_true(in);
-    g_assert_false(out);
+    g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &installed), ==, -1);
+    g_assert_cmpuint(installed, ==, 1);
     fail_call = 0;
-    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, 0);
-    g_assert_false(in);
-    g_assert_false(out);
-    g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &in, &out), ==, 0);
+    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &installed), ==, 0);
+    g_assert_cmpuint(installed, ==, 0);
+    g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &installed), ==, 0);
     g_assert_cmpint(iface_ebtables_allow("sgre0", "02:00:00:00:00:42"), ==, 0);
     fail_call = calls + 2;
     g_assert_cmpint(iface_ebtables_allow("sgre0", "02:00:00:00:00:43"), ==, -1);
@@ -53,11 +51,27 @@ static void test_isolation(void)
         strstr(commands[commands_len - 1], "-D SOFTGRE_IN -i sgre0.+ -s 02:00:00:00:00:43"));
     fail_call = 0;
     fail_call = calls + 1;
-    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, -1);
-    g_assert_true(in);
-    g_assert_false(out);
+    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &installed), ==, -1);
+    g_assert_cmpuint(installed, ==, 1);
     fail_call = 0;
-    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &in, &out), ==, 0);
+    g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &installed), ==, 0);
+    /* All bridge paths must be protected, including local gateway traffic. */
+    for (unsigned hook = 1; hook <= 3; hook++) {
+        installed = 0;
+        fail_call = calls + hook;
+        g_assert_cmpint(iface_ebtables_add_tunnel("sgre0", &installed), ==, -1);
+        g_assert_cmpuint(installed, ==, (1u << (hook - 1)) - 1);
+        fail_call = 0;
+        g_assert_cmpint(iface_ebtables_del_tunnel("sgre0", &installed), ==, 0);
+        g_assert_cmpuint(installed, ==, 0);
+    }
+    bool input = false, output = false;
+    for (size_t i = 0; i < commands_len; i++) {
+        input |= strstr(commands[i], "-t nat -I PREROUTING -i sgre0.+ -j SOFTGRE_IN") != NULL;
+        output |= strstr(commands[i], "-I OUTPUT -o sgre0.+ -j SOFTGRE_OUT") != NULL;
+    }
+    g_assert_true(input);
+    g_assert_true(output);
     unsigned before = calls;
     g_assert_cmpint(iface_ebtables_reset(), ==, 0);
     g_assert_cmpuint(calls - before, ==, 5);

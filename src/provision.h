@@ -26,7 +26,8 @@ struct tunnel_context {
     struct in_addr ip_remote;
     char ifgre[IFNAMSIZ];
     unsigned id;
-    bool ready, firewall_in, firewall_out;
+    bool ready;
+    unsigned firewall_hooks;
     struct hashmap *macs;
 };
 

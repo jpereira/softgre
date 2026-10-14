@@ -148,12 +148,12 @@ max-listen=4
                             break
                     assert forwarded, "bridge broadcast was blocked before GRE encapsulation"
                     raw.settimeout(None)
-                    first_rules = run("ebtables", "-L", "SOFTGRE_IN")
+                    first_rules = run("ebtables", "-t", "nat", "-L", "SOFTGRE_IN")
                     start = time.monotonic()
                     for _ in range(10000):
                         raw.send(frame())
                     assert "192.0.2.2@sgre0" in query("STUN")
-                    assert run("ebtables", "-L", "SOFTGRE_IN") == first_rules
+                    assert run("ebtables", "-t", "nat", "-L", "SOFTGRE_IN") == first_rules
                     print(f"10,000 known-client packets sent in {time.monotonic() - start:.3f}s")
                     # Fresh clients exercise both kernel BPF VLAN branches and IPv4 options.
                     for tags in (1, 2):
@@ -165,7 +165,7 @@ max-listen=4
                     wait_for(lambda: "RESULT: NULL" in query("STUN"))
                     assert not Path("/sys/class/net/sgre0").exists()
                     assert run("ebtables", "-L", "FORWARD") == original
-                    assert "02:00:00:00:00:42" not in run("ebtables", "-L", "SOFTGRE_IN")
+                    assert "02:00:00:00:00:42" not in run("ebtables", "-t", "nat", "-L", "SOFTGRE_IN")
                     # Existing interfaces are never adopted or removed; skip occupied slots.
                     run("ip", "link", "add", "sgre0", "type", "dummy")
                     raw.send(frame())

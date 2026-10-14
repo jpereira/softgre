@@ -31,6 +31,11 @@ jobs:
           docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW
           -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
           python3 tests/integration.py /usr/sbin/softgred
+      - name: Remote allowlist and MAC ownership at the local gateway
+        run: >-
+          docker run --rm --cap-add NET_ADMIN --cap-add NET_RAW
+          -e SOFTGRE_TEST_NAMESPACE=isolated softgre-test
+          python3 tests/security_integration.py /usr/sbin/softgred
       - name: Per-bridge DHCP leases through learned tunnels
         run: >-
           docker run --rm --privileged

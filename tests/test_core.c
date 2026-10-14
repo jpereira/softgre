@@ -41,17 +41,17 @@ int iface_bridge_attach(const char *n, const char *b, uint16_t v)
     return fail_bridge ? -1 : 0;
 }
 
-int iface_ebtables_add_tunnel(const char *n, bool *in, bool *out)
+int iface_ebtables_add_tunnel(const char *n, unsigned *installed)
 {
     (void)n;
-    *in = *out = true;
+    *installed = 7;
     return 0;
 }
 
-int iface_ebtables_del_tunnel(const char *n, bool *in, bool *out)
+int iface_ebtables_del_tunnel(const char *n, unsigned *installed)
 {
     (void)n;
-    *in = *out = false;
+    *installed = 0;
     return 0;
 }
 

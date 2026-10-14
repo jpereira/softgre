@@ -32,17 +32,17 @@ static const char *ebtables_bin(void)
     return binary;
 }
 
-static int chain_cmd(const char *op, const char *chain)
+static int chain_cmd(const char *table, const char *op, const char *chain)
 {
-    const char *args[] = {ebtables_bin(), op, chain, NULL};
+    const char *args[] = {ebtables_bin(), "-t", table, op, chain, NULL};
     return helper_exec(args);
 }
 
-static int rule(const char *op, const char *direction, const char *name, const char *mac_direction,
-                const char *mac, const char *target)
+static int rule(const char *table, const char *op, const char *chain, const char *direction,
+                const char *name, const char *mac_direction, const char *mac, const char *target)
 {
-    const char *args[12] = {ebtables_bin(), op, "FORWARD", direction, name};
-    unsigned n = 5;
+    const char *args[14] = {ebtables_bin(), "-t", table, op, chain, direction, name};
+    unsigned n = 7;
     if (mac) {
         args[n++] = mac_direction;
         args[n++] = mac;
@@ -59,17 +59,17 @@ static int chain_defaults(void)
     const char *multicast[] = {
         ebtables_bin(), "-A",     "SOFTGRE_OUT", "-d", "01:00:00:00:00:00/01:00:00:00:00:00",
         "-j",           "ACCEPT", NULL};
-    const char *in[] = {ebtables_bin(), "-A", "SOFTGRE_IN", "-j", "DROP", NULL};
+    const char *in[] = {ebtables_bin(), "-t", "nat", "-A", "SOFTGRE_IN", "-j", "DROP", NULL};
     const char *out[] = {ebtables_bin(), "-A", "SOFTGRE_OUT", "-j", "DROP", NULL};
     return helper_exec(multicast) || helper_exec(in) || helper_exec(out) ? -1 : 0;
 }
 
 int iface_ebtables_init(void)
 {
-    if (chain_cmd("-N", "SOFTGRE_IN"))
+    if (chain_cmd("nat", "-N", "SOFTGRE_IN"))
         return -1;
-    if (chain_cmd("-N", "SOFTGRE_OUT")) {
-        chain_cmd("-X", "SOFTGRE_IN");
+    if (chain_cmd("filter", "-N", "SOFTGRE_OUT")) {
+        chain_cmd("nat", "-X", "SOFTGRE_IN");
         return -1;
     }
     initialized = true;
@@ -80,33 +80,45 @@ int iface_ebtables_init(void)
     return 0;
 }
 
-int iface_ebtables_add_tunnel(const char *name, bool *in, bool *out)
+/* Validate ingress before bridge learning: INPUT/FORWARD are too late to stop forged
+ * source MACs poisoning the bridge FDB, and FORWARD alone misses local services.
+ * Each bit records one installed jump, including partial setup/cleanup failures. */
+static const struct {
+    const char *table, *chain, *direction, *target;
+} hooks[] = {{"nat", "PREROUTING", "-i", "SOFTGRE_IN"},
+             {"filter", "FORWARD", "-o", "SOFTGRE_OUT"},
+             {"filter", "OUTPUT", "-o", "SOFTGRE_OUT"}};
+
+int iface_ebtables_add_tunnel(const char *name, unsigned *installed)
 {
     char pattern[IFNAMSIZ + 2];
     snprintf(pattern, sizeof(pattern), "%s.+", name);
-    if (rule("-I", "-i", pattern, NULL, NULL, "SOFTGRE_IN"))
-        return -1;
-    *in = true;
-    if (rule("-I", "-o", pattern, NULL, NULL, "SOFTGRE_OUT"))
-        return -1;
-    *out = true;
+    for (unsigned i = 0; i < ARRAY_SIZE(hooks); i++) {
+        if (*installed & (1u << i))
+            continue;
+        if (rule(hooks[i].table, "-I", hooks[i].chain, hooks[i].direction, pattern, NULL, NULL,
+                 hooks[i].target))
+            return -1;
+        *installed |= 1u << i;
+    }
     return 0;
 }
 
-int iface_ebtables_del_tunnel(const char *name, bool *in, bool *out)
+int iface_ebtables_del_tunnel(const char *name, unsigned *installed)
 {
     char pattern[IFNAMSIZ + 2];
     snprintf(pattern, sizeof(pattern), "%s.+", name);
-    if (*in && !rule("-D", "-i", pattern, NULL, NULL, "SOFTGRE_IN"))
-        *in = false;
-    if (*out && !rule("-D", "-o", pattern, NULL, NULL, "SOFTGRE_OUT"))
-        *out = false;
-    return *in || *out ? -1 : 0;
+    for (unsigned i = 0; i < ARRAY_SIZE(hooks); i++)
+        if ((*installed & (1u << i)) &&
+            !rule(hooks[i].table, "-D", hooks[i].chain, hooks[i].direction, pattern, NULL, NULL,
+                  hooks[i].target))
+            *installed &= ~(1u << i);
+    return *installed ? -1 : 0;
 }
 
 int iface_ebtables_reset(void)
 {
-    if (chain_cmd("-F", "SOFTGRE_IN") || chain_cmd("-F", "SOFTGRE_OUT"))
+    if (chain_cmd("nat", "-F", "SOFTGRE_IN") || chain_cmd("filter", "-F", "SOFTGRE_OUT"))
         return -1;
     return chain_defaults();
 }
@@ -115,15 +127,15 @@ int iface_ebtables_allow(const char *name, const char *mac)
 {
     char pattern[IFNAMSIZ + 2];
     snprintf(pattern, sizeof(pattern), "%s.+", name);
-    const char *in[] = {ebtables_bin(), "-I", "SOFTGRE_IN", "-i",     pattern,
-                        "-s",           mac,  "-j",         "ACCEPT", NULL};
+    const char *in[] = {ebtables_bin(), "-t", "nat", "-I", "SOFTGRE_IN", "-i",
+                        pattern,        "-s", mac,   "-j", "ACCEPT",     NULL};
     const char *out[] = {ebtables_bin(), "-I", "SOFTGRE_OUT", "-o",     pattern,
                          "-d",           mac,  "-j",          "ACCEPT", NULL};
     if (helper_exec(in))
         return -1;
     if (helper_exec(out)) {
-        const char *undo[] = {ebtables_bin(), "-D", "SOFTGRE_IN", "-i",     pattern,
-                              "-s",           mac,  "-j",         "ACCEPT", NULL};
+        const char *undo[] = {ebtables_bin(), "-t", "nat", "-D", "SOFTGRE_IN", "-i",
+                              pattern,        "-s", mac,   "-j", "ACCEPT",     NULL};
         helper_exec(undo);
         return -1;
     }
@@ -134,8 +146,8 @@ int iface_ebtables_revoke(const char *name, const char *mac)
 {
     char pattern[IFNAMSIZ + 2];
     snprintf(pattern, sizeof(pattern), "%s.+", name);
-    const char *in[] = {ebtables_bin(), "-D", "SOFTGRE_IN", "-i",     pattern,
-                        "-s",           mac,  "-j",         "ACCEPT", NULL};
+    const char *in[] = {ebtables_bin(), "-t", "nat", "-D", "SOFTGRE_IN", "-i",
+                        pattern,        "-s", mac,   "-j", "ACCEPT",     NULL};
     const char *out[] = {ebtables_bin(), "-D", "SOFTGRE_OUT", "-o",     pattern,
                          "-d",           mac,  "-j",          "ACCEPT", NULL};
     int a = helper_exec(in), b = helper_exec(out);
@@ -146,8 +158,8 @@ int iface_ebtables_end(void)
 {
     if (!initialized)
         return 0;
-    int ret = chain_cmd("-F", "SOFTGRE_IN") | chain_cmd("-F", "SOFTGRE_OUT");
-    ret |= chain_cmd("-X", "SOFTGRE_IN") | chain_cmd("-X", "SOFTGRE_OUT");
+    int ret = chain_cmd("nat", "-F", "SOFTGRE_IN") | chain_cmd("filter", "-F", "SOFTGRE_OUT");
+    ret |= chain_cmd("nat", "-X", "SOFTGRE_IN") | chain_cmd("filter", "-X", "SOFTGRE_OUT");
     if (!ret)
         initialized = false;
     return ret;

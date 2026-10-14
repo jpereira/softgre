@@ -43,3 +43,5 @@ EXTRA_DIST += docker/test.test.sh docker/test.format.sh docker/test.lab.sh \
     docker/test.release.sh docker/test.production.sh docker/test.all.sh \
     tests/fuzz/parser_fuzz.c tests/fuzz/hashmap_fuzz.c tests/fuzz/config_fuzz.c \
     tests/fuzz/seed.py tests/fuzz/run.sh
+
+EXTRA_DIST += tests/security_integration.py

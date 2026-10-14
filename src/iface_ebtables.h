@@ -21,8 +21,8 @@
 #include "general.h"
 
 int iface_ebtables_init(void);
-int iface_ebtables_add_tunnel(const char *name, bool *in, bool *out);
-int iface_ebtables_del_tunnel(const char *name, bool *in, bool *out);
+int iface_ebtables_add_tunnel(const char *name, unsigned *installed);
+int iface_ebtables_del_tunnel(const char *name, unsigned *installed);
 int iface_ebtables_reset(void);
 int iface_ebtables_allow(const char *name, const char *mac);
 int iface_ebtables_revoke(const char *name, const char *mac);

@@ -103,7 +103,7 @@ struct tunnel_context *provision_add(const struct in_addr *remote)
     /* Track immediately so a failed rollback remains visible and can be retried. */
     slots[id] = true;
     hashmap_insert(tunnels, (void *)(uintptr_t)remote->s_addr, tun);
-    if (iface_ebtables_add_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
+    if (iface_ebtables_add_tunnel(tun->ifgre, &tun->firewall_hooks))
         goto fail;
     for (unsigned i = 0; i < cfg->bridge_slot; i++) {
         if (iface_bridge_attach(tun->ifgre, cfg->bridge[i].ifname, cfg->bridge[i].vlan_id))
@@ -222,7 +222,7 @@ int provision_del(const struct in_addr *remote)
         hashmap_remove(mac_index, mac);
         hashmap_iter_remove(&iter);
     }
-    if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
+    if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_hooks))
         return -1;
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, remote, ip, sizeof(ip));
@@ -248,7 +248,7 @@ void provision_delall(void)
             ok = false;
             continue;
         }
-        if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_in, &tun->firewall_out))
+        if (iface_ebtables_del_tunnel(tun->ifgre, &tun->firewall_hooks))
             ok = false;
         else {
             char ip[INET_ADDRSTRLEN];
