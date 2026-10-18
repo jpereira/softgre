@@ -72,6 +72,39 @@ To build a Debian package of the checked-out source, install `debhelper` as well
 `./autogen.sh && make deb`. The target runs the Debian build and regression tests and
 writes `softgred_VERSION_ARCH.deb` to the parent directory; it does not install it.
 
+## OpenWrt
+
+Configure with `--enable-openwrt` to build for OpenWrt (musl, procd). The option
+installs `/etc/init.d/softgred` (a procd script with respawn) instead of the systemd units,
+and it turns the dashboard and the Python DHCP lease hook off, since routers rarely carry
+Python or PHP. The TCP status API stays enabled; pass `--disable-service` to drop it.
+
+`openwrt/softgred/Makefile` is a ready package definition. Copy it to `package/softgred` in
+a buildroot or SDK (or add the directory to a feed), then select `Network -> softgred`
+in `make menuconfig`, or build it directly:
+
+```sh
+make package/softgred/compile V=s
+```
+
+The Makefile passes `--enable-openwrt` to `configure`. It downloads the release tarball
+(`PKG_SOURCE_URL`); `PKG_HASH` is `skip` and must be filled in for a feed. The package
+depends on `kmod-gre`, `ebtables-nft` and `kmod-nft-bridge`. Bridge and 802.1Q support are
+built into the stock kernel; custom kernels need `CONFIG_BRIDGE`, `CONFIG_VLAN_8021Q` and
+GRE/gretap. Install the `.ipk` and start it:
+
+```sh
+opkg install softgred_*.ipk
+vi /etc/softgred/softgred.conf
+/etc/init.d/softgred enable
+/etc/init.d/softgred start
+```
+
+`/etc/init.d/softgred reload` sends `SIGHUP` (log reopen). The log is
+`/var/log/softgred.log`, which lives in RAM on OpenWrt; point `log-file` to persistent storage
+if you need it across reboots. `docker/test.openwrt.sh` validates this build (see
+[Development](development.md)).
+
 ## Run with systemd
 
 Packages install and enable both units. After a source build, install them yourself:

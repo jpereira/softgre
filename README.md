@@ -115,6 +115,7 @@ GitHub.
 docker/test.test.sh     # compilers, sanitizers, integration, DHCP, web, package, fuzzing
 docker/test.format.sh   # formatting
 docker/test.lab.sh      # lab and gateway with external APs
+docker/test.openwrt.sh  # OpenWrt SDK build and rootfs smoke test
 docker/test.all.sh      # every image, including release packages for each distribution
 ```
 

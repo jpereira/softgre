@@ -90,3 +90,4 @@ softgred-*.tar.gz
 test-firewall
 test-helper
 test-log
+!/openwrt/softgred/Makefile

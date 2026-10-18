@@ -1,0 +1,40 @@
+# Builds the OpenWrt package (.ipk) with the official SDK and installs it in a rootfs image.
+# OPENWRT_TARGET is the image tag prefix (x86-64 / x86_64), OPENWRT_RELEASE the OpenWrt version.
+# 24.10.x and older produce .ipk; 25.12 switched to apk, so keep this on opkg releases.
+ARG OPENWRT_RELEASE=24.10.8
+
+FROM debian:bookworm-slim AS dist
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential autoconf automake ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
+COPY . .
+RUN ./autogen.sh && ./configure --enable-openwrt && make distcheck \
+    && mkdir /out && cp softgred-*.tar.gz /out/
+
+FROM openwrt/sdk:x86_64-${OPENWRT_RELEASE} AS sdk
+USER buildbot
+WORKDIR /builder
+COPY --from=dist --chown=buildbot:buildbot /out/ dl/
+COPY --chown=buildbot:buildbot openwrt/softgred package/softgred
+RUN ver=$(ls dl/softgred-*.tar.gz | sed 's|.*/softgred-\(.*\)\.tar\.gz|\1|') \
+    && sed -i "s|^PKG_VERSION:=.*|PKG_VERSION:=$ver|" package/softgred/Makefile \
+    && echo CONFIG_PACKAGE_softgred=m >>.config \
+    && make defconfig >/dev/null \
+    && make package/softgred/compile V=s -j"$(nproc)" >build.log 2>&1 \
+    || { tail -n 60 build.log; exit 1; }
+RUN mkdir -p /builder/out \
+    && find bin -name 'softgred_*.ipk' -exec cp {} /builder/out/ \; \
+    && ls /builder/out/softgred_*.ipk
+
+FROM openwrt/rootfs:x86-64-${OPENWRT_RELEASE}
+COPY --from=sdk /builder/out/ /tmp/pkg/
+COPY tests/openwrt_smoke.sh /usr/bin/openwrt_smoke.sh
+# Bridge and 802.1Q are built into the stock kernel, so the package pulls only kmod-gre and
+# the ebtables-nft stack. The rootfs image has no kmods for the Docker host kernel, so the
+# runtime dependencies are installed best effort and the .ipk itself is installed strictly.
+RUN mkdir -p /var/lock /var/run \
+    && opkg update >/dev/null \
+    && (opkg install ebtables-nft || echo 'ebtables-nft not installable here') \
+    && opkg install --force-depends /tmp/pkg/softgred_*.ipk
+CMD ["/bin/sh", "/usr/bin/openwrt_smoke.sh"]

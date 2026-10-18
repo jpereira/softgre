@@ -19,6 +19,7 @@ need to remember the individual commands below:
 | `docker/test.lab.sh` | `Dockerfile.lab` | Single-container lab and the gateway with external APs |
 | `docker/test.release.sh` | `Dockerfile.release` | Builds and verifies the `.deb` per distribution |
 | `docker/test.production.sh` | `Dockerfile` | Production image metadata, no GLib, live start |
+| `docker/test.openwrt.sh` | `Dockerfile.openwrt` | OpenWrt SDK build of the `.ipk`, install and smoke test in an OpenWrt rootfs |
 | `docker/test.all.sh` | all of them | Every script above, in turn |
 
 ```sh
@@ -31,6 +32,18 @@ FUZZ_SECONDS=60 docker/test.test.sh
 each package inside a matching image. `FUZZ_SECONDS` sets the time spent on each fuzz
 target (default 10, `0` skips fuzzing). The full set pulls several base images, so run
 `docker/test.all.sh` on a good connection and redirect its output to a file.
+
+## OpenWrt build
+
+`docker/test.openwrt.sh [release]` (default 24.10.8, which uses opkg/`.ipk`) runs
+`Dockerfile.openwrt`: it builds the `make distcheck` tarball with `--enable-openwrt`,
+cross-compiles `openwrt/softgred` with the official `openwrt/sdk` image (musl) and installs
+the `.ipk` in `openwrt/rootfs`. `tests/openwrt_smoke.sh` then checks the layout (procd init
+script, no dashboard or Python hook, musl binary), CLI exit codes and starts the daemon
+with `CAP_NET_ADMIN`/`CAP_NET_RAW`, querying the status API through BusyBox `nc`. The images
+are x86-64 only, so on other hosts Docker emulates them and the first run is slow. It does
+not exercise the GRE data path or the firewall: Docker shares the host kernel, so the
+integration tests stay in `Dockerfile.test`.
 
 ## Unit and compiler checks
 

@@ -45,3 +45,5 @@ EXTRA_DIST += docker/test.test.sh docker/test.format.sh docker/test.lab.sh \
     tests/fuzz/seed.py tests/fuzz/run.sh
 
 EXTRA_DIST += tests/security_integration.py
+EXTRA_DIST += openwrt/softgred/Makefile docker/Dockerfile.openwrt docker/test.openwrt.sh \
+    tests/openwrt_smoke.sh
