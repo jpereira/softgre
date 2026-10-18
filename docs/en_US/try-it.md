@@ -99,7 +99,7 @@ on every push.
 ## Single-container lab
 
 The default lab target creates a test veth pair and bridges inside one container. The
-capture interface is `sg-test-in` at `192.0.3.1/24`; frames enter through `sg-test-peer`.
+capture interface is `sg-test-in` at `192.0.4.1/24`; frames enter through `sg-test-peer`.
 VLAN 1000 maps to `br-radius` and VLAN 10 to `br-hotspot`. The TCP API listens on container
 loopback port 8888 and the dashboard on port 8080.
 
@@ -124,16 +124,16 @@ docker exec test-softgre python3 /opt/softgre-lab/send.py
 ```
 
 The script sends five packets for each of three synthetic clients: two MACs on remote
-`192.0.3.2` and one on `192.0.3.3`. It waits for learning, checks the dashboard's JSON and
+`192.0.4.2` and one on `192.0.4.3`. It waits for learning, checks the dashboard's JSON and
 verifies each VLAN interface's bridge. On a fresh lab the topology is:
 
 ```text
-Remote 192.0.3.2 -> sgre0
+Remote 192.0.4.2 -> sgre0
   MACs: 02:00:00:00:00:42, 02:00:00:00:00:43
   sgre0.1000 -> br-radius
   sgre0.10   -> br-hotspot
 
-Remote 192.0.3.3 -> sgre1
+Remote 192.0.4.3 -> sgre1
   MAC: 02:00:00:00:00:44
   sgre1.1000 -> br-radius
   sgre1.10   -> br-hotspot
@@ -149,7 +149,7 @@ docker exec test-softgre ip -d link show type gretap
 docker exec test-softgre bridge link show
 docker exec test-softgre /opt/softgre-lab/status.sh
 docker exec test-softgre journalctl -u softgred -u softgred-web -f
-docker exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.3.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
+docker exec test-softgre python3 /opt/softgre-lab/send.py --remote 192.0.4.4 --mac 02:00:00:00:00:45 --vlan 10 --count 20
 docker exec test-softgre sh -c 'kill -USR1 "$(cat /run/softgre-lab/softgred.pid)"'
 ```
 

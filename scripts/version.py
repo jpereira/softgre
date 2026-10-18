@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep the source and Debian versions consistent, without committing or creating tags."""
+"""Keep the source, Debian and OpenWrt versions consistent, without committing or creating tags."""
 import argparse
 import os
 import re
@@ -52,6 +52,12 @@ def bump(root, requested):
     for document in [root / "README.md", *sorted(root.glob("docs/*/*.md"))]:
         if document.exists():
             documents.append((document, document.read_text().replace(current, requested)))
+    openwrt = root / "openwrt/softgred/Makefile"
+    if openwrt.exists():
+        text = openwrt.read_text()
+        text = re.sub(r"^PKG_VERSION:=.*$", f"PKG_VERSION:={requested}", text, flags=re.M)
+        text = re.sub(r"^PKG_RELEASE:=.*$", "PKG_RELEASE:=1", text, flags=re.M)
+        atomic_write(openwrt, text)
     atomic_write(path, stanza + previous)
     for document, content in documents:
         atomic_write(document, content)
@@ -67,6 +73,9 @@ def check(root):
     package = rf"softgred \({re.escape(current)}-1(?:\+{distro})?\) "
     if not re.match(package, first):
         raise ValueError("VERSION and Debian changelog do not match")
+    openwrt = root / "openwrt/softgred/Makefile"
+    if openwrt.exists() and f"\nPKG_VERSION:={current}\n" not in openwrt.read_text():
+        raise ValueError("VERSION and openwrt/softgred/Makefile do not match")
     return current
 
 

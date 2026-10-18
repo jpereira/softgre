@@ -14,7 +14,7 @@ and a 1 MiB response limit, and excess connections are closed.
 
 ```sh
 printf 'STUN\n' | nc 127.0.0.1 8888
-printf 'LMIP 192.0.3.2\n' | nc 127.0.0.1 8888
+printf 'LMIP 192.0.4.2\n' | nc 127.0.0.1 8888
 printf 'GTMC 02:00:00:00:00:42\n' | nc 127.0.0.1 8888
 ```
 
@@ -81,7 +81,7 @@ managed deployment. Both adapters map these queries to TCP commands:
 | --- | --- |
 | `api.php?action=status` | `STAT` |
 | `api.php?action=tunnels` | `STUN` |
-| `api.php?action=ues&arg=192.0.3.2` | `LMIP 192.0.3.2` |
+| `api.php?action=ues&arg=192.0.4.2` | `LMIP 192.0.4.2` |
 | `api.php?action=cpe&arg=02:00:00:00:00:42` | `GTMC 02:00:00:00:00:42` |
 | `api.php?action=version` | `VERS` |
 | `api.php?action=help` | `HELP` |
